@@ -16,3 +16,6 @@ npm-debug.log*
 Thumbs.db
 .env
 .env.*
+
+# Smoke-test frame, rewritten on every run.
+media/smoke.png

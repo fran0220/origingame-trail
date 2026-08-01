@@ -267,9 +267,17 @@ export class Walker {
     const wantsJog = mag > 0 && !!(k.ShiftLeft || k.ShiftRight);
     this._paceBlend += ((wantsJog ? 1 : 0) - this._paceBlend) * response(3.8, dt);
     const pace = lerp(WALK_SPEED, JOG_SPEED, this._paceBlend);
+    /* Input basis, and it has to be the camera's own.
+     *
+     * A yaw of θ turns the camera's forward (0,0,-1) into (-sinθ, -cosθ) and
+     * its right (1,0,0) into (cosθ, -sinθ) — that is the convention placeAt()
+     * and the scripted walk already use. Rotating the input by -θ instead
+     * mirrors the basis about the world Z axis: it agrees with the camera when
+     * the player faces along ±Z and is exactly backwards at ninety degrees to
+     * it, so walking felt fine at the trailhead and inverted after a turn. */
     const cos = Math.cos(this.yaw), sin = Math.sin(this.yaw);
-    const wx = fx * cos - fz * sin;
-    const wz = fx * sin + fz * cos;
+    const wx = fx * cos + fz * sin;
+    const wz = -fx * sin + fz * cos;
 
     /* A sidestep and a blind backward step are deliberately shorter than a
      * forward stride. The input was normalised first, so adding a second key
@@ -515,11 +523,13 @@ export class Walker {
     const breathe = Math.sin(nt * 1.35) * 0.0035 * (1 - moving * 0.6);
 
     const cam = this.camera;
+    // Lateral sway travels along the head's right, which is the same basis the
+    // input uses above.
     const cos = Math.cos(this.yaw), sin = Math.sin(this.yaw);
     cam.position.set(
       this.pos.x + bobX * cos,
       this.pos.y + bobY + breathe - this.jumpCrouch * 0.105,
-      this.pos.z + bobX * sin,
+      this.pos.z - bobX * sin,
     );
     cam.rotation.set(0, 0, 0);
     cam.rotation.order = 'YXZ';

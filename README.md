@@ -213,9 +213,18 @@ start.
 
 ```
 npm run serve &      # the tests drive a real page
-npm test             # smoke + full journey + save round-trip
+npm test             # smoke + movement + full journey + save round-trip
 npm run shots        # visual acceptance captures into media/game/
 ```
+
+`tools/movement.mjs` exists because of a bug that survived the whole build: the
+input basis was mirrored about the world Z axis, so W went where the camera was
+looking only while the player faced along the trail's starting direction, and
+went exactly wrong at ninety degrees to it. Every test up to that point either
+walked the scripted trail or teleported, so none of them ever turned and walked.
+It now checks each key against the rendered camera's own forward and right
+vectors at eight headings, including the two the broken basis got right by
+accident.
 
 `tools/journey.mjs` is the one that matters: it collects all twenty-four records
 through the real input path — window keydown for the rubbing key, a canvas
