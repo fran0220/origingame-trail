@@ -45,6 +45,8 @@ The game itself does not need it.
 | F | Raise and lower the field camera |
 | Left click (camera raised) | Shutter |
 | Tab | Field notebook |
+| M | Map: 40 m, 100 m, off |
+| H | Hide the interface |
 | Esc | Pause |
 
 Add `#dev` to the URL to re-enable the number-key teleports along the trail.
@@ -74,6 +76,17 @@ is inside the frame, unobstructed, at a distance it reads at, and filling a
 sensible part of the picture — measured against its own size, so a fern and a
 waterfall are judged by the same rule. The shot that gets kept is the best one
 you have taken; a worse retake costs nothing.
+
+**The map.** Baked once from the terrain itself — hillshade and two-metre
+contours off the same height field the ground is meshed from, the trail on its
+own curve, and the pool, brook, spillway and swallow hole drawn from the
+constants that built them rather than from a moisture field that would have put
+a lake over the whole ruins clearing. It rotates with the player and marks only
+records already taken; the one exception is the tablet the proximity sense has
+already announced, which appears as an anonymous ring. A map that marked all
+twelve would turn a game about looking into a game about walking between icons.
+
+![The map, the compass and the chapter panel](media/game/09-nav.jpg)
 
 **Finding things.** Six of the twelve tablets are deliberately off the tread,
 and with no feedback at all the only way to find those is to mow the

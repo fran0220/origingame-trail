@@ -26,6 +26,14 @@ export class Hud {
       reticle: $('#reticle'),
       chapter: $('#chapter'),
       nearby: $('#nearby'),
+      map: $('#map'),
+      mapCanvas: $('#mapCanvas'),
+      mapScale: $('#mapScale'),
+      compass: $('#compass'),
+      quest: $('#quest'),
+      questName: $('#questName'),
+      questCount: $('#questCount'),
+      questList: $('#questList'),
       counters: { glyph: $('#cGlyph'), photo: $('#cPhoto') },
       prompt: $('#prompt'),
       toasts: $('#toasts'),
@@ -99,11 +107,40 @@ export class Hud {
     const c = this.el.chapter.querySelector('.c');
     const m = this.el.chapter.querySelector('.m');
     if (c.textContent !== name) c.textContent = name;
-    const line = total
-      ? `${Math.round(metres)} m · 本章 ${done}/${total}`
-      : `${Math.round(metres)} m`;
+    // Progress belongs to the quest panel below; repeating it here was the
+    // same fraction twice, forty pixels apart.
+    const line = `${Math.round(metres)} m`;
     if (m.textContent !== line) m.textContent = line;
     this.el.chapter.classList.toggle('done', total !== null && done === total);
+  }
+
+  /**
+   * The chapter's records, listed.
+   *
+   * The hint for a record the player does not have yet is the same sentence
+   * the notebook shows, so this panel is a shortcut to the page rather than a
+   * second, more generous source of directions.
+   * @param {{name:string, done:number, total:number,
+   *          items:Array<{title:string, hint:string, found:boolean}>}} q
+   */
+  setQuest(q) {
+    if (!q || !q.items.length) { this.el.quest.classList.remove('show'); return; }
+    this.el.questName.textContent = q.name;
+    this.el.questCount.textContent = `${q.done}/${q.total}`;
+    this.el.questList.innerHTML = q.items.map((it) =>
+      `<li class="${it.found ? 'done' : ''}"><i></i><span>`
+      + escapeHtml(it.found ? it.title : it.hint)
+      + '</span></li>').join('');
+    this.el.quest.classList.add('show');
+  }
+
+  setMapVisible(on) { this.el.map.classList.toggle('off', !on); }
+  setMapScale(metres) { this.el.mapScale.textContent = `${metres} m`; }
+
+  /** Hide every readout without unbinding anything. Returns the new state. */
+  toggleBare() {
+    const bare = this.el.hud.classList.toggle('bare');
+    return bare;
   }
 
   /** A one-line note under the chapter block, or null to clear it. */

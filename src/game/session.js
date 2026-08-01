@@ -9,6 +9,7 @@
  */
 import * as THREE from 'three';
 import { Glyphs } from './glyphs.js';
+import { Minimap, Compass, ZOOMS } from './minimap.js';
 import { PhotoCamera, captureThumbnail } from './photo.js';
 import { Cues } from './cues.js';
 import { RunState } from './state.js';
@@ -30,6 +31,7 @@ const SENSE_RANGE = 19;
 
 const _fwd = new THREE.Vector3();
 const _to = new THREE.Vector3();
+const _tan = new THREE.Vector3();
 
 export class Session {
   /**
@@ -49,6 +51,12 @@ export class Session {
     this.photo = new PhotoCamera(deps.camera, deps.walker, world);
     this.cues = new Cues(deps.ambience);
     this.state = new RunState();
+    this.minimap = new Minimap(this.hud.el.mapCanvas, world);
+    this.compass = new Compass(this.hud.el.compass);
+    /* Three states, not two: forty metres is the search radius, eighty is for
+     * working out where in the level you are, and off is for the players this
+     * whole overlay is an intrusion on. */
+    this.mapMode = 0;
 
     this.chapter = null;
     this.aimed = null;         // the tablet currently under the reticle
@@ -61,6 +69,10 @@ export class Session {
 
     this._index();
     this.hud.setChapterIndex(this.chapterOf);
+    this.minimap.resize(180);
+    this.minimap.bake();
+    this.compass.resize(420, 28);
+    this._applyMapMode();
 
     this._bindInput();
     this.hud.onBookTab(() => this.hud.renderBook(this.state));
@@ -152,6 +164,8 @@ export class Session {
 
       if (e.code === 'KeyE') { e.preventDefault(); this._rub(); }
       else if (e.code === 'KeyF') { e.preventDefault(); this._toggleCamera(); }
+      else if (e.code === 'KeyM') { e.preventDefault(); this._cycleMap(); }
+      else if (e.code === 'KeyH') { e.preventDefault(); this.hud.toggleBare(); this.cues.page(); }
     };
     addEventListener('keydown', down);
 
@@ -375,6 +389,7 @@ export class Session {
     const t = this._trailT();
     this.state.advance(t, this.walker.pos.x, this.walker.pos.z, this.walker.yaw);
     this._syncChapter(false);
+    this._drawNav(dt, t);
 
     if (this.photo.raised) {
       this.aimed = null;
@@ -431,11 +446,32 @@ export class Session {
     return best;
   }
 
+  /** The current chapter's records, for the quest panel. */
+  _chapterItems(chapterId) {
+    return (this.byChapter.get(chapterId) ?? []).map((key) => {
+      const id = key.slice(key.indexOf(':') + 1);
+      if (key.startsWith('glyph:')) {
+        const g = GLYPHS.find((d) => d.id === id);
+        return { title: g.title, hint: g.hint ?? '在小径沿途', found: this.state.hasGlyph(id) };
+      }
+      const s = SUBJECTS.find((d) => d.id === id);
+      return { title: s.title, hint: s.hint, found: this.state.hasPhoto(id) };
+    });
+  }
+
   _syncChapter(force) {
     const t = this._trailT();
     const ch = chapterAt(t);
     const p = this._chapterProgress(ch.id);
     this.hud.setChapter(ch.name, t * this.trail.length, p.done, p.total);
+    /* Rebuilt only when its contents can have changed. The panel is otherwise
+     * a dozen array searches and an innerHTML assignment per frame to produce
+     * exactly the markup that is already on screen. */
+    const questKey = `${ch.id}|${p.done}`;
+    if (questKey !== this._questKey || force) {
+      this._questKey = questKey;
+      this.hud.setQuest({ name: ch.name, done: p.done, total: p.total, items: this._chapterItems(ch.id) });
+    }
     if (ch === this.chapter && !force) return;
     if (this.chapter) platform.analytics.complete(this.chapter.id, { elapsedS: Math.round(this.state.elapsedMs / 1000) });
     this.chapter = ch;
@@ -459,6 +495,60 @@ export class Session {
     this.cues.sun();
     this.hud.toast({ kind: '本章记满', title: ch.name, sub: `${p.total} 处全部收录` });
     platform.analytics.complete(`${ch.id}.records`, { total: p.total });
+  }
+
+  /* ------------------------------------------------------------ navigation */
+
+  _cycleMap() {
+    this.mapMode = (this.mapMode + 1) % (ZOOMS.length + 1);
+    this._applyMapMode();
+    this.cues.page();
+  }
+
+  _applyMapMode() {
+    const on = this.mapMode < ZOOMS.length;
+    this.hud.setMapVisible(on);
+    if (!on) return;
+    this.minimap.zoom = this.mapMode;
+    this.hud.setMapScale(this.minimap.radiusM);
+  }
+
+  /**
+   * Draw the map and the compass.
+   *
+   * Only records the player already holds are marked. The one exception is the
+   * tablet the proximity sense has already announced, which appears as an
+   * anonymous ring — the map is allowed to draw what the player can hear, and
+   * nothing more, or the game becomes a walk between icons.
+   */
+  _drawNav(dt, t) {
+    // Both are faded out behind the notebook and inside the viewfinder. Drawing
+    // them there is work whose entire output is covered by an opacity of zero.
+    if (this.hud.bookOpen || this.hud.finaleOpen || this.photo.raised) return;
+
+    const p = this.walker.pos, yaw = this.walker.yaw;
+
+    const tan = this.trail.tangentAt(Math.min(1, t + 0.004), _tan);
+    this.compass.draw(yaw, Math.atan2(tan.x, -tan.z));
+
+    if (this.mapMode >= ZOOMS.length) return;
+    const r = this.minimap.radiusM + 8;
+    const marks = [];
+    for (const it of this.glyphs.items) {
+      if (!this.state.hasGlyph(it.id)) continue;
+      if (Math.abs(it.position.x - p.x) > r || Math.abs(it.position.z - p.z) > r) continue;
+      marks.push({ x: it.position.x, z: it.position.z, kind: 'glyph' });
+    }
+    for (const s of this.photo.subjects) {
+      if (!this.state.hasPhoto(s.id)) continue;
+      if (Math.abs(s.position.x - p.x) > r || Math.abs(s.position.z - p.z) > r) continue;
+      marks.push({ x: s.position.x, z: s.position.z, kind: 'photo' });
+    }
+    if (this._nearId) {
+      const it = this.glyphs.items.find((g) => g.id === this._nearId);
+      if (it) marks.push({ x: it.position.x, z: it.position.z, kind: 'sense' });
+    }
+    this.minimap.draw({ x: p.x, z: p.z, yaw, dt, marks });
   }
 
   /**

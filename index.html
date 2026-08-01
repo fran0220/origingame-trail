@@ -48,10 +48,17 @@
      viewfinder the picture is the interface, and a progress counter sitting
      over it is the one thing a camera never shows you; behind the notebook or
      the finale a toast is arriving for a screen the player has left. */
-  #hud.framing #chapter, #hud.framing #counters, #hud.framing #hints { opacity: 0; }
+  #hud.framing #chapter, #hud.framing #counters, #hud.framing #hints,
+  #hud.framing #map, #hud.framing #compass, #hud.framing #quest { opacity: 0; }
   #hud.reading #toasts, #hud.reading #prompt, #hud.reading #reticle,
-  #hud.reading #hints, #hud.reading #chapter, #hud.reading #counters { opacity: 0; }
-  #chapter, #counters, #hints, #toasts, #reticle { transition: opacity .25s ease; }
+  #hud.reading #hints, #hud.reading #chapter, #hud.reading #counters,
+  #hud.reading #map, #hud.reading #compass, #hud.reading #quest { opacity: 0; }
+  #chapter, #counters, #hints, #toasts, #reticle, #map, #compass, #quest {
+    transition: opacity .25s ease;
+  }
+  /* The whole overlay, out of the way. A game whose selling point is the view
+     has to be able to show the view. */
+  #hud.bare > *:not(#book):not(#pause):not(#finale), #hud.bare::before { opacity: 0 !important; }
   /* Inside the frame a notification belongs where a camera puts its status:
      the lower left corner of the picture, not across the middle of it. */
   #hud.framing #toasts {
@@ -197,6 +204,60 @@
     text-shadow: var(--lift); transition: opacity .8s;
   }
   #hints.faded { opacity: .32; }
+
+  /* ------------------------------------------------------------ minimap */
+  #map {
+    position: absolute; right: 26px; bottom: 24px;
+    width: 180px; height: 180px;
+  }
+  #map.off { display: none; }
+  #map canvas { display: block; border-radius: 50%; }
+  /* Drawn under the canvas rather than as a canvas shadow: a blurred ring
+     costs a repaint of the whole map every frame if it lives in there. */
+  #map::before {
+    content: ''; position: absolute; inset: -3px; border-radius: 50%;
+    background: rgba(4,7,5,.55);
+    box-shadow: 0 2px 14px rgba(0,0,0,.55);
+  }
+  #map canvas { position: relative; }
+  #map .scale {
+    position: absolute; left: 0; right: 0; bottom: -17px; text-align: center;
+    font-size: 10px; letter-spacing: .22em; color: var(--dim);
+    text-shadow: var(--lift);
+  }
+
+  /* ------------------------------------------------------------ compass */
+  #compass {
+    position: absolute; left: 50%; top: 18px; transform: translateX(-50%);
+    display: block;
+  }
+
+  /* -------------------------------------------------------- quest panel */
+  #quest {
+    position: absolute; left: 28px; top: 104px;
+    min-width: 196px; max-width: 260px;
+    padding: 11px 14px 12px;
+    background: rgba(6,10,7,.62); border: 1px solid rgba(180,198,168,.16);
+    border-left: 2px solid rgba(232,198,122,.55); border-radius: 3px;
+    opacity: 0; transition: opacity .35s ease;
+  }
+  #quest.show { opacity: 1; }
+  #quest .cap {
+    font-size: 10px; letter-spacing: .3em; color: var(--faint);
+    display: flex; justify-content: space-between; gap: 12px;
+  }
+  #quest .cap b { color: var(--gold); font-weight: 400; font-variant-numeric: tabular-nums; }
+  #quest ul { list-style: none; margin: 9px 0 0; padding: 0; }
+  #quest li {
+    font-size: 11.5px; letter-spacing: .06em; line-height: 1.85; color: var(--dim);
+    display: flex; gap: 8px; align-items: baseline;
+  }
+  #quest li i {
+    flex: none; width: 5px; height: 5px; border-radius: 50%;
+    border: 1px solid var(--faint); margin-top: .55em;
+  }
+  #quest li.done { color: var(--faint); text-decoration: line-through; text-decoration-thickness: 1px; }
+  #quest li.done i { background: var(--gold); border-color: var(--gold); }
 
   /* --------------------------------------------------------- viewfinder */
   #finder { position: absolute; inset: 0; opacity: 0; transition: opacity .18s; }
@@ -400,12 +461,24 @@
     </div>
   </div>
 
+  <canvas id="compass"></canvas>
+
+  <div id="quest">
+    <div class="cap"><span id="questName">丛林小径</span><b id="questCount">0/0</b></div>
+    <ul id="questList"></ul>
+  </div>
+
+  <div id="map">
+    <canvas id="mapCanvas"></canvas>
+    <div class="scale" id="mapScale">40 m</div>
+  </div>
+
   <div id="prompt"></div>
   <div id="toasts"></div>
 
   <div id="hints">
     <div><span class="kbd">W</span><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span> 行走 · <span class="kbd">Shift</span> 疾行 · <span class="kbd">Space</span> 跳</div>
-    <div><span class="kbd">E</span> 拓印 · <span class="kbd">F</span> 相机 · <span class="kbd">Tab</span> 手记 · <span class="kbd">Esc</span> 暂停</div>
+    <div><span class="kbd">E</span> 拓印 · <span class="kbd">F</span> 相机 · <span class="kbd">Tab</span> 手记 · <span class="kbd">M</span> 地图 · <span class="kbd">H</span> 隐藏界面 · <span class="kbd">Esc</span> 暂停</div>
   </div>
 
   <div id="finder">
