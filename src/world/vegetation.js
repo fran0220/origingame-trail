@@ -547,6 +547,11 @@ function bulk(rng, s, k = 0.15) {
                 s * (1 + (rng() - 0.5) * 2 * k));
 }
 
+/* Species whose individual instances gameplay is allowed to name. Kept small
+ * on purpose: the ground cover is a hundred thousand instances and copying
+ * their positions out would cost more memory than the meshes they describe. */
+const NOTABLE_SPECIES = new Set(['tree', 'palm', 'log', 'rootRun']);
+
 export class Vegetation {
   /**
    * @param {THREE.WebGLRenderer} renderer
@@ -568,6 +573,11 @@ export class Vegetation {
     this.root.name = 'vegetation';
     this.time = 0;
     this.cells = [];
+    /* World positions of the few species a player can be asked to find, kept
+     * per species. Placement is the last moment an instance has an identity —
+     * after the bucket merge below there is only a merged variant mesh — so
+     * anything that wants to name one plant has to copy it out there. */
+    this.notable = {};
 
     this.uniforms = {
       uTime: { value: 0 },
@@ -1408,6 +1418,8 @@ export class Vegetation {
     const variants = this.species[name];
     const buckets = new Map();
     const rng = makeRng(0xbeef ^ (name.length * 2654435761));
+    const notable = NOTABLE_SPECIES.has(name)
+      ? (this.notable[name] || (this.notable[name] = [])) : null;
 
     for (const it of list) {
       /* The instance transform is the last point at which a trunk still has
@@ -1421,6 +1433,7 @@ export class Vegetation {
         if (solid) this._registerSolid(solid, it.m);
       }
       const p = new THREE.Vector3().setFromMatrixPosition(it.m);
+      if (notable) notable.push(p.clone());
       const ti = Math.floor(p.x / tile), tj = Math.floor(p.z / tile);
       const key = `${ti},${tj},${it.v}`;
       let b = buckets.get(key);

@@ -1,34 +1,489 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Jungle Trail</title>
+<title>Jungle Trail — 丛林记录</title>
 <style>
-  :root { color-scheme: dark; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #05070a; }
-  /* The canvas is the entire experience — no HUD, no overlay, nothing that
-     would remind you it is a program. */
-  #view { display: block; width: 100vw; height: 100vh; }
-  #boot {
-    position: fixed; inset: 0; display: grid; place-items: center;
-    font: 300 13px/1.7 ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: .22em; text-transform: uppercase; color: #6d7a63;
-    background: #05070a; pointer-events: none;
+  :root {
+    color-scheme: dark;
+    --ink: #e8eede;
+    --dim: #b6c3a6;
+    --faint: #8b9a7e;
+    --gold: #e8c67a;
+    --bg: #05070a;
+    --panel: rgba(8, 12, 9, 0.92);
+    --sheet: rgba(9, 13, 10, 0.96);
+    --line: rgba(180, 198, 168, 0.26);
+    --ui: 300 13px/1.7 ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+    /* The scene is high-frequency green with sunlit patches, so HUD text is
+       never guaranteed a dark backdrop. Every unpanelled glyph carries its own
+       one-pixel shadow rather than relying on the picture behind it. */
+    --lift: 0 1px 2px rgba(0,0,0,.95), 0 0 12px rgba(0,0,0,.55);
   }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+  #view { display: block; width: 100vw; height: 100vh; }
+
+  /* Every HUD layer lives in here. Pointer events are opt-in per panel so the
+     canvas keeps receiving the clicks that drive pointer lock. */
+  #hud {
+    position: fixed; inset: 0; pointer-events: none;
+    font: var(--ui); color: var(--ink);
+    letter-spacing: .08em; -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+  /* A vignette under the corner clusters. Cheap, static, and it does what a
+     panel behind each readout would do without drawing four boxes over the
+     view the player came here to look at. */
+  #hud::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background:
+      linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,0) 150px),
+      linear-gradient(to top, rgba(0,0,0,.42), rgba(0,0,0,0) 130px);
+    transition: opacity .25s ease;
+  }
+  #hud.framing::before, #hud.reading::before { opacity: 0; }
+  #hud.hidden { display: none; }
+  /* Two modes where the rest of the HUD has to get out of the way. Inside the
+     viewfinder the picture is the interface, and a progress counter sitting
+     over it is the one thing a camera never shows you; behind the notebook or
+     the finale a toast is arriving for a screen the player has left. */
+  #hud.framing #chapter, #hud.framing #counters, #hud.framing #hints { opacity: 0; }
+  #hud.reading #toasts, #hud.reading #prompt, #hud.reading #reticle,
+  #hud.reading #hints, #hud.reading #chapter, #hud.reading #counters { opacity: 0; }
+  #chapter, #counters, #hints, #toasts, #reticle { transition: opacity .25s ease; }
+  /* Inside the frame a notification belongs where a camera puts its status:
+     the lower left corner of the picture, not across the middle of it. */
+  #hud.framing #toasts {
+    left: calc(11vw + 22px); transform: none; align-items: flex-start;
+    bottom: calc(12vh + 18px);
+  }
+  #hud.framing .toast { text-align: left; }
+  .kbd {
+    display: inline-block; min-width: 1.5em; padding: .1em .42em;
+    border: 1px solid var(--line); border-radius: 3px;
+    background: rgba(0,0,0,.35); color: var(--ink);
+    font-size: .92em; letter-spacing: .1em; text-align: center;
+  }
+
+  /* ---------------------------------------------------------------- boot */
+  #boot {
+    position: fixed; inset: 0; z-index: 40; display: grid; place-items: center;
+    background: var(--bg); transition: opacity .8s ease;
+  }
+  #boot.gone { opacity: 0; pointer-events: none; }
+  #boot .inner { width: min(420px, 72vw); text-align: center; }
+  #boot .title {
+    font: var(--ui); font-size: 13px; letter-spacing: .34em;
+    text-transform: uppercase; color: var(--dim);
+  }
+  #boot .bar {
+    margin: 22px 0 12px; height: 1px; background: rgba(160,180,150,.16);
+    position: relative; overflow: hidden;
+  }
+  #boot .bar > i {
+    position: absolute; inset: 0 auto 0 0; width: 0%;
+    background: var(--dim); transition: width .3s ease;
+  }
+  #boot .step {
+    font-size: 11px; letter-spacing: .22em; color: var(--faint);
+    text-transform: uppercase; min-height: 1.4em;
+  }
+
+  /* ------------------------------------------------------------ reticle */
+  #reticle {
+    position: absolute; left: 50%; top: 50%; width: 22px; height: 22px;
+    margin: -11px 0 0 -11px; opacity: .5; transition: opacity .2s;
+  }
+  #reticle::before, #reticle::after {
+    content: ''; position: absolute; background: var(--ink);
+  }
+  #reticle::before { left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%; }
+  #reticle.active { opacity: 1; }
+  #reticle.active::after {
+    left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+    background: none; border: 1px solid var(--gold); border-radius: 50%;
+  }
+
+  /* --------------------------------------------------------------- meta */
+  #chapter {
+    position: absolute; left: 28px; top: 24px;
+    padding-left: 12px; border-left: 2px solid var(--gold);
+    text-shadow: var(--lift); transition: opacity .6s;
+  }
+  #chapter .c {
+    display: block; font-size: 13px; letter-spacing: .26em; color: var(--ink);
+  }
+  #chapter .m {
+    display: block; margin-top: 3px;
+    font-size: 11px; letter-spacing: .22em; color: var(--dim);
+    font-variant-numeric: tabular-nums;
+  }
+  #chapter.done { border-left-color: #7fa05e; }
+  #chapter.done .m { color: #9fc07a; }
+
+  /* The proximity sense. Deliberately a whisper: it says something is here,
+     not where it is, so it can sit under the chapter without becoming a
+     waypoint the player follows instead of looking. */
+  #nearby {
+    position: absolute; left: 42px; top: 74px;
+    font-size: 11px; letter-spacing: .2em; color: var(--gold);
+    text-shadow: var(--lift);
+    opacity: 0; transition: opacity .5s ease;
+  }
+  #nearby.show { opacity: .85; animation: breathe 3.2s ease-in-out infinite; }
+  @keyframes breathe { 0%, 100% { opacity: .5; } 50% { opacity: .95; } }
+  #hud.framing #nearby, #hud.reading #nearby { opacity: 0; animation: none; }
+
+  #counters {
+    position: absolute; right: 28px; top: 24px; text-align: right;
+    display: flex; flex-direction: column; gap: 12px;
+    padding-right: 12px; border-right: 2px solid var(--gold);
+    text-shadow: var(--lift);
+  }
+  #counters .row {
+    font-size: 13px; letter-spacing: .2em; color: var(--dim);
+    display: flex; align-items: baseline; gap: .9em; justify-content: flex-end;
+  }
+  #counters .row b {
+    color: var(--ink); font-weight: 400; font-variant-numeric: tabular-nums;
+    transition: color .3s, transform .3s;
+  }
+  #counters .row.bump b { color: var(--gold); transform: scale(1.18); }
+  #counters .ico { color: var(--dim); font-size: 11px; letter-spacing: .24em; }
+  /* One bar per collection. Twelve ticks rather than a continuous fill,
+     because the thing being counted is twelve discrete objects. */
+  #counters .pips { display: flex; gap: 3px; justify-content: flex-end; margin-top: 5px; }
+  #counters .pips i {
+    width: 9px; height: 3px; background: rgba(12,16,12,.75);
+    box-shadow: inset 0 0 0 1px rgba(210,224,198,.4);
+    transition: background .4s ease;
+  }
+  #counters .pips i.on { background: var(--gold); }
+
+  /* ------------------------------------------------------------- prompt */
+  #prompt {
+    position: absolute; left: 50%; top: calc(50% + 48px); transform: translateX(-50%);
+    font-size: 13px; letter-spacing: .16em; color: var(--ink);
+    background: rgba(4,7,5,.78); padding: 8px 16px; border-radius: 4px;
+    border: 1px solid var(--line);
+    opacity: 0; transition: opacity .18s; white-space: nowrap;
+  }
+  #prompt.show { opacity: 1; }
+  #prompt .name { color: var(--gold); }
+
+  /* -------------------------------------------------------------- toast */
+  #toasts {
+    position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+    display: flex; flex-direction: column-reverse; gap: 8px; align-items: center;
+  }
+  .toast {
+    background: var(--panel); border: 1px solid var(--line); border-left: 2px solid var(--gold);
+    padding: 10px 18px; border-radius: 3px; text-align: center;
+    animation: toastIn .45s cubic-bezier(.2,.9,.25,1) both;
+    max-width: 62vw;
+  }
+  .toast.out { animation: toastOut .5s ease forwards; }
+  .toast .k { font-size: 10px; letter-spacing: .3em; text-transform: uppercase; color: var(--gold); }
+  .toast .v { font-size: 14px; letter-spacing: .12em; margin-top: 5px; color: var(--ink); }
+  .toast .s { font-size: 12px; letter-spacing: .1em; margin-top: 5px; color: var(--dim); line-height: 1.75; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes toastOut { to { opacity: 0; transform: translateY(-6px); } }
+
+  /* -------------------------------------------------------------- hints */
+  #hints {
+    position: absolute; left: 28px; bottom: 24px; color: var(--dim);
+    font-size: 11.5px; letter-spacing: .14em; line-height: 2.2;
+    text-shadow: var(--lift); transition: opacity .8s;
+  }
+  #hints.faded { opacity: .32; }
+
+  /* --------------------------------------------------------- viewfinder */
+  #finder { position: absolute; inset: 0; opacity: 0; transition: opacity .18s; }
+  #finder.show { opacity: 1; }
+  #finder .mask { position: absolute; background: rgba(3,5,4,.82); }
+  #finder .mask.t { left: 0; right: 0; top: 0; height: 12vh; }
+  #finder .mask.b { left: 0; right: 0; bottom: 0; height: 12vh; }
+  #finder .mask.l { top: 12vh; bottom: 12vh; left: 0; width: 11vw; }
+  #finder .mask.r { top: 12vh; bottom: 12vh; right: 0; width: 11vw; }
+  #finder .frame {
+    position: absolute; top: 12vh; bottom: 12vh; left: 11vw; right: 11vw;
+    border: 1px solid rgba(200,215,190,.14);
+  }
+  #finder .corner { position: absolute; width: 26px; height: 26px; border: 0 solid var(--ink); opacity: .8; }
+  #finder .corner.tl { top: -1px; left: -1px; border-top-width: 1.5px; border-left-width: 1.5px; }
+  #finder .corner.tr { top: -1px; right: -1px; border-top-width: 1.5px; border-right-width: 1.5px; }
+  #finder .corner.bl { bottom: -1px; left: -1px; border-bottom-width: 1.5px; border-left-width: 1.5px; }
+  #finder .corner.br { bottom: -1px; right: -1px; border-bottom-width: 1.5px; border-right-width: 1.5px; }
+  #finder .grid { position: absolute; inset: 0; opacity: .1; }
+  #finder .grid i { position: absolute; background: var(--ink); }
+  #finder .grid i.v { top: 0; bottom: 0; width: 1px; }
+  #finder .grid i.h { left: 0; right: 0; height: 1px; }
+  /* Live subject box, positioned by photo.js in frame-relative percentages. */
+  #finder .lock {
+    position: absolute; border: 1px solid var(--gold); opacity: 0;
+    transition: opacity .12s; box-shadow: 0 0 0 1px rgba(0,0,0,.35);
+  }
+  #finder .lock.on { opacity: .95; }
+  #finder .lock .tag {
+    position: absolute; left: -1px; top: -23px; white-space: nowrap;
+    font-size: 11px; letter-spacing: .18em; color: #0b0f0c;
+    background: var(--gold); padding: 2px 8px; border-radius: 2px;
+  }
+  #finder .bar {
+    position: absolute; left: 11vw; right: 11vw; bottom: calc(12vh - 34px);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; letter-spacing: .18em; color: var(--dim);
+    text-shadow: var(--lift);
+  }
+  #finder .bar .right { display: flex; align-items: center; gap: 12px; }
+  #finder .bar .q { color: var(--gold); font-variant-numeric: tabular-nums; }
+  #finder .bar .q.low { color: #c98a6a; }
+  /* The composition meter. A number alone makes the player read; a bar makes
+     them turn. The threshold tick is where the shot starts being accepted. */
+  #finder .meter {
+    position: relative; width: 132px; height: 3px;
+    background: rgba(200,215,190,.18); overflow: visible;
+  }
+  #finder .meter > b {
+    position: absolute; inset: 0 auto 0 0; width: 0%;
+    background: var(--gold); transition: width .12s linear, background .2s;
+  }
+  #finder .meter > b.low { background: #c98a6a; }
+  #finder .meter > u {
+    position: absolute; top: -3px; bottom: -3px; width: 1px;
+    background: rgba(232,238,222,.55);
+  }
+  #finder .top {
+    position: absolute; left: 11vw; right: 11vw; top: calc(12vh - 28px);
+    display: flex; justify-content: space-between;
+    font-size: 11px; letter-spacing: .24em; color: var(--dim); text-transform: uppercase;
+    text-shadow: var(--lift);
+  }
+  #shutter {
+    position: absolute; inset: 0; background: #dfe6d6; opacity: 0; pointer-events: none;
+  }
+  #shutter.fire { animation: flash .22s ease-out; }
+  @keyframes flash { 0% { opacity: .0; } 12% { opacity: .55; } 100% { opacity: 0; } }
+
+  /* --------------------------------------------------------------- book */
+  #book {
+    position: absolute; inset: 0; background: rgba(4,6,5,.93);
+    display: none; pointer-events: auto; overflow: auto;
+  }
+  #book.show { display: block; }
+  #book .wrap { max-width: 1140px; margin: 0 auto; padding: 56px 32px 90px; }
+  #book .head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 24px; flex-wrap: wrap; margin-bottom: 30px;
+  }
+  #book h1 {
+    font: var(--ui); font-size: 24px; letter-spacing: .3em;
+    color: var(--ink); font-weight: 300; margin: 0 0 8px;
+  }
+  #book .sub { font-size: 12px; letter-spacing: .18em; color: var(--dim); }
+  /* The run at a glance, on the right of the title: two numbers a player is
+     actually trying to move, big enough to read from across the desk. */
+  #book .stats { display: flex; gap: 34px; }
+  #book .stats .s { text-align: right; }
+  #book .stats .s .v { font-size: 26px; letter-spacing: .06em; color: var(--gold); font-variant-numeric: tabular-nums; }
+  #book .stats .s .l { font-size: 10px; letter-spacing: .3em; color: var(--faint); margin-top: 4px; }
+  #book .tabs { display: flex; gap: 26px; margin-bottom: 26px; border-bottom: 1px solid var(--line); }
+  #book .tabs button {
+    background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    font: var(--ui); font-size: 13px; letter-spacing: .22em;
+    color: var(--faint); padding: 0 0 12px; cursor: pointer;
+  }
+  #book .tabs button:hover { color: var(--dim); }
+  #book .tabs button.on { color: var(--ink); border-bottom-color: var(--gold); }
+  #book .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(246px, 1fr));
+    gap: 16px; align-items: start;
+  }
+  #book .card {
+    border: 1px solid var(--line); border-radius: 4px; padding: 15px 17px 17px;
+    background: var(--sheet); min-height: 104px;
+  }
+  #book .card.locked { background: rgba(9,13,10,.5); border-style: dashed; border-color: rgba(180,198,168,.16); }
+  #book .card.found { border-left: 2px solid var(--gold); }
+  #book .card .n { font-size: 10px; letter-spacing: .28em; color: var(--faint); }
+  #book .card .t { font-size: 14px; letter-spacing: .12em; margin: 8px 0 7px; color: var(--ink); }
+  #book .card.locked .t { color: var(--faint); }
+  #book .card .d { font-size: 12px; line-height: 1.9; color: var(--dim); letter-spacing: .04em; }
+  #book .card.locked .d { color: var(--faint); }
+  #book .card .q { font-size: 11px; letter-spacing: .2em; color: var(--gold); margin-top: 10px; }
+  #book .card img {
+    width: 100%; height: auto; display: block; margin: 0 0 12px;
+    border: 1px solid var(--line); border-radius: 2px;
+  }
+  #book .close {
+    position: fixed; right: 28px; top: 26px; font-size: 11px; letter-spacing: .22em;
+    color: var(--dim);
+  }
+
+  /* -------------------------------------------------------------- pause */
+  #pause {
+    position: absolute; inset: 0; display: none; place-items: center;
+    background: rgba(4,6,5,.72); backdrop-filter: blur(2px);
+  }
+  #pause.show { display: grid; }
+  #pause .box { text-align: center; }
+  #pause .t { font-size: 12px; letter-spacing: .4em; text-transform: uppercase; color: var(--dim); }
+  #pause .k { margin-top: 18px; font-size: 11px; letter-spacing: .18em; color: var(--faint); line-height: 2.3; }
+
+  /* ------------------------------------------------------------- finale */
+  #finale {
+    position: absolute; inset: 0; background: rgba(3,5,4,.95); display: none;
+    place-items: center; pointer-events: auto; overflow: auto;
+  }
+  #finale.show { display: grid; }
+  #finale .box {
+    width: min(580px, 88vw); padding: 42px 44px 38px; margin: 40px 0;
+    background: var(--sheet); border: 1px solid var(--line); border-radius: 5px;
+    border-top: 2px solid var(--gold);
+  }
+  #finale .t { font-size: 11px; letter-spacing: .42em; text-transform: uppercase; color: var(--faint); }
+  #finale .h { font-size: 26px; letter-spacing: .18em; margin: 14px 0 30px; color: var(--ink); font-weight: 300; }
+  #finale .rows { border-top: 1px solid var(--line); }
+  #finale .r {
+    display: flex; justify-content: space-between; padding: 12px 2px;
+    border-bottom: 1px solid var(--line); font-size: 13px; letter-spacing: .12em;
+  }
+  #finale .r span:first-child { color: var(--dim); }
+  #finale .r span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; }
+  #finale .r.total { padding: 16px 2px; }
+  #finale .r.total span:last-child { color: var(--gold); font-size: 20px; }
+  #finale .lb { margin-top: 30px; }
+  #finale .lb .cap { font-size: 10px; letter-spacing: .3em; text-transform: uppercase; color: var(--faint); margin-bottom: 12px; }
+  #finale .lb .e {
+    display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; padding: 7px 2px;
+    font-size: 13px; letter-spacing: .1em; color: var(--dim);
+    border-bottom: 1px solid rgba(180,198,168,.08);
+  }
+  #finale .lb .none { font-size: 13px; letter-spacing: .1em; color: var(--faint); padding: 7px 2px; }
+  #finale .lb .e.me { color: var(--gold); }
+  #finale .lb .e .rk { color: var(--faint); font-variant-numeric: tabular-nums; }
+  #finale .lb .e .sc { font-variant-numeric: tabular-nums; }
+  #finale .act { margin-top: 32px; display: flex; gap: 12px; }
+  #finale button {
+    background: none; border: 1px solid var(--line); color: var(--ink);
+    font: var(--ui); font-size: 12px; letter-spacing: .24em;
+    padding: 11px 24px; border-radius: 3px; cursor: pointer;
+  }
+  #finale button:hover { border-color: var(--gold); color: var(--gold); }
 </style>
 <script type="importmap">
 {
   "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    "three": "./vendor/three.module.js"
   }
 }
 </script>
 </head>
 <body>
 <canvas id="view"></canvas>
-<div id="boot">jungle trail</div>
+
+<div id="hud" class="hidden">
+  <div id="reticle"></div>
+
+  <div id="chapter"><span class="c">丛林小径</span><span class="m">0 m</span></div>
+  <div id="nearby">附近有未拓印的铭文</div>
+
+  <div id="counters">
+    <div id="cGlyph">
+      <div class="row"><span class="ico">铭文拓片</span><b>0/12</b></div>
+      <div class="pips"></div>
+    </div>
+    <div id="cPhoto">
+      <div class="row"><span class="ico">物种图鉴</span><b>0/12</b></div>
+      <div class="pips"></div>
+    </div>
+  </div>
+
+  <div id="prompt"></div>
+  <div id="toasts"></div>
+
+  <div id="hints">
+    <div><span class="kbd">W</span><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span> 行走 · <span class="kbd">Shift</span> 疾行 · <span class="kbd">Space</span> 跳</div>
+    <div><span class="kbd">E</span> 拓印 · <span class="kbd">F</span> 相机 · <span class="kbd">Tab</span> 手记 · <span class="kbd">Esc</span> 暂停</div>
+  </div>
+
+  <div id="finder">
+    <div class="mask t"></div><div class="mask b"></div>
+    <div class="mask l"></div><div class="mask r"></div>
+    <div class="frame">
+      <div class="grid">
+        <i class="v" style="left:33.33%"></i><i class="v" style="left:66.66%"></i>
+        <i class="h" style="top:33.33%"></i><i class="h" style="top:66.66%"></i>
+      </div>
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="lock"><span class="tag"></span></div>
+    </div>
+    <div class="top"><span id="fTop">野外记录相机</span><span id="fMode">35mm</span></div>
+    <div class="bar">
+      <span id="fHint">对准目标 · 左键快门</span>
+      <span class="right">
+        <span class="meter" id="fMeter"><b></b><u></u></span>
+        <span class="q" id="fQual"></span>
+      </span>
+    </div>
+  </div>
+  <div id="shutter"></div>
+
+  <div id="book">
+    <div class="close"><span class="kbd">Tab</span> 关闭</div>
+    <div class="wrap">
+      <div class="head">
+        <div>
+          <h1>野外手记</h1>
+          <div class="sub" id="bookSub"></div>
+        </div>
+        <div class="stats">
+          <div class="s"><div class="v" id="bookRec">0</div><div class="l">已记录</div></div>
+          <div class="s"><div class="v" id="bookQual">—</div><div class="l">平均构图</div></div>
+        </div>
+      </div>
+      <div class="tabs">
+        <button data-tab="glyph" class="on">铭文拓片</button>
+        <button data-tab="photo">物种图鉴</button>
+      </div>
+      <div class="grid" id="bookGrid"></div>
+    </div>
+  </div>
+
+  <div id="pause">
+    <div class="box">
+      <div class="t">已暂停</div>
+      <div class="k">
+        <div>点击画面继续</div>
+        <div><span class="kbd">Tab</span> 野外手记</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="finale">
+    <div class="box">
+      <div class="t">记录完成</div>
+      <div class="h" id="finTitle">你走到了瀑布</div>
+      <div class="rows" id="finRows"></div>
+      <div class="lb" id="finLb"></div>
+      <div class="act">
+        <button id="finBook">查看手记</button>
+        <button id="finBack">回到小径</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="boot">
+  <div class="inner">
+    <div class="title">jungle trail</div>
+    <div class="bar"><i id="bootBar"></i></div>
+    <div class="step" id="bootStep">正在生成世界</div>
+  </div>
+</div>
+
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

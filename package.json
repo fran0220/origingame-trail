@@ -1,12 +1,19 @@
 {
   "name": "jungle-trail",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "First-person jungle trail. Procedural everything, zero external assets.",
+  "description": "First-person jungle trail. Procedural everything, zero external assets, and a notebook to fill.",
   "scripts": {
     "serve": "node tools/serve.mjs",
-    "shoot": "node tools/shoot.mjs"
+    "shoot": "node tools/shoot.mjs",
+    "pack": "node tools/pack.mjs",
+    "test": "node tools/smoke.mjs && node tools/journey.mjs && node tools/save-roundtrip.mjs",
+    "test:smoke": "node tools/smoke.mjs",
+    "test:journey": "node tools/journey.mjs",
+    "test:save": "node tools/save-roundtrip.mjs",
+    "shots": "node tools/shots.mjs",
+    "cover": "node tools/cover.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.0"

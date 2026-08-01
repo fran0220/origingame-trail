@@ -22,6 +22,9 @@ import { buildWorldField } from './render/field.js';
 import { Canopy, patchCanopyLight } from './render/canopy.js';
 import { Atmosphere } from './render/atmosphere.js';
 import { Ambience } from './audio/engine.js';
+import { Hud } from './game/hud.js';
+import { Session } from './game/session.js';
+import * as platform from './game/platform.js';
 
 /* Quality tiers.
  *
@@ -62,7 +65,6 @@ class Game {
     this.frameCap = Number(hash.get('fps')) || 60;
 
     this._initRenderer();
-    this._initScene();
   }
 
   _initRenderer() {
@@ -103,12 +105,31 @@ class Game {
     addEventListener('resize', () => this.resize());
   }
 
-  _initScene() {
+  /**
+   * Build the world, yielding between stages.
+   *
+   * This used to be one synchronous call in the constructor, which is the
+   * shortest way to write it and the worst way to load it: fifteen GPU texture
+   * bakes, a hundred thousand plants and half a million heightfield samples in
+   * a single task means the browser cannot paint, so there is nothing to show
+   * a player during the several seconds it takes and no honest moment to call
+   * the game ready. Awaiting a frame between stages costs a handful of
+   * milliseconds in total and buys a loading bar that is telling the truth.
+   *
+   * @param {(value:number, label:string)=>void} stage
+   */
+  async build(stage) {
+    const step = async (value, label) => {
+      stage(value, label);
+      await nextFrame();
+    };
+
     const scene = new THREE.Scene();
     this.scene = scene;
 
     this.camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.08, 900);
 
+    await step(0.04, '生成天空');
     this.sky = new Sky(this.renderer);
     this.sky.setSun(38, 152);
     scene.add(this.sky.mesh);
@@ -239,7 +260,9 @@ class Game {
      * the finished heightfield to know where the ground is under every block,
      * and the vegetation needs the finished geometry so that it can grow on
      * the stone and refuse to grow through it. */
+    await step(0.12, '计算遗迹平面');
     this.ruinPlan = new RuinPlan(this.trail);
+    await step(0.18, '生成地形');
     this.terrain = new Terrain(this.trail, undefined, this.ruinPlan);
     this.terrainMat = makeTerrainMaterial(this.renderer);
     scene.add(this.terrain.build(this.terrainMat));
@@ -250,10 +273,12 @@ class Game {
      * every frame, after that identity has deliberately been batched away. */
     this.collision = new CollisionWorld({ cellSize: 4 });
 
+    await step(0.34, '砌筑遗迹');
     this.ruins = new Ruins(this.renderer, this.terrain, this.trail, this.ruinPlan,
                            undefined, this.collision);
     scene.add(this.ruins.root);
 
+    await step(0.46, '种植林木');
     this.veg = new Vegetation(this.renderer, this.terrain, this.trail, undefined,
                               this.ruins, this.collision);
     scene.add(this.veg.root);
@@ -265,10 +290,12 @@ class Game {
      * changing. It registers no collision: the causeway that keeps the trail
      * out of the pool is ground, and the walker is already stopped by the
      * bank's fifty-degree slope rather than by anything here. */
+    await step(0.66, '注水');
     this.water = new Water(this.renderer, this.terrain, this.trail,
                            { tier: this.tier });
     scene.add(this.water.root);
 
+    await step(0.74, '烘焙环境光');
     this.sky.bake(scene);
     /* The environment map is the open sky, and under a roof of leaves only a
      * fraction of it is visible from any surface. Handing surfaces the full
@@ -279,6 +306,7 @@ class Game {
      * its upper colour is the underside of the canopy rather than the sky. */
     scene.environmentIntensity = 0.34;
 
+    await step(0.80, '塑造行者');
     this.walker = new Walker(this.camera, this.terrain, this.trail,
                              this.collision).attach(this.canvas);
     this.body = new PlayerBody(this.renderer, this.walker, { tier: this.tier });
@@ -295,6 +323,7 @@ class Game {
      * that has finished building, and the materials have to exist before they
      * can be patched — but the split is also the honest description of what
      * this system is. */
+    await step(0.86, '计算林冠透光');
     this.field = buildWorldField(this.terrain);
     this.canopy = new Canopy(this.renderer, this.field);
     this.canopy.setSun(this.sky.sunDir);
@@ -336,6 +365,32 @@ class Game {
      * in front of you is. */
     this.ambience.setWaterfallPosition(IMPACT, LIP);
     this.atmos.setFallsPlume(IMPACT);
+
+    /* The game layer is built last because it consumes finished world systems
+     * and nothing in the world consumes it: the tablets are set into the
+     * completed heightfield and registered with the collision world, and the
+     * photographic subjects resolve against the finished plant scatter. */
+    await step(0.94, '安放石碑');
+    this.session = new Session({
+      game: this,
+      hud: this.hud,
+      renderer: this.renderer,
+      camera: this.camera,
+      canvas: this.canvas,
+      walker: this.walker,
+      trail: this.trail,
+      terrain: this.terrain,
+      veg: this.veg,
+      collision: this.collision,
+      ambience: this.ambience,
+    });
+    scene.add(this.session.glyphs.root);
+    // Added to the same exhaustive list as every other opaque surface: a
+    // tablet that missed the patch would be a stone standing in a light shaft
+    // that the shaft does not touch.
+    patchCanopyLight(this.session.glyphs.material, this.canopy);
+
+    await step(0.98, '准备就绪');
   }
 
   _configureShadow() {
@@ -370,6 +425,10 @@ class Game {
 
   resize() {
     const w = innerWidth, h = innerHeight;
+    // The listener is armed with the renderer, which now exists before the
+    // scene does; a window resized during the load must not take the build
+    // down with it.
+    if (!this.camera) { this.renderer.setSize(w, h, false); return; }
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, TIERS[this.tier].dpr));
@@ -420,6 +479,11 @@ class Game {
   step(dt) {
     this.walker.update(dt);
     this.body.update(dt);
+    /* Before the camera's matrices are refreshed below, because the session
+     * only reads the walker's position and the previous frame's orientation —
+     * and after the walker, so a tablet prompt describes where the player has
+     * just arrived rather than where they were. */
+    this.session?.update(dt);
     this._trackSun();
     // The camera's world-inverse has to be current before the vegetation
     // rotates the sun into view space for its transmission term.
@@ -459,6 +523,11 @@ class Game {
     this._sceneCalls = r.info.render.calls;
     this._sceneTris = r.info.render.triangles;
     this.atmos.finish(this.camera, this.sun.color, this.sun.intensity);
+    /* The shutter reads the drawing buffer, and this is the only place it can:
+     * the renderer runs without `preserveDrawingBuffer`, so the frame exists
+     * until the browser composites it and is gone by the time a click handler
+     * runs in the next task. */
+    this.session?.afterRender();
   }
 
   renderOnce() { this.render(); }
@@ -592,9 +661,10 @@ class Game {
 
 const _size = new THREE.Vector2();
 
-const game = new Game(document.getElementById('view'));
-window.__game = game;
-window.THREE = THREE;
+/** One paint. The stage boundaries in build() are the only callers. */
+function nextFrame() {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
 
 /* Recording convenience: number keys jump to the authored viewpoints.
  *
@@ -604,24 +674,66 @@ window.THREE = THREE;
  * warp lands in exactly the state the harness's stops land in — snapped to the
  * heightfield, facing along the trail, velocity zeroed, gait clock reset.
  *
- * Nothing is drawn and nothing is logged. The frame has no UI in it at all,
- * and a debug aid is the last thing that should be the exception. Delete this
- * block for a public build; the feature is nowhere else.
+ * Now gated behind `#dev`, and that is a correctness fix rather than tidiness:
+ * teleporting past a stretch of trail skips the tablets standing in it, so in
+ * a normal session these keys are a way to lose records without being told.
  */
 const WARP_STOPS = [0.04, 0.34, 0.81, 0.88, 0.96];
-addEventListener('keydown', (e) => {
-  /* Only while the pointer is locked. A digit typed at a page that merely has
-   * focus is not a request to move the player, and gating on the same flag the
-   * walker uses means the capture harness — which drives goTo() directly and
-   * never sends key events — cannot be perturbed by this at all. */
-  if (!game.walker.enabled) return;
-  const key = /^Digit([1-9])$/.exec(e.code);
-  const t = key && WARP_STOPS[+key[1] - 1];
-  if (t === undefined || t === null) return;
-  game.goTo(t);
-});
 
-// The harness calls begin() itself so it can set state before the first frame.
-if (!/(^|[#&])manual(&|$)/.test(location.hash)) game.begin();
+function attachDevWarps(game) {
+  if (!/(^|[#&])dev(&|$)/.test(location.hash)) return;
+  addEventListener('keydown', (e) => {
+    if (!game.walker.enabled) return;
+    const key = /^Digit([1-9])$/.exec(e.code);
+    const t = key && WARP_STOPS[+key[1] - 1];
+    if (t === undefined || t === null) return;
+    game.goTo(t);
+  });
+}
 
-document.getElementById('boot')?.remove();
+async function boot() {
+  const hud = new Hud();
+  if (platform.online) hud.useHostLoading();
+  platform.loading.begin();
+
+  const game = new Game(document.getElementById('view'));
+  game.hud = hud;
+  window.THREE = THREE;
+
+  try {
+    await game.build((value, label) => {
+      hud.bootProgress(value, label);
+      platform.loading.progress(value * 0.97, label);
+    });
+  } catch (err) {
+    hud.bootProgress(1, '加载失败');
+    // The platform's own load-failure telemetry needs the page to stop
+    // pretending; rethrowing after the message keeps the console stack.
+    platform.analytics.track('game.runtime.error', { where: 'build' });
+    throw err;
+  }
+
+  /* The save is read after the world exists and before the first frame, so a
+   * resumed walk starts where it left off instead of showing the trailhead
+   * for a frame and then jumping. */
+  await game.session.restore();
+
+  // The harness drives __game directly, so it has to appear only once the
+  // world behind it is real.
+  window.__game = game;
+  attachDevWarps(game);
+
+  hud.bootDone();
+  game.session.begin();
+
+  // The harness calls begin() itself so it can set state before the first frame.
+  if (!/(^|[#&])manual(&|$)/.test(location.hash)) game.begin();
+
+  /* Ready means the first playable frame, not the last byte of script. The
+   * portal shows its own loading surface until this resolves, so calling it
+   * early is the difference between a player waiting on a progress bar and a
+   * player staring at a black canvas. */
+  await platform.loading.ready();
+}
+
+void boot();

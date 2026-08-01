@@ -63,6 +63,7 @@ export class Walker {
     this.vel = new THREE.Vector3();
     this.yaw = 0;
     this.pitch = 0;
+    this.lookScale = 1;
     this.bobPhase = 0;
     this.dist = 0;
     this.speed = 0;
@@ -110,8 +111,21 @@ export class Walker {
   placeAt(t) {
     const p = this.trail.pointAt(t, new THREE.Vector3());
     const tan = this.trail.tangentAt(t, new THREE.Vector3());
-    this.pos.set(p.x, this.terrain.height(p.x, p.z) + EYE, p.z);
-    this.yaw = Math.atan2(-tan.x, -tan.z);
+    return this.placeAtPoint(p.x, p.z, Math.atan2(-tan.x, -tan.z));
+  }
+
+  /**
+   * Drop the walker at a world position, facing `yaw`.
+   *
+   * Restoring a saved walk has to come through here rather than through
+   * placeAt(): Trail.pointAt() interpolates its sample array by index while
+   * Trail.nearest() reports true normalised arc length, and the two are not
+   * the same parameter — feeding a `t` measured by one into the other lands
+   * about ten metres from where the player actually stood.
+   */
+  placeAtPoint(x, z, yaw) {
+    this.pos.set(x, this.terrain.height(x, z) + EYE, z);
+    this.yaw = yaw;
     this.pitch = -0.05;
     this.vel.set(0, 0, 0);
     this.speed = 0;
@@ -159,7 +173,11 @@ export class Walker {
        * latency to the one control that represents the player's own head, and
        * operating-system pointer settings already provide any acceleration a
        * player has asked for. */
-      const s = 0.0022;
+      /* Scaled by lookScale so a narrowed field of view can slow the head
+       * down. Mouse sensitivity that stays constant while the lens zooms in
+       * is the classic reason an aimed camera feels twitchy: the same wrist
+       * movement crosses several times more of the visible frame. */
+      const s = 0.0022 * this.lookScale;
       this.yaw -= e.movementX * s;
       this.pitch = clamp(this.pitch - e.movementY * s, -1.35, 1.35);
     };

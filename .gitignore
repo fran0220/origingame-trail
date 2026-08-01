@@ -4,6 +4,10 @@ node_modules/
 # Over a gigabyte, and all of it reproducible from tools/.
 shots/
 
+# Deployable output. `npm run pack` rebuilds it from index.html, src/ and
+# vendor/ in under a second; there is nothing in it that is not already here.
+dist/
+
 # Throwaway scratch scripts and their output.
 tmp-*
 
