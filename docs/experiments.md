@@ -117,3 +117,49 @@ mesh shrinks the rounded band.
 
 **Verdict.** Refuted by its own screenshot, and reverted. Four times the
 geometry for a worse picture.
+
+---
+
+## Shadow reach was a tier knob; it should have been the fog
+
+**Hypothesis.** Shadows carry a large share of this picture, and the single
+cascade is spending its texels on distance nobody can see through.
+
+**Measured.** A lighting budget first, by switching each term off and reading
+the frame's median back:
+
+| term removed | t=0.22 (closed forest) | t=0.80 (ruins clearing) |
+|---|---|---|
+| hemisphere fill | **−19.7%** | −12.7% |
+| environment map | −13.4% | −8.4% |
+| sun | −10.2% | **−29.5%** |
+| shadows | **+18.1%** | +3.0% |
+| SSAO + volumetrics | +8.7% | +1.8% |
+
+So the closed forest is lit mostly by the fill, as the vegetation comments have
+said all along, and shadows are removing 18% of its light — the largest lever
+in there after the fill itself.
+
+`shadowDist` then rose with the quality tier, 45 m to 100 m. That is backwards.
+A cascade is a fixed number of texels spread over whatever it covers, so
+reaching further is not more quality, it is the same quality thinned out:
+3072 texels over 100 m is 6.5 cm and 2048 over 80 m is 7.8 cm, which is almost
+no gain for twice the map. Meanwhile `FogExp2(0.038)` leaves a surface at 46 m
+with under 5% of its own colour and by 60 m with half a per cent, so shadows
+past that cannot change the frame.
+
+**Verdict.** Shipped. One `SHADOW_REACH = 46` for every tier; the tier now
+varies only the map size, which is the honest knob. Texels go from 7.8 cm to
+4.5 cm at `high` (1.7x) and 6.5 cm to 3.0 cm at `ultra` (2.2x), at no cost —
+same map, same casters, same draws.
+
+The pictures are where this is decided, and the gallery's `01-forest` shows it:
+the sunflecks on the litter separate into individual leaf-shaped patches
+instead of a soft wash, and the fleck on the trail gains an edge and a
+neighbour. Dappled light is the signature of a forest floor and it now reads as
+leaves rather than blobs. The frame also darkens slightly (median −0.007),
+which is the penumbra no longer leaking.
+
+Checked first that the sun shafts do not depend on this map: the volumetric
+march gates itself on the canopy transmittance field, so shortening the frustum
+cannot truncate them.

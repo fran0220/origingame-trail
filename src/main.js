@@ -34,11 +34,31 @@ import * as platform from './game/platform.js';
  * on bad data. The adaptive step below only moves once the frame time has been
  * stable for a while.
  */
+/* How far the one shadow cascade reaches, in metres, at every tier.
+ *
+ * This used to be a tier knob, rising from 45 m to 100 m with the quality
+ * setting, which is backwards. The cascade is a fixed number of texels spread
+ * over whatever it is asked to cover, so reaching further is not more quality,
+ * it is the same quality thinned out — the top tier was paying for its larger
+ * map and then throwing the gain away, since 3072 texels over 100 m is 6.5 cm
+ * and 2048 over 80 m is 7.8 cm.
+ *
+ * What decides how far shadows are worth drawing here is the air. FogExp2 at
+ * 0.038 leaves a surface at 46 m with under 5% of its own colour, so a shadow
+ * out there can change the frame by at most that much, and by 60 m it is half
+ * a per cent. Sizing the frustum to the fog rather than to the tier costs
+ * nothing — same map, same casters, same draws — and buys 1.7x finer texels at
+ * `high` and 2.2x at `ultra`. The sun shafts do not depend on it: the
+ * volumetric march gates itself on the canopy transmittance field, not on this
+ * depth map.
+ */
+const SHADOW_REACH = 46;
+
 const TIERS = {
-  low: { dpr: 0.75, shadow: 1024, shadowDist: 45, aniso: 4 },
-  medium: { dpr: 1.0, shadow: 1536, shadowDist: 60, aniso: 8 },
-  high: { dpr: 1.0, shadow: 2048, shadowDist: 80, aniso: 16 },
-  ultra: { dpr: 1.25, shadow: 3072, shadowDist: 100, aniso: 16 },
+  low: { dpr: 0.75, shadow: 1024, aniso: 4 },
+  medium: { dpr: 1.0, shadow: 1536, aniso: 8 },
+  high: { dpr: 1.0, shadow: 2048, aniso: 16 },
+  ultra: { dpr: 1.25, shadow: 3072, aniso: 16 },
 };
 const TIER_ORDER = ['low', 'medium', 'high', 'ultra'];
 
@@ -408,7 +428,7 @@ class Game {
     const t = TIERS[this.tier];
     const s = this.sun.shadow;
     s.mapSize.set(t.shadow, t.shadow);
-    const d = t.shadowDist;
+    const d = SHADOW_REACH;
     s.camera.left = -d; s.camera.right = d;
     s.camera.top = d; s.camera.bottom = -d;
     s.camera.near = 1; s.camera.far = d * 3.2;
@@ -444,7 +464,7 @@ class Game {
    */
   _aimShadow(p) {
     const d = this.sky.sunDir;
-    const dist = TIERS[this.tier].shadowDist * 1.6;
+    const dist = SHADOW_REACH * 1.6;
     this.sun.position.set(p.x + d.x * dist, p.y + d.y * dist, p.z + d.z * dist);
     this.sun.target.position.copy(p);
     this.sun.target.updateMatrixWorld();
