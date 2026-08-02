@@ -15,10 +15,11 @@
  * with no identity. A map that marked all twelve would turn a game about
  * looking into a game about walking between icons.
  */
-import * as THREE from 'three';
 import { BOUNDS } from '../world/terrain.js';
-import { BROOK_T0, BROOK_T1, brookOffset, SWALLOW } from '../world/brook.js';
+import { BROOK_T0, BROOK_T1, BROOK_HEAD, brookOffset, SWALLOW } from '../world/brook.js';
+import { smoothstep } from '../world/noise.js';
 import { POOL, SPILL_Z0, SPILL_Z1, spillCentre, spillHalf } from '../world/spillway.js';
+import { trailOffset } from './anchors.js';
 
 /** Pixels per metre in the baked image. */
 const PPM = 2;
@@ -26,6 +27,7 @@ const PPM = 2;
 export const ZOOMS = [40, 100];
 
 const TAU = Math.PI * 2;
+const _off = { x: 0, z: 0 };
 
 export class Minimap {
   /**
@@ -106,10 +108,9 @@ export class Minimap {
       }
     }
     bctx.putImageData(img, 0, 0);
-    this._water(bctx);
 
-    /* The trail on top, drawn at its real width. It is the one feature on this
-     * map a player navigates by, so it is the one thing not left to shading. */
+    /* The trail, drawn at its real width. It is the one feature on this map a
+     * player navigates by, so it is the one thing not left to shading. */
     bctx.lineCap = 'round';
     bctx.lineJoin = 'round';
     for (const pass of [{ w: 5.0, c: 'rgba(0,0,0,.5)' }, { w: 3.0, c: 'rgba(226,205,158,.92)' }]) {
@@ -121,6 +122,17 @@ export class Minimap {
       bctx.lineWidth = pass.w;
       bctx.stroke();
     }
+
+    /* Water last, over the trail.
+     *
+     * The other order looks more natural — a path is on top of the land — but
+     * the trail's final metres run into the plunge basin, so stroking it last
+     * painted the pool's centre in path colour and told the player the way
+     * carried on across twelve metres of water. Nothing here needs the trail
+     * drawn over water: the brook is never nearer than 3.6 m to the tread, and
+     * where the two do meet, the water is the fact that decides where you can
+     * walk. */
+    this._water(bctx);
 
     this.base = base;
     return this;
@@ -162,23 +174,33 @@ export class Minimap {
     ctx.closePath();
     ctx.fill();
 
-    /* The brook, on the trail's own offset curve. An authored polyline would
-     * be a second copy of a shape that is retuned every time the channel is,
-     * and a stream drawn ten metres from where it babbles is worse than none.
-     */
-    const p = new THREE.Vector3(), tan = new THREE.Vector3();
-    ctx.beginPath();
-    for (let t = BROOK_T0; t <= BROOK_T1 + 1e-6; t += 0.002) {
-      this.trail.pointAt(t, p);
-      this.trail.tangentAt(t, tan).normalize();
-      // Right of the direction of travel, matching Trail.nearest().side.
-      const off = brookOffset(t);
-      const x = p.x + -tan.z * off, z = p.z + tan.x * off;
-      if (t === BROOK_T0) ctx.moveTo(this.mx(x), this.my(z));
-      else ctx.lineTo(this.mx(x), this.my(z));
-    }
+    /* The brook, on the trail's own offset curve, resolved through the same
+     * trailOffset() the content anchors use.
+     *
+     * This started out with its own copy of the lateral basis and got the sign
+     * backwards, which drew the stream on the dry side of the path — twenty-two
+     * metres from the water at the point the level asks you to photograph it.
+     * There is exactly one right answer to "which side is `off` on" and it is
+     * not one worth writing down twice. */
     ctx.lineWidth = 2.6 * PPM;
-    ctx.stroke();
+    let prev = null;
+    for (let t = BROOK_T0; t <= BROOK_T1 + 1e-6; t += 0.002) {
+      const c = trailOffset(t, brookOffset(t), this.trail, _off);
+      const px = this.mx(c.x), py = this.my(c.z);
+      /* The head of the channel is a seep, not a stream: the level ramps the
+       * water in over BROOK_HEAD of arc length. Stroking the full-weight line
+       * all the way to BROOK_T0 would promise a brook some twenty-five metres
+       * before there is one to find. */
+      if (prev) {
+        ctx.globalAlpha = smoothstep(BROOK_T0, BROOK_T0 + BROOK_HEAD, t);
+        ctx.beginPath();
+        ctx.moveTo(prev[0], prev[1]);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+      }
+      prev = [px, py];
+    }
+    ctx.globalAlpha = 1;
   }
 
   mx(x) { return (x - this.x0) * PPM; }

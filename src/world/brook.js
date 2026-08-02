@@ -52,6 +52,11 @@ const smoothstep = (e0, e1, x) => {
 
 /** Where the ground has dropped enough to collect water, and where it ends. */
 export const BROOK_T0 = 0.40;
+/* How much arc length the water takes to arrive. The head of the channel is a
+ * seep gathering out of the hillside, so the wetted width ramps in rather than
+ * switching on; anything drawing the brook from outside this file wants the
+ * same ramp, or it shows a stream where there is only damp ground. */
+export const BROOK_HEAD = 0.06;
 /* Where the channel is given up to the basin. Beyond about 0.93 the trail has
  * run past the pool and the offset curve carries the centreline back out onto
  * the apron south of it — so a channel authored any further downstream ends on
@@ -255,7 +260,7 @@ export class Brook {
     if (t <= BROOK_T0 - 0.02 || t >= BROOK_T1 + 0.02) return 0;
     const a = this.at(t, this._tmp3 || (this._tmp3 = {}));
     return smoothstep(a.half + 2.6, a.half + 0.2, Math.abs(q.side - a.off))
-         * smoothstep(BROOK_T0, BROOK_T0 + 0.06, t);
+         * smoothstep(BROOK_T0, BROOK_T0 + BROOK_HEAD, t);
   }
 }
 
