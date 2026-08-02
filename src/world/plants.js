@@ -873,6 +873,30 @@ function addSurfaceRoot(b, from, dir, side, L, r0, rng) {
  */
 const D = (lod, hi, lo) => (lod ? lo : hi);
 
+/* Points on a built trunk's surface where an epiphyte can perch. The ring
+ * stations are the truth about where the tube actually went — lean, wobble
+ * and taper included — so anchors interpolate them rather than re-deriving a
+ * centreline that would drift off the geometry. Callers draw these *after*
+ * all their geometry so the extra rng pulls cannot reshape a plant that
+ * already shipped. */
+function trunkAnchors(rng, pts, radii, n, s0, s1) {
+  const out = [];
+  const last = pts.length - 1;
+  for (let i = 0; i < n; i++) {
+    const t = (s0 + rng() * (s1 - s0)) * last;
+    const k = Math.min(last - 1, t | 0), f = t - k;
+    const a = rng() * 6.283;
+    const r = (radii[k] + (radii[k + 1] - radii[k]) * f) * 0.96;
+    out.push({
+      x: pts[k].x + (pts[k + 1].x - pts[k].x) * f + Math.cos(a) * r,
+      y: pts[k].y + (pts[k + 1].y - pts[k].y) * f,
+      z: pts[k].z + (pts[k + 1].z - pts[k].z) * f + Math.sin(a) * r,
+      nx: Math.cos(a), nz: Math.sin(a),
+    });
+  }
+  return out;
+}
+
 /**
  * Fern, in three habits.
  *
@@ -1403,6 +1427,13 @@ export function palm(rng, scale = 1, lod = 0, vi = 0) {
     });
   }
   addLitterSkirt(leaf, rng, 0.05, 0.66 * scale, 11, 0.16 * scale, lod);
+
+  /* Epiphyte anchors, sampled from the trunk's own stations rather than a
+   * re-derived formula — see the tree builder for why the surface has to
+   * come from the geometry that was actually built. Drawn after everything
+   * else so the extra rng pulls cannot reshape a palm that already shipped. */
+  const anchors = trunkAnchors(rng, pts, radii, 3 + ((rng() * 2) | 0), 0.30, 0.75);
+
   return {
     leaf: leaf.geometry(),
     wood: wood.geometry(),
@@ -1410,6 +1441,7 @@ export function palm(rng, scale = 1, lod = 0, vi = 0) {
      * it later from a merged variant would turn every frond and litter blade
      * into part of the bounds and make a flexible palm block several metres. */
     solid: { type: 'palm', radius: radii[0] * 1.08, height: h },
+    anchors,
   };
 }
 
@@ -1560,6 +1592,11 @@ export function treeFern(rng, scale = 1, lod = 0, vi = 0) {
     leaf: leaf.geometry(),
     wood: wood.geometry(),
     solid: { type: 'palm', radius: radii[0] * 1.08, height: h },
+    /* A tree fern's fibrous trunk is the best rooting medium in the forest —
+     * in the real bush it carries more perching plants than bark does. The
+     * band stops short of the crown so nothing seated here collides with the
+     * frond bases or the skirt. */
+    anchors: trunkAnchors(rng, pts, radii, 4 + ((rng() * 3) | 0), 0.25, 0.72),
   };
 }
 
@@ -3027,6 +3064,57 @@ export function deadVine(rng, scale = 1) {
   }
   addTube(wood, pts, radii, 4, 8, 1.0, { u0: 0, v0: 0 }, 1,
           { occ: () => 0.68, moss: () => -0.20 });
+  return { leaf: null, wood: wood.geometry() };
+}
+
+/**
+ * A supplejack tangle: springy canes winding *sideways* through the
+ * understory at chest height.
+ *
+ * Every liana in the system so far is a plumb line — hung from a crown or a
+ * wall head, doing its work vertically. A rainforest's mid-band is not made
+ * of plumb lines: the signature of an old wet forest is cane that travels
+ * horizontally, crossing itself, kinking at every node, going nowhere in
+ * particular for metres at a time. At eye level it is bare, near-black rope
+ * (the foliage is all up in the light, which is also why this builder grows
+ * no leaves — cheaper and more correct at the height anyone sees it), and a
+ * frame with two or three dark diagonals crossing the green reads as depth
+ * in a way more foliage cannot.
+ *
+ * The walk turns sharply at each node on purpose. A smooth spline reads as a
+ * cable someone draped; the kinked polyline is how the real plant grows —
+ * straight internodes, a hard change of mind at every joint.
+ */
+export function supplejack(rng, scale = 1, lod = 0, vi = 0) {
+  const wood = new Builder();
+  /* Three architectures: a sparse pair of crossing canes, a proper knot, and
+   * a low rail that stays under waist height and runs the longest. */
+  const nC = [2, 4, 3][vi % 3] + ((rng() * 2) | 0);
+  const drum = (1.0 + rng() * 0.9) * scale;
+  const hHi = (vi % 3 === 2 ? 1.0 : 2.2 + rng() * 0.8) * scale;
+  for (let c = 0; c < nC; c++) {
+    const pts = [], radii = [];
+    let x = (rng() - 0.5) * drum, z = (rng() - 0.5) * drum, y = -0.06;
+    let dx = (rng() - 0.5), dy = 1.2 + rng(), dz = (rng() - 0.5);
+    const nSeg = D(lod, 11 + ((rng() * 5) | 0), 7);
+    const r0 = (0.020 + rng() * 0.014) * scale;
+    for (let k = 0; k <= nSeg; k++) {
+      pts.push(new THREE.Vector3(x, y, z));
+      radii.push(r0 * (0.85 + rng() * 0.30));
+      const len = (0.30 + rng() * 0.35) * scale;
+      const il = len / Math.hypot(dx, dy, dz);
+      x += dx * il; y += dy * il; z += dz * il;
+      /* New heading: mostly horizontal wander, pulled back toward the tangle
+       * axis when it strays and folded back into the band when it tries to
+       * leave it vertically. The pull-back is what keeps a tangle a tangle
+       * instead of n canes walking off in n directions. */
+      dx = (rng() - 0.5) * 2.0 - (x / drum) * 0.8;
+      dz = (rng() - 0.5) * 2.0 - (z / drum) * 0.8;
+      dy = (rng() - 0.5) * 1.4 + (y < 0.35 * scale ? 0.9 : 0) - (y > hHi ? 1.3 : 0);
+    }
+    addTube(wood, pts, radii, D(lod, 5, 4), 6, 0.6, { u0: 0, v0: 0 }, 1,
+            { occ: () => 0.55, moss: () => -0.10 });
+  }
   return { leaf: null, wood: wood.geometry() };
 }
 

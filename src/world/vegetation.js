@@ -31,7 +31,7 @@
 import * as THREE from 'three';
 import { bakeImage, bakeSurface } from '../gfx/bake.js';
 import { LEAF_FRAG, BARK } from './plantTex.js';
-import { makeRng, fern, broadleaf, palm, treeFern, sprig, tussock, vine, tree, canopyPatch, thicket, sapling, log, deadVine, litterMat, rootRun } from './plants.js';
+import { makeRng, fern, broadleaf, palm, treeFern, sprig, tussock, vine, tree, canopyPatch, thicket, sapling, log, deadVine, supplejack, litterMat, rootRun } from './plants.js';
 import { BOUNDS } from './terrain.js';
 import { standingWater } from './spillway.js';
 
@@ -102,6 +102,10 @@ const SPECIES_LOD = {
   canopy2:   { tile: 48, cull: 78,  cast: false, v: 3 },
   subcanopy: { tile: 48, cull: 62,  cast: false, v: 3 },
   vine:      { tile: 64, cull: 70,  cast: false, v: 3 },
+  /* Bare cane at eye height, so its whole value is the dark line it draws
+   * across the green — hence the heavy shade multiplier: real supplejack is
+   * nearly black, and a cane that reads as brown is just a thin branch. */
+  supplejack:{ tile: 36, cull: 46,  cast: false, v: 3, shade: 0.40 },
   palm:      { tile: 40, cull: 72,  cast: true,  v: 4, near: 26 },
   /* The two-to-six-metre storey. Culled a little past the palms because its
    * silhouette — the dead skirt under the crown — is the one thing in the
@@ -780,6 +784,7 @@ export class Vegetation {
       rootRun: mk(rootRun, 1, 'rootRun'),
       log: mk(log, 1, 'log'),
       deadVine: mk(deadVine, 1, 'deadVine'),
+      supplejack: mk(supplejack, 1, 'supplejack'),
       palm: mk(palm, 1, 'palm'),
       treeFern: mk(treeFern, 1, 'treeFern'),
       broadleaf: mk(broadleaf, 1, 'broadleaf'),
@@ -1007,54 +1012,7 @@ export class Vegetation {
       return { v, m };
     }, seed + 1));
 
-    /* The perching layer. A primeval wet forest carries a second garden in
-     * its trunk forks: nest epiphytes the size of flax bushes, and ferns
-     * rooted in nothing but bark. It is the single strongest cue that a
-     * forest is old — a plantation has clean boles, an old one is inhabited
-     * to head height and beyond. No new species is needed: a tussock seated
-     * in a fork *is* the nest, a fern pitched off a bark face *is* the
-     * perching fern; what makes them epiphytes is only where they stand and
-     * which way up they lean. The tree builder exports surface anchors it
-     * computed from its own lean and fluting, so a nest sits in the bark it
-     * grew in rather than on an idealised cylinder. */
-    const epiFerns = [], epiNests = [];
-    {
-      const erng = makeRng(seed + 29);
-      const up = new THREE.Vector3(0, 1, 0);
-      const out = new THREE.Vector3(), axis = new THREE.Vector3();
-      const qt = new THREE.Quaternion(), qs = new THREE.Quaternion();
-      for (const sp of treeSpots) {
-        const anchors = this.species.tree[sp.v].hi.anchors;
-        if (!anchors || !anchors.length) continue;
-        const nf = erng() < 0.62 ? 1 + ((erng() * 3) | 0) : 0;
-        const nn = erng() < 0.45 ? 1 + ((erng() * 2) | 0) : 0;
-        for (let i = 0; i < nf + nn; i++) {
-          const nest = i >= nf;
-          /* Nests take the high anchors — they live where a fork catches
-           * litter; the ferns crowd the lower bole, where a walker's eye
-           * actually is, so each one draws twice and keeps the lower. */
-          const a1 = anchors[(erng() * anchors.length) | 0];
-          const a2 = anchors[(erng() * anchors.length) | 0];
-          const an = nest ? (a1.y > a2.y ? a1 : a2) : (a1.y < a2.y ? a1 : a2);
-          if (nest && an.y < 2.2) continue;
-          _p.set(an.x, an.y, an.z).applyMatrix4(sp.m);
-          out.set(an.nx, 0, an.nz).transformDirection(sp.m);
-          const tilt = nest ? 0.35 + erng() * 0.40 : 0.75 + erng() * 0.55;
-          axis.crossVectors(up, out).normalize();
-          qt.setFromAxisAngle(axis, tilt);
-          qs.setFromAxisAngle(up, erng() * 6.283);
-          qt.multiply(qs);
-          // Seated a hand's width into the bark, not resting on it: an
-          // epiphyte's base is buried in its own root mat and litter.
-          _p.addScaledVector(out, -0.10);
-          const sc = nest ? 0.55 + erng() * 0.45 : 0.30 + erng() * 0.34;
-          (nest ? epiNests : epiFerns).push({
-            v: (erng() * SPECIES_LOD[nest ? 'tussock' : 'fern'].v) | 0,
-            m: M().compose(_p, qt, _s.set(sc, sc, sc)),
-          });
-        }
-      }
-    }
+    const palmSpots = [], tfSpots = [];
 
     /* The roof. Placed on its own grid rather than grown from the trunks
      * because the crown of a rainforest is continuous and a viewer under it
@@ -1125,11 +1083,11 @@ export class Vegetation {
       // Palms come up in cohorts under a parent, so a clump centre is where
       // the tall ones are and the rim is all suckers.
       const s = 0.62 + c.rng() * 0.62 + c.dens * 0.42;
-      return {
-        v: (c.rng() * SPECIES_LOD.palm.v) | 0,
-        m: M().compose(_p.set(c.x, c.y - 0.05, c.z),
-                       stand(c, 0.35, 0.22), bulk(c.rng, s, 0.12)),
-      };
+      const v = (c.rng() * SPECIES_LOD.palm.v) | 0;
+      const m = M().compose(_p.set(c.x, c.y - 0.05, c.z),
+                            stand(c, 0.35, 0.22), bulk(c.rng, s, 0.12));
+      if (c.rng() < 0.4) palmSpots.push({ v, m });
+      return { v, m };
     }, seed + 3));
 
     /* Where a tree fern stands is the least random placement in the forest:
@@ -1146,12 +1104,87 @@ export class Vegetation {
            * wallFoot(c, 0.30) * rooting(c, 0.90, 0.55);
     }, (c) => {
       const s = 0.70 + c.rng() * 0.60 + c.dens * 0.35;
-      return {
-        v: (c.rng() * SPECIES_LOD.treeFern.v) | 0,
-        m: M().compose(_p.set(c.x, c.y - 0.06, c.z),
-                       stand(c, 0.30, 0.14), bulk(c.rng, s, 0.10)),
-      };
+      const v = (c.rng() * SPECIES_LOD.treeFern.v) | 0;
+      const m = M().compose(_p.set(c.x, c.y - 0.06, c.z),
+                            stand(c, 0.30, 0.14), bulk(c.rng, s, 0.10));
+      if (c.rng() < 0.5) tfSpots.push({ v, m });
+      return { v, m };
     }, seed + 21));
+
+    /* The perching layer. A primeval wet forest carries a second garden on
+     * its trunks: nest epiphytes the size of flax bushes in the forks, and
+     * ferns rooted in nothing but bark. It is the single strongest cue that
+     * a forest is old — a plantation has clean boles, an old one is
+     * inhabited to head height and beyond. No new species is needed: a
+     * tussock seated in a fork *is* the nest, a fern pitched off a bark face
+     * *is* the perching fern; what makes them epiphytes is only where they
+     * stand and which way up they lean. Each host builder exports surface
+     * anchors computed from the trunk it actually built, so a nest sits in
+     * the bark it grew in rather than on an idealised cylinder — and the
+     * tree ferns, whose fibrous trunks are the best rooting medium in the
+     * real bush, take the densest colonisation per metre of stem. */
+    const epiFerns = [], epiNests = [];
+    {
+      const erng = makeRng(seed + 29);
+      const up = new THREE.Vector3(0, 1, 0);
+      const out = new THREE.Vector3(), axis = new THREE.Vector3();
+      const qt = new THREE.Quaternion(), qs = new THREE.Quaternion();
+      const seat = (spots, species, fChance, nChance, minNestY, fSc, nSc) => {
+        for (const sp of spots) {
+          const anchors = this.species[species][sp.v].hi.anchors;
+          if (!anchors || !anchors.length) continue;
+          const nf = erng() < fChance ? 1 + ((erng() * 3) | 0) : 0;
+          const nn = erng() < nChance ? 1 + ((erng() * 2) | 0) : 0;
+          for (let i = 0; i < nf + nn; i++) {
+            const nest = i >= nf;
+            /* Nests take the high anchors — they live where a fork catches
+             * litter; the ferns crowd the lower bole, where a walker's eye
+             * actually is, so each one draws twice and keeps the lower. */
+            const a1 = anchors[(erng() * anchors.length) | 0];
+            const a2 = anchors[(erng() * anchors.length) | 0];
+            const an = nest ? (a1.y > a2.y ? a1 : a2) : (a1.y < a2.y ? a1 : a2);
+            if (nest && an.y < minNestY) continue;
+            _p.set(an.x, an.y, an.z).applyMatrix4(sp.m);
+            out.set(an.nx, 0, an.nz).transformDirection(sp.m);
+            const tilt = nest ? 0.35 + erng() * 0.40 : 0.75 + erng() * 0.55;
+            axis.crossVectors(up, out).normalize();
+            qt.setFromAxisAngle(axis, tilt);
+            qs.setFromAxisAngle(up, erng() * 6.283);
+            qt.multiply(qs);
+            // Seated a hand's width into the bark, not resting on it: an
+            // epiphyte's base is buried in its own root mat and litter.
+            _p.addScaledVector(out, -0.10);
+            const sc = nest ? nSc[0] + erng() * nSc[1] : fSc[0] + erng() * fSc[1];
+            (nest ? epiNests : epiFerns).push({
+              v: (erng() * SPECIES_LOD[nest ? 'tussock' : 'fern'].v) | 0,
+              m: M().compose(_p, qt, _s.set(sc, sc, sc)),
+            });
+          }
+        }
+      };
+      seat(treeSpots, 'tree',     0.62, 0.45, 2.2, [0.30, 0.34], [0.55, 0.45]);
+      seat(palmSpots, 'palm',     0.30, 0,    2.0, [0.20, 0.18], [0, 0]);
+      seat(tfSpots,   'treeFern', 0.55, 0.12, 1.1, [0.18, 0.16], [0.35, 0.20]);
+    }
+
+    /* Supplejack keeps off the verge itself — a tangle overhanging the tread
+     * would read as an obstacle the walker clips through — but starts close
+     * enough behind the first rank of plants that its canes cross the view
+     * at chest height a few metres away, which is the whole point of it. */
+    this._add('supplejack', this._scatter('supplejack', 5.0, (c) => {
+      if (c.stone) return 0;
+      if (c.dist < 3.5 || c.dist > 40) return 0;
+      if (c.slope > 0.75) return 0;
+      return 0.34 * (1 - 0.8 * smoothstep(0.80, 0.94, c.t))
+           * (0.6 + 0.5 * c.hollow) * rooting(c, 0.95, 0.4);
+    }, (c) => {
+      const s = 0.7 + c.rng() * 0.7;
+      return {
+        v: (c.rng() * SPECIES_LOD.supplejack.v) | 0,
+        m: M().compose(_p.set(c.x, c.y - 0.04, c.z),
+                       stand(c, 0.40, 0.20), bulk(c.rng, s, 0.12)),
+      };
+    }, seed + 31));
 
     this._add('broadleaf', this._scatter('broadleaf', 1.6, (c) => {
       if (!bank(c, 1.0, 48)) return 0;
