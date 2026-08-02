@@ -166,22 +166,32 @@ void main(){
 }
 `;
 
+/* The air a level is made of — turbidity, the colour under the horizon, and
+ * the extinction the direct beam suffers coming down through it — arrives as
+ * `air` from the level's `mood`. What stays here is the geometry above it: air
+ * mass as a function of solar elevation is physics and is true anywhere.
+ *
+ * There is deliberately no default. A default here would be one level's
+ * weather quietly standing in for every other level's, which is exactly how
+ * the second world in this game ended up under humid tropical haze.
+ */
 export class Sky {
-  constructor(renderer) {
+  constructor(renderer, air) {
     this.renderer = renderer;
+    this.air = air;
     this.uniforms = {
       uSunDir: { value: new THREE.Vector3(0.28, 0.42, -0.86).normalize() },
-      uTurbidity: { value: 5.5 },
+      uTurbidity: { value: this.air.turbidity },
       uExposure: { value: 1.0 },
       /* What the dome shows below the horizon. Not "the ground" — it is the
        * haze standing over the canopy, so it wants to be close to the fog
        * colour. Setting it dark like soil leaves a black band under the
        * skyline wherever the terrain does not quite reach the horizon. */
-      uGroundColor: { value: new THREE.Color(0x4d5a41) },
+      uGroundColor: { value: new THREE.Color(this.air.ground) },
       /* Kept in step with scene.fog by hand. The two have to agree: where a
        * fogged thicket meets the dome behind it there must be no seam, and a
        * mismatch there is visible as a horizon line even at low contrast. */
-      uHazeColor: { value: new THREE.Color(0x475538) },
+      uHazeColor: { value: new THREE.Color(this.air.haze) },
     };
     this.material = new THREE.ShaderMaterial({
       vertexShader: VERT, fragmentShader: FRAG,
@@ -289,7 +299,8 @@ export class Sky {
     const y = Math.max(0.02, this.sunDir.y);
     const airmass = 1.0 / (y + 0.15 * Math.pow(y + 0.02, -1.253));
     const ext = (beta) => Math.exp(-beta * airmass);
-    const c = new THREE.Color(ext(0.19), ext(0.42), ext(0.95));
+    const b = this.air.beta;
+    const c = new THREE.Color(ext(b[0]), ext(b[1]), ext(b[2]));
     const max = Math.max(c.r, c.g, c.b) || 1;
     c.multiplyScalar(1 / max);
     /* Raised again with the atmosphere system, and this time the increase is
@@ -322,7 +333,11 @@ export class Sky {
      * midday, which — multiplied by a canopy that a shallow ray has four
      * times as much of to cross — left the dawn frames with no directional
      * light in them at all and reading as overcast. */
-    return { color: c, intensity: THREE.MathUtils.clamp(11.5 * Math.pow(y, 0.8), 0, 7.6) };
+    return {
+      color: c,
+      intensity: THREE.MathUtils.clamp(
+        this.air.sunScale * Math.pow(y, 0.8), 0, this.air.sunMax),
+    };
   }
 
   dispose() {

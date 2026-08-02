@@ -792,7 +792,7 @@ export class Atmosphere {
         tVolume: { value: null },
         tAO: { value: null },
         uHalfTexel: { value: new THREE.Vector2() },
-        uExposure: { value: 1.48 },
+        uExposure: { value: 1.0 },   // driven from renderer.toneMappingExposure
         uPost: { value: new THREE.Vector2(1, 0.55) },
         uAOMix: { value: 0 },
         uHasVolume: { value: 1 },
@@ -963,6 +963,13 @@ export class Atmosphere {
     }
 
     const cu = this.compositeMat.uniforms;
+    /* One source of truth for the stop. The scene pass runs with tone mapping
+     * off and applies the curve here instead, which left `toneMappingExposure`
+     * doing nothing while a second copy of the same number sat in this
+     * material — so setting the documented one had no effect on the picture at
+     * all. Reading it here per frame costs a float assignment and means the
+     * renderer's exposure is the exposure. */
+    cu.uExposure.value = this.renderer.toneMappingExposure;
     cu.uHasVolume.value = hasVolume ? 1 : 0;
     cu.uPost.value.y = hasAO ? this.aoStrength : 0;
     cu.uAOMix.value = hasAO ? this.contactStrength : 0;

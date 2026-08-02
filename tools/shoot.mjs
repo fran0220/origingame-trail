@@ -40,8 +40,24 @@ fs.mkdirSync(outDir, { recursive: true });
  * or switching the terrain's debug output to a single mask — without editing
  * the scene and having to remember to edit it back. */
 const JS = flag('js', '');
+/* Which world to walk. Empty means the host's default, so every existing
+ * invocation of this tool keeps shooting the level it was written against. */
+const LEVEL = flag('level', '');
+/* Wall-clock milliseconds to let the frame converge before it is measured.
+ * Exposed because "the same station is darker in a four-station run than on
+ * its own" is either a settling curve or a nondeterminism, and the only way to
+ * tell is to vary the settling and see whether the number moves. */
+const SETTLE = +flag('settle', 220);
+/* An expression evaluated against `g` at every station, its value stored beside
+ * the histogram in report.json. `--js` can already run anything, but it runs
+ * once and its result goes nowhere; answering "what is different about the runs
+ * that come out wrong" needs the answer recorded next to the measurement that
+ * says they came out wrong. */
+const PROBE = flag('probe', '');
 
-await run({ width: W, height: H, hash: 'manual&tier=high' }, async ({ page, errs, gl }) => {
+const HASH = 'manual&tier=high' + (LEVEL ? `&level=${LEVEL}` : '');
+
+await run({ width: W, height: H, hash: HASH }, async ({ page, errs, gl }) => {
   await page.evaluate(([el, az, fov, js]) => {
     window.__game.setSun(el, az);
     if (fov) {
@@ -62,9 +78,9 @@ await run({ width: W, height: H, hash: 'manual&tier=high' }, async ({ page, errs
       // reach the value it would have if you had actually walked here.
       g.warp(2.0);
     }, [t, YAW, PITCH]);
-    await page.waitForTimeout(220);
+    await page.waitForTimeout(SETTLE);
 
-    const st = await page.evaluate(() => {
+    const st = await page.evaluate((probe) => {
       const g = window.__game;
       const p = g.camera.position;
       return {
@@ -72,8 +88,21 @@ await run({ width: W, height: H, hash: 'manual&tier=high' }, async ({ page, errs
         pos: [+p.x.toFixed(1), +p.y.toFixed(2), +p.z.toFixed(1)],
         ...g.info(),
         hist: g.probe(),
+        ...(probe ? { probe: new Function('g', 'return (' + probe + ')')(g) } : {}),
       };
-    });
+    }, PROBE);
+
+    /* A frame with one draw call and no triangles is not a dark frame, it is
+     * the absence of one — the software rasteriser used by CI drops its
+     * context under load and reports nothing on the console when it does, so
+     * the only trace is a shot where the whole world is missing and the sole
+     * remaining call is the composite's fullscreen quad. Left unchecked this
+     * gets written to disk and compared, or worse, blessed as a baseline. */
+    if (st.calls <= 1 || st.triangles === 0) {
+      throw new Error(
+        `empty frame at t=${t} (calls=${st.calls}, tris=${st.triangles}). ` +
+        `The renderer lost the world; the shot is not evidence of anything.`);
+    }
 
     const file = path.join(outDir, `${String(Math.round(t * 100)).padStart(2, '0')}.png`);
     await capture(page, file);

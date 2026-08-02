@@ -114,6 +114,7 @@ uniform vec4 uFleck;       // sharp ramp lo/hi, fully blurred ramp lo/hi
 uniform vec4 uPenumbra;    // mip rate, blur rate, closed-roof ramp shift, roof ramp width
 uniform vec4 uDrift;       // slow translation of the two samples
 uniform vec2 uCanopyRot;   // cos, sin of the slow shear
+uniform float uOpenSky;    // 1 where the level has no roof at all
 
 float cnpRamp(float e0, float e1, float x){
   float t = clamp((x - e0) / (e1 - e0), 0.0, 1.0);
@@ -128,6 +129,14 @@ float cnpRamp(float e0, float e1, float x){
  * derivatives and wants the penumbra term alone.
  */
 float canopyTransmit(vec3 wp, float groundY, float lodBias, out float open){
+  /* A level with no roof gets full sun everywhere, and it has to be said here
+   * rather than left to fall out of a zero roof field. The dapple below comes
+   * from a procedural mask that exists whether or not the world has trees in
+   * it; the field only slides its threshold. So an open basin driven through
+   * this function does not come out clean, it comes out with leaf shadows on
+   * treeless gravel. */
+  if (uOpenSky > 0.5){ open = 1.0; return 1.0; }
+
   float hUp = groundY + uCanopy.x - wp.y;
   if (hUp <= 0.0){ open = 1.0; return 1.0; }
 
@@ -309,6 +318,21 @@ uniform vec4 uLateral;     // lateral weight, side floor, side exponent, up floo
  * flat is not in a crevice, it *is* the floor.
  */
 float canopyContact(vec3 wp, vec3 nW, vec4 field){
+  /* The crevice this models is the one between a stem base and the litter it
+   * stands in. Open gravel has no such crevice, and this level's contact
+   * darkening comes from the atmosphere's AO pass instead — so under an open
+   * sky the whole canopy system becomes a genuine no-op: transmittance 1,
+   * fill 0, occlusion 1.
+   *
+   * Leaving it on was not merely redundant. This term multiplies the ambient
+   * as well as the direct (see patchCanopyLight), so it is the one place in
+   * the chain that can take a pixel to absolute black — and it reads the
+   * world field to do it, which is a baked texture. On the software rasteriser
+   * used for capture, roughly one page load in five came up with that bake
+   * degraded, and the symptom was a frame with the sun apparently switched off
+   * and hard-edged black across the valley side. */
+  if (uOpenSky > 0.5) return 1.0;
+
   float low = 1.0 - cnpRamp(0.0, 1.0, (wp.y - field.x) * uFill.w);
   return 1.0 - uFill.z * low * (1.0 - abs(nW.y));
 }
@@ -330,6 +354,14 @@ float canopyContact(vec3 wp, vec3 nW, vec4 field){
  * stops clipping.
  */
 vec3 canopyFill(vec3 wp, vec3 nW, vec4 field){
+  /* Under an open sky this term is not small, it is absent. Everything below
+   * models light that has been through a roof and picked up the roof's colour
+   * and the roof's shape; where there is no roof, the skylight is already
+   * being paid for once by the hemisphere light and the environment map, and
+   * adding a second sky-shaped ambient on top is double counting — which is
+   * exactly what washed the basin's gravel out to white. */
+  if (uOpenSky > 0.5) return vec3(0.0);
+
   /* Neither this floor nor the additive skylight nor the occlusion has any
    * authority over the last two crushed patches, and it is worth writing down
    * why so nobody spends another pass on them here. The trail at the
@@ -377,7 +409,7 @@ export class Canopy {
    * @param {THREE.WebGLRenderer} renderer
    * @param {{texture: THREE.Texture, map: THREE.Vector4}} field
    */
-  constructor(renderer, field) {
+  constructor(renderer, field, { openSky = false } = {}) {
     this.field = field;
     this.texture = bakeImage(renderer, CANOPY_TEX, {
       size: 1024,
@@ -450,6 +482,7 @@ export class Canopy {
       uPenumbra: { value: new THREE.Vector4(0.32, 1 / 90.0, 0.12, 0.52) },
       uDrift: { value: new THREE.Vector4() },
       uCanopyRot: { value: new THREE.Vector2(1, 0) },
+      uOpenSky: { value: openSky ? 1 : 0 },
       /* The colour of light that has been through two leaves: green, and
        * warmer than the sky it started as. */
       uFillColor: { value: new THREE.Color(0x8fa878) },
@@ -562,6 +595,21 @@ const smoothstep = (e0, e1, x) => {
 export function patchCanopyLight(material, canopy) {
   const prev = material.onBeforeCompile;
   const prevKey = material.customProgramCacheKey;
+
+  /* A material that rewrites its own shader but does not say so in its cache
+   * key is indistinguishable, to three, from any other material with the same
+   * stock parameters. Patching it here would then give several genuinely
+   * different shaders one key — 'canopy' — and whichever compiled first would
+   * be handed to all of them. The failure is silent, bimodal and dependent on
+   * compile order, so it presents as flaky hardware rather than as a bug.
+   * Refusing here costs one line and turns a lost afternoon into a stack
+   * trace on the first frame. */
+  if (prev && !prevKey) {
+    throw new Error(
+      `patchCanopyLight: ${material.name || material.type} injects shader ` +
+      `source via onBeforeCompile but declares no customProgramCacheKey. ` +
+      `Give it one, or it will share a program with an unrelated material.`);
+  }
 
   material.onBeforeCompile = (shader, renderer) => {
     if (prev) prev.call(material, shader, renderer);

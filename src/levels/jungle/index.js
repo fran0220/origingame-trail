@@ -60,6 +60,25 @@ export const mood = {
   sun: { elevation: 38, azimuth: 152 },
   fog: { color: 0x323c2c, density: 0.038 },
   hemi: { sky: 0x82a081, ground: 0x63513a, intensity: 0.55 },
+  /* Held above one because a rainforest floor is genuinely dark and a frame
+   * that reports it honestly is a frame using two thirds of the values it
+   * has. This is the level's stop, not the renderer's. */
+  exposure: 1.48,
+  air: {
+    turbidity: 5.5,
+    ground: 0x4d5a41,
+    haze: 0x475538,
+    /* Rayleigh-shaped, but well above true sea-level optical depth: humid
+     * tropical air carries far more aerosol than the clear-sky model accounts
+     * for, and the warmth it puts in the beam is most of what makes the forest
+     * read as hot. */
+    beta: [0.19, 0.42, 0.95],
+    /* Scale and ceiling for the beam. Chosen so a sunfleck on the forest floor
+     * lands about ten times the deep-shade ambient around it, which is the
+     * strongest depth cue the understory has. */
+    sunScale: 11.5,
+    sunMax: 7.6,
+  },
   /* The canopy map now carries its own occlusion, so surfaces are no longer
    * handed a full unoccluded hemisphere and this no longer has to be a global
    * dimmer hiding that. */

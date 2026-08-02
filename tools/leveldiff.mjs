@@ -53,7 +53,13 @@ const page = await browser.newPage({ viewport: { width: W, height: H } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 
-await page.goto(`${URL_BASE}#manual`, { waitUntil: 'domcontentloaded' });
+/* One fragment, built here rather than handed in. The level selector and the
+ * harness flag both live in the hash, so a caller who appends its own `#...`
+ * to a base URL produces two of them; the browser keeps the first and silently
+ * boots the default level, which then gets compared against the baseline of a
+ * level it was never asked for. */
+await page.goto(`${URL_BASE.split('#')[0]}#manual&level=${LEVEL}`,
+                { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => !!window.__game, null, { timeout: 300_000 });
 
 await page.evaluate(({ dw, dh }) => {
@@ -110,7 +116,14 @@ await page.evaluate(({ dw, dh }) => {
       }
       let bin = '';
       for (let i = 0; i < small.length; i++) bin += String.fromCharCode(small[i]);
-      return { small: btoa(bin) };
+      /* g.info(), not renderer.info.render. The composite is a fullscreen quad
+       * drawn after the scene, so the renderer's live counters at the end of a
+       * frame read calls=1, tris=1 for a perfectly healthy picture — which is
+       * how the first cut of this guard managed to condemn the jungle. The
+       * host snapshots the scene pass itself, and that is the number that
+       * means "the world was drawn". */
+      const st = g.info();
+      return { small: btoa(bin), calls: st.calls, tris: st.triangles };
     },
   };
 }, { dw: DW, dh: DH });
@@ -130,7 +143,18 @@ await page.evaluate((s) => window.__ld.shoot(s), stations[0]);
 const rec = { level: LEVEL, w: W, h: H, dw: DW, dh: DH, shots: {} };
 
 for (const s of stations) {
-  const { small } = await page.evaluate((s) => window.__ld.shoot(s), s);
+  const { small, calls, tris } = await page.evaluate((s) => window.__ld.shoot(s), s);
+  /* An empty frame must never reach the record, and this guard matters more
+   * here than anywhere else in the toolchain: two black frames hash equal, so
+   * a lost context on both sides of a comparison does not read as a failure,
+   * it reads as "16/16 stations identical". A guard that can be satisfied by
+   * rendering nothing is worse than no guard, because it is trusted. */
+  if (calls <= 1 || tris === 0) {
+    console.error(`\nEMPTY FRAME at station ${s.name} (calls=${calls}, tris=${tris}).`);
+    console.error('The renderer lost the world. Nothing was written; rerun.');
+    await browser.close();
+    process.exit(2);
+  }
   /* The full frame is hashed from the PNG the browser encodes, which is
    * lossless and deterministic for identical pixels — so an equal hash is a
    * real "nothing moved", not a tolerance. */

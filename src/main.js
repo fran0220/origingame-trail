@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { Sky } from './render/sky.js';
 import * as jungle from './levels/jungle/index.js';
+import * as lake from './levels/lake/index.js';
 import { Walker } from './player/controller.js';
 import { CollisionWorld } from './player/collision.js';
 import {
@@ -58,7 +59,7 @@ const TIERS = {
 const TIER_ORDER = ['low', 'medium', 'high', 'ultra'];
 
 /* The levels this build ships, in the order the picker offers them. */
-export const LEVELS = { jungle };
+export const LEVELS = { jungle, lake };
 
 class Game {
   /**
@@ -122,11 +123,13 @@ class Game {
      * separately from the surface behind it is what makes a shaft look like a
      * decal laid over the picture. */
     r.toneMapping = THREE.NoToneMapping;
-    /* Nudged up with the fill light coming down, so the frame keeps its
-     * median and gains the range: the histogram has been sitting with a p99
-     * around 0.5 and nothing at all clipped, which is a picture using two
-     * thirds of the values available to it. */
-    r.toneMappingExposure = 1.48;
+    /* Exposure is the level's, set from `mood` once the level is known. This
+     * is a placeholder for the frames before that happens. It is not a render
+     * setting in the sense that shadow type is: a photographer walking from
+     * rainforest into an open glacial basin changes it by two stops, and a
+     * single number here means whichever level was tuned second comes out
+     * wrong. Ours came out white. */
+    r.toneMappingExposure = 1.0;
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
     r.setPixelRatio(Math.min(devicePixelRatio, TIERS[this.tier].dpr));
@@ -163,7 +166,7 @@ class Game {
     this.camera = new THREE.PerspectiveCamera(cm.fov, innerWidth / innerHeight, cm.near, cm.far);
 
     await step(0.04, '生成天空');
-    this.sky = new Sky(this.renderer);
+    this.sky = new Sky(this.renderer, mood.air);
     this.sky.setSun(mood.sun.elevation, mood.sun.azimuth);
     scene.add(this.sky.mesh);
 
@@ -172,6 +175,7 @@ class Game {
      * The volumetric pass in the atmosphere system replaces the look of it,
      * but this stays underneath as the thing that closes the far distance. */
     scene.fog = new THREE.FogExp2(mood.fog.color, mood.fog.density);
+    this.renderer.toneMappingExposure = mood.exposure;
 
     const sl = this.sky.sunLight();
     this.sun = new THREE.DirectionalLight(sl.color, sl.intensity);
@@ -256,7 +260,8 @@ class Game {
      * this system is. */
     await step(0.86, '计算林冠透光');
     this.field = buildWorldField(this.terrain, this.level.roof);
-    this.canopy = new Canopy(this.renderer, this.field);
+    this.canopy = new Canopy(this.renderer, this.field,
+                             { openSky: mood.openSky === true });
     this.canopy.setSun(this.sky.sunDir);
     this.atmos = new Atmosphere(this.renderer, this.canopy);
     this.atmos.setTier(this.tier);
@@ -456,7 +461,7 @@ class Game {
      * before the update above would put the ears one frame behind the eyes,
      * which is small but is exactly the error that makes a source seem to
      * swing as you turn. */
-    this.ambience.update(dt);
+    this.ambience?.update(dt);
   }
 
   render() {

@@ -25,7 +25,9 @@ const expr = args.filter((a, i) =>
 await run({
   width: flag('w', 640),
   height: flag('h', 360),
-  hash: 'manual&tier=high',
+  /* Which world to inspect. Empty keeps the host's default, so every existing
+   * invocation still asks the level it was written against. */
+  hash: 'manual&tier=high' + (textFlag('level') ? `&level=${textFlag('level')}` : ''),
   url: textFlag('url') || null,
 }, async ({ page }) => {
   const out = await page.evaluate((src) => {
