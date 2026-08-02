@@ -2044,10 +2044,38 @@ export function tree(rng, scale = 1) {
 
   // Deep litter and debris banked into the buttresses.
   addLitterSkirt(leaf, rng, rBase * 0.7, rBase * 0.7 + 2.6 * scale, 44, 0.22 * scale);
+
+  /* Epiphyte anchors: points on the actual bark surface where something can
+   * perch. Only this builder can produce them, because only it knows the
+   * lean, the wander and the fluting that decide where the surface really is
+   * — a placement system reconstructing the trunk from radius-and-height
+   * alone puts a nest half a metre inside the wood on one side of the bole
+   * and hovering off it on the other. Exported like `solid` is, as data
+   * about the variant, and drawn *after* all the geometry so the extra rng
+   * pulls cannot reshape a tree that already shipped. */
+  const anchors = [];
+  const nAnch = 8 + ((rng() * 4) | 0);
+  for (let i = 0; i < nAnch; i++) {
+    const s = 0.06 + rng() * 0.40;
+    const a = rng() * 6.283;
+    const flare = 1 + 0.34 * Math.pow(Math.max(0, 1 - s * 11), 2.4);
+    const wander = 1 + 0.062 * Math.sin(s * wf1 + wp1)
+                     + 0.034 * Math.sin(s * wf2 + wp2);
+    const rr = (rTop + (rBase - rTop) * Math.pow(1 - s, 1.5)) * flare * wander
+             * profile(a, s);
+    anchors.push({
+      x: lx * h * s * s + Math.sin(s * 4.1) * 0.10 * scale + Math.cos(a) * rr,
+      y: h * s,
+      z: lz * h * s * s + Math.cos(s * 3.3 + 1.0) * 0.10 * scale + Math.sin(a) * rr,
+      nx: Math.cos(a), nz: Math.sin(a),
+    });
+  }
+
   return {
     leaf: leaf.geometry(),
     wood: wood.geometry(),
     height: h,
+    anchors,
     /* The flare is wider than the nominal bole and the ridges continue beyond
      * it. These simple pieces preserve that silhouette in collision without
      * asking the instanced render geometry for triangles at runtime. Surface

@@ -1003,9 +1003,58 @@ export class Vegetation {
       const s = 0.76 + c.rng() * 0.52 + c.dens * 0.16;
       const m = M().compose(_p.set(c.x, c.y - 0.42, c.z),
                             stand(c, 0.18, 0.05), bulk(c.rng, s, 0.07));
-      if (c.rng() < 0.55) treeSpots.push({ x: c.x, y: c.y, z: c.z, s, v });
+      if (c.rng() < 0.55) treeSpots.push({ x: c.x, y: c.y, z: c.z, s, v, m });
       return { v, m };
     }, seed + 1));
+
+    /* The perching layer. A primeval wet forest carries a second garden in
+     * its trunk forks: nest epiphytes the size of flax bushes, and ferns
+     * rooted in nothing but bark. It is the single strongest cue that a
+     * forest is old — a plantation has clean boles, an old one is inhabited
+     * to head height and beyond. No new species is needed: a tussock seated
+     * in a fork *is* the nest, a fern pitched off a bark face *is* the
+     * perching fern; what makes them epiphytes is only where they stand and
+     * which way up they lean. The tree builder exports surface anchors it
+     * computed from its own lean and fluting, so a nest sits in the bark it
+     * grew in rather than on an idealised cylinder. */
+    const epiFerns = [], epiNests = [];
+    {
+      const erng = makeRng(seed + 29);
+      const up = new THREE.Vector3(0, 1, 0);
+      const out = new THREE.Vector3(), axis = new THREE.Vector3();
+      const qt = new THREE.Quaternion(), qs = new THREE.Quaternion();
+      for (const sp of treeSpots) {
+        const anchors = this.species.tree[sp.v].hi.anchors;
+        if (!anchors || !anchors.length) continue;
+        const nf = erng() < 0.62 ? 1 + ((erng() * 3) | 0) : 0;
+        const nn = erng() < 0.45 ? 1 + ((erng() * 2) | 0) : 0;
+        for (let i = 0; i < nf + nn; i++) {
+          const nest = i >= nf;
+          /* Nests take the high anchors — they live where a fork catches
+           * litter; the ferns crowd the lower bole, where a walker's eye
+           * actually is, so each one draws twice and keeps the lower. */
+          const a1 = anchors[(erng() * anchors.length) | 0];
+          const a2 = anchors[(erng() * anchors.length) | 0];
+          const an = nest ? (a1.y > a2.y ? a1 : a2) : (a1.y < a2.y ? a1 : a2);
+          if (nest && an.y < 2.2) continue;
+          _p.set(an.x, an.y, an.z).applyMatrix4(sp.m);
+          out.set(an.nx, 0, an.nz).transformDirection(sp.m);
+          const tilt = nest ? 0.35 + erng() * 0.40 : 0.75 + erng() * 0.55;
+          axis.crossVectors(up, out).normalize();
+          qt.setFromAxisAngle(axis, tilt);
+          qs.setFromAxisAngle(up, erng() * 6.283);
+          qt.multiply(qs);
+          // Seated a hand's width into the bark, not resting on it: an
+          // epiphyte's base is buried in its own root mat and litter.
+          _p.addScaledVector(out, -0.10);
+          const sc = nest ? 0.55 + erng() * 0.45 : 0.30 + erng() * 0.34;
+          (nest ? epiNests : epiFerns).push({
+            v: (erng() * SPECIES_LOD[nest ? 'tussock' : 'fern'].v) | 0,
+            m: M().compose(_p, qt, _s.set(sc, sc, sc)),
+          });
+        }
+      }
+    }
 
     /* The roof. Placed on its own grid rather than grown from the trunks
      * because the crown of a rainforest is continuous and a viewer under it
@@ -1124,7 +1173,7 @@ export class Vegetation {
       };
     }, seed + 4));
 
-    this._add('fern', this._scatter('fern', 1.05, (c) => {
+    this._add('fern', epiFerns.concat(this._scatter('fern', 1.05, (c) => {
       if (c.mud > 0.30 || c.dist > 46) return 0;
       if (c.slope > 0.9) return 0;
       /* Ferns want shade and damp, so they take the hollows and the stream —
@@ -1141,9 +1190,9 @@ export class Vegetation {
         m: M().compose(_p.set(c.x, c.y - 0.03, c.z),
                        stand(c, 0.70, 0.32), bulk(c.rng, s, 0.16)),
       };
-    }, seed + 5));
+    }, seed + 5)));
 
-    this._add('tussock', this._scatter('tussock', 1.0, (c) => {
+    this._add('tussock', epiNests.concat(this._scatter('tussock', 1.0, (c) => {
       if (c.mud > 0.42 || c.dist > 32) return 0;
       return 0.5 * edgeLight(c.dist) * wallFoot(c, 0.5) * (c.stone ? 0.55 : 1);
     }, (c) => {
@@ -1153,7 +1202,7 @@ export class Vegetation {
         m: M().compose(_p.set(c.x, c.y - 0.02, c.z),
                        stand(c, 0.85, 0.10), bulk(c.rng, s, 0.18)),
       };
-    }, seed + 6));
+    }, seed + 6)));
 
     /* Sprigs are allowed onto the trail edge. A path with a clean vegetation
      * boundary is a path someone mowed; a real one is invaded from both sides
