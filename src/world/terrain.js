@@ -22,6 +22,7 @@ import { bakeSurface } from '../gfx/bake.js';
 import { SSTEP } from '../gfx/glsl.js';
 import {
   POOL, POOL_Y, causeway, spillwayCut, spillwayWet, runLevel, poolBed,
+  standingWater,
 } from './spillway.js';
 import { Brook, swallowCut, sinkWet } from './brook.js';
 
@@ -374,6 +375,7 @@ export class Terrain {
     const h = new Float32Array(W * H);
     const mud = new Float32Array(W * H);
     const wet = new Float32Array(W * H);
+    const sub = new Float32Array(W * H);
     const q = {};
     for (let j = 0; j < H; j++) {
       const z = this.z0 - j * STEP;
@@ -384,9 +386,16 @@ export class Terrain {
         h[k] = y;
         mud[k] = this.evalMud(x, z, q);
         wet[k] = this.evalWet(x, z, y, q);
+        /* Asked of the same function the plant grids ask, which is the same
+         * one the water meshes are built from. The wetness channel above is a
+         * *margin* field — it peaks on the bank, where the ground is damp and
+         * emphatically not submerged — so using it to place an underwater
+         * effect would put the caustics on the shore and not in the stream.
+         * They are different questions and this is the one with an authority. */
+        sub[k] = standingWater(x, z, y, this.brook, q);
       }
     }
-    this.h = h; this.mud = mud; this.wet = wet;
+    this.h = h; this.mud = mud; this.wet = wet; this.sub = sub;
     this._buildHollow();
   }
 
@@ -459,6 +468,25 @@ export class Terrain {
     return this.wet[(v | 0) * this.W + (u | 0)];
   }
 
+  /**
+   * Depth of water standing over this point of ground, in metres, 0 if dry.
+   *
+   * Bilinear, unlike its three neighbours above, and the difference matters
+   * here: this one drives a *displacement*, and a nearest-neighbour depth
+   * steps by a whole cell at a time, so the refraction offset it feeds would
+   * jump 20 cm across a cell boundary and draw the terrain grid into the bed.
+   * The others drive blend weights, where the same stepping is invisible under
+   * the noise they are mixed with.
+   */
+  subAt(x, z) {
+    let u = (x - this.x0) / STEP, v = (this.z0 - z) / STEP;
+    u = clamp(u, 0, this.W - 1.001); v = clamp(v, 0, this.H - 1.001);
+    const i = u | 0, j = v | 0, fx = u - i, fy = v - j;
+    const k = j * this.W + i;
+    return lerp(lerp(this.sub[k], this.sub[k + 1], fx),
+                lerp(this.sub[k + this.W], this.sub[k + this.W + 1], fx), fy);
+  }
+
   /* ── meshing ───────────────────────────────────────────────────────────── */
 
   /**
@@ -516,7 +544,7 @@ export class Terrain {
     const pos = new Float32Array(total * 3);
     const nrm = new Float32Array(total * 3);
     const uv = new Float32Array(total * 2);
-    const splat = new Float32Array(total * 3);
+    const splat = new Float32Array(total * 4);
 
     const put = (vi, x, z, drop) => {
       const y = this.height(x, z) - drop;
@@ -528,9 +556,10 @@ export class Terrain {
       const inv = 1 / Math.hypot(nX, nY, nZ);
       nrm[vi * 3] = nX * inv; nrm[vi * 3 + 1] = nY * inv; nrm[vi * 3 + 2] = nZ * inv;
       uv[vi * 2] = x; uv[vi * 2 + 1] = z;
-      splat[vi * 3] = this.mudAt(x, z);
-      splat[vi * 3 + 1] = this.wetAt(x, z);
-      splat[vi * 3 + 2] = this.hollowAt(x, z);
+      splat[vi * 4] = this.mudAt(x, z);
+      splat[vi * 4 + 1] = this.wetAt(x, z);
+      splat[vi * 4 + 2] = this.hollowAt(x, z);
+      splat[vi * 4 + 3] = this.subAt(x, z);
     };
 
     for (let j = 0; j < nz; j++) {
@@ -564,9 +593,10 @@ export class Terrain {
         pos[sv * 3 + 2] = pos[src * 3 + 2];
         nrm[sv * 3] = nrm[src * 3]; nrm[sv * 3 + 1] = nrm[src * 3 + 1]; nrm[sv * 3 + 2] = nrm[src * 3 + 2];
         uv[sv * 2] = uv[src * 2]; uv[sv * 2 + 1] = uv[src * 2 + 1];
-        splat[sv * 3] = splat[src * 3];
-        splat[sv * 3 + 1] = splat[src * 3 + 1];
-        splat[sv * 3 + 2] = splat[src * 3 + 2];
+        splat[sv * 4] = splat[src * 4];
+        splat[sv * 4 + 1] = splat[src * 4 + 1];
+        splat[sv * 4 + 2] = splat[src * 4 + 2];
+        splat[sv * 4 + 3] = splat[src * 4 + 3];
         sv++;
       }
       for (let k = 0; k < count - 1; k++) {
@@ -584,7 +614,7 @@ export class Terrain {
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
     g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    g.setAttribute('aSplat', new THREE.BufferAttribute(splat, 3));
+    g.setAttribute('aSplat', new THREE.BufferAttribute(splat, 4));
     g.setIndex(idx);
     g.computeBoundingSphere();
     return g;
@@ -629,15 +659,22 @@ export function makeTerrainMaterial(renderer) {
      * so being able to look at a mask on its own is the difference between
      * finding the bad term and rewriting the whole function. */
     uDebug: { value: 0 },
+    uTime: { value: 0 },
   };
+
+  /* Exposed so the frame loop can hand the bed the water's own clock. The
+   * caustics and the ripples that cast them are two halves of one surface and
+   * must not run on two timers: a pause that stopped the waves while the light
+   * on the bed kept moving would be worse than no caustics. */
+  mat.userData.uniforms = U;
 
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     mat.userData.shader = sh;
 
     sh.vertexShader = `
-      attribute vec3 aSplat;
-      varying vec3 vSplat;
+      attribute vec4 aSplat;
+      varying vec4 vSplat;
       varying vec3 vWPos;
       varying vec3 vWNrm;
     ` + sh.vertexShader.replace(
@@ -655,8 +692,9 @@ export function makeTerrainMaterial(renderer) {
       uniform sampler2D tMacro;
       uniform vec3 uWetTint, uMossTint;
       uniform float uDebug;
+      uniform float uTime;
       vec3 gDbg;
-      varying vec3 vSplat;
+      varying vec4 vSplat;
       varying vec3 vWPos;
       varying vec3 vWNrm;
 
@@ -664,7 +702,66 @@ export function makeTerrainMaterial(renderer) {
       // are computed once into globals rather than three times.
       vec3 gW; vec2 gUvF; vec2 gUvW; float gWall;
       vec3 gMacro; vec3 gMid; float gMoss; float gWet; float gAO; float gRough;
-      float gSoak;
+      float gSoak; float gSub; float gCaustic;
+
+      /* ── what is under the water ───────────────────────────────────────────
+       *
+       * Refraction is normally a screen-space effect: the water samples the
+       * frame behind it and offsets the fetch. That is not available here and
+       * not for a reason worth working around — the scene renders into the
+       * atmosphere's HDR target, so at the moment the water draws, the thing
+       * it would need to read is the surface it is drawing into.
+       *
+       * But refraction is a displacement of the *bed*, and the bed is right
+       * here, with its texture coordinates in hand and its depth on a vertex
+       * attribute. Computing it on the refracting side costs two sines and
+       * needs no copy of anything. It is also strictly better than the
+       * screen-space version at the one place it matters most — the waterline,
+       * where a screen-space offset reads pixels of dry bank and drags them
+       * into the stream.
+       *
+       * The offset is lateral only. Real refraction also lifts the bed toward
+       * the viewer, making shallow water look shallower than it is, and that
+       * part genuinely needs the view vector and a displaced depth; it is
+       * absent. What is present is the part the eye actually reads as water:
+       * the bed wobbling while the bank beside it stays still.
+       */
+      vec2 refractOffset(vec2 p, float depth, float t){
+        vec2 w = vec2(sin(p.y * 2.7 + t * 1.9) + 0.5 * sin(p.x * 5.3 - t * 1.1),
+                      sin(p.x * 3.1 - t * 1.5) + 0.5 * sin(p.y * 4.7 + t * 1.7));
+        /* Capped, and the cap is the pool rather than the brook. Offset scales
+         * with depth because a deeper bed is displaced further by the same
+         * surface slope, but three metres of it would shear the gravel into
+         * streaks; past about a metre the water is too dark to read the bed
+         * through anyway, so the term is allowed to stop growing. */
+        return w * min(depth, 1.1) * 0.055;
+      }
+
+      /* Caustics as the interference of three long crossing swells rather than
+       * a tiled caustic texture. A texture is sharper and, on a stream this
+       * narrow, unusable: its period is visible along the channel within two
+       * repeats, and there is nowhere to hide the seam. Three incommensurate
+       * directions never repeat.
+       *
+       * The bright filaments are the zero crossings — where the surface is
+       * flat between two swells is exactly where it focuses light — so the sum
+       * is ridged and raised to a power, not used directly. Two octaves,
+       * because one gives smooth bands and the reticulated net only appears
+       * when a finer set crosses the coarse one.
+       */
+      float causticNet(vec2 p, float t){
+        const vec2 d0 = vec2(0.933, 0.359);
+        const vec2 d1 = vec2(-0.259, 0.966);
+        const vec2 d2 = vec2(0.707, -0.707);
+        float a = (sin(dot(p, d0) * 3.1 + t * 1.7)
+                 + sin(dot(p, d1) * 4.3 - t * 1.3)
+                 + sin(dot(p, d2) * 2.6 + t * 2.1)) / 3.0;
+        vec2 q = p * 2.37 + 11.0;
+        float b = (sin(dot(q, d1) * 3.1 - t * 2.3)
+                 + sin(dot(q, d2) * 4.3 + t * 1.9)
+                 + sin(dot(q, d0) * 2.6 - t * 1.5)) / 3.0;
+        return pow(1.0 - abs(a), 6.0) + 0.45 * pow(1.0 - abs(b), 8.0);
+      }
 
       /* World periods, chosen from the real size of the features each map
        * contains: ~2 m of trail surface, ~1.1 m of leaf litter (so the blades
@@ -694,6 +791,30 @@ export function makeTerrainMaterial(renderer) {
 
       void terrainWeights(){
         gUvF = vWPos.xz;
+
+        /* Submerged ground, resolved before any fetch, because refraction has
+         * to displace the coordinate every map is then read at. Offsetting the
+         * albedo alone would slide the colour out from under its own normal
+         * map and the bed would read as a decal sliding over fixed bumps. */
+        gSub = vSplat.w;
+        gCaustic = 0.0;
+        if (gSub > 0.001) {
+          /* Advected downstream. Every wave in the two functions moves along
+           * its own direction already, which shimmers convincingly but has no
+           * net drift, and standing water is the one thing a stream must not
+           * look like. The brook and the outflow both run -Z, so a single bulk
+           * scroll serves both; the basin is the exception and drifts a little
+           * when it should barely move, which at its scale is not findable. */
+          vec2 p = vWPos.xz + vec2(0.0, uTime * 0.55);
+          gUvF += refractOffset(p, gSub, uTime);
+          /* Attenuated with depth on the way down and again on the way back
+           * up, which is why the exponent is roughly twice the water shader's:
+           * the light has to cross the column, scatter off the bed and cross
+           * it again before anything is seen. Deep water has caustics on its
+           * bed too and you cannot see them. */
+          gCaustic = causticNet(p, uTime) * exp(-gSub * 2.6)
+                   * smoothstep(0.0, 0.05, gSub);
+        }
         // Project onto whichever vertical plane the wall most faces, so a bank
         // facing north and one facing east are both sheared equally little.
         gUvW = (abs(vWNrm.x) > abs(vWNrm.z))
@@ -839,14 +960,23 @@ export function makeTerrainMaterial(renderer) {
             */
            alb *= pow(clamp(gAO, 0.0, 1.0), 1.7);
 
+           /* Caustics go into albedo, which is the wrong slot for light and
+            * the right slot here. They are light — the sun, focused by the
+            * surface — so what they must never do is appear on bed that is in
+            * shadow, and albedo is precisely the quantity the shadow term then
+            * multiplies. Adding them after lighting would put a bright net on
+            * the floor of the alcove, where no sun has reached in the entire
+            * length of the trail. */
+           alb *= 1.0 + gCaustic * 1.35;
+
            diffuseColor.rgb *= alb;
 
            gDbg = uDebug < 1.5 ? gW
                 : uDebug < 2.5 ? alb
                 : uDebug < 3.5 ? gMacro
-                : uDebug < 4.5 ? vSplat
+                : uDebug < 4.5 ? vSplat.xyz
                 : uDebug < 5.5 ? texture2D(tLitA, gUvF).rgb
-                : vec3(gMoss, gWet, 0.0);`
+                : vec3(gMoss, gWet, gSub);`
         )
         .replace(
           '#include <dithering_fragment>',

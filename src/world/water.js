@@ -189,6 +189,8 @@ export class Water {
     this.tier = opts.tier || 'high';
     this.root = new THREE.Group();
     this.root.name = 'water';
+    /* The clock every moving thing on this surface shares, and — since the
+     * caustics were added — the clock the ground under it shares too. */
     this._time = 0;
 
     this.tex = {
@@ -518,40 +520,23 @@ export class Water {
           float fres = pow(1.0 - ndv, 4.0);
           opa = clamp(mix(opa, 1.0, fres * 0.75), 0.0, 1.0);
 
-          /* The floor under that, and the reason the brook read as a paved
-           * path rather than as a stream.
+          /* A film too thin to have a body still has a top, and alpha at
+           * nought scales a fragment's *whole* contribution — highlight
+           * included — to nothing. That is why the brook rendered as a gravel
+           * path: the surface was there, lit, and multiplied out.
            *
-           * Coverage was derived from depth alone, which is right for the
-           * *body* of the water — two centimetres of it hides nothing — but a
-           * two-centimetre film still has a full surface, and a surface is
-           * what returns the sun. Alpha at nought scaled that highlight to
-           * nothing along with everything else, so the shallows rendered as
-           * wet gravel with no water on them at all: no glint, no sheen, and
-           * from directly above no Fresnel either, since that term only rescues
-           * the grazing case. A stream seen from the bank is mostly *not* at a
-           * grazing angle.
+           * So there is a floor, and it is small. Water genuinely is close to
+           * invisible from straight above; the job here is only to stop the
+           * surface being deleted, not to draw it.
            *
-           * So the specular lobe gets to vote on coverage. The highlight
-           * itself is left to the standard material, which computes it against
-           * the same ripple normal and — unlike anything added to emissive
-           * here — has the shadow term applied to it, so the brook stops
-           * glinting where the canopy is closed over it. */
-          #if NUM_DIR_LIGHTS > 0
-            vec3 hv = normalize(vDir + directionalLights[0].direction);
-            /* A hundred and ten, not the several hundred a mirror wants. The
-             * ripple normal here is already a filtered average over rather
-             * more surface than one highlight, so a lobe tight enough to be
-             * physical falls between the samples and never fires: at 380 the
-             * entire gallery moved by twenty-eight bytes. */
-            float glint = pow(clamp(dot(nView, hv), 0.0, 1.0), 110.0);
-            opa = clamp(max(opa, glint * 0.95 * (1.0 - foam) * gFlat), 0.0, 1.0);
-          #endif
-
-          /* And a floor from the sheen, so a film too thin to have a body
-           * still has a top. Small, because water genuinely is close to
-           * invisible from straight above — but not nought, which is what it
-           * was, and nought is why the brook rendered as a gravel path. */
-          opa = clamp(max(opa, (0.05 + fres * 0.45) * gFlat), 0.0, 1.0);
+           * The glint used to be voted in here too, and that was wrong in a
+           * way worth recording. At this point in the shader the colour is
+           * still the body — tannic, near-black — so raising alpha where the
+           * specular lobe fires painted an *opaque dark sheet* in exactly the
+           * places meant to be bright, and hid the bed behind it. The lobe now
+           * votes after lighting, where a bright value to be opaque with
+           * actually exists. See the coverage block at the output stage. */
+          opa = clamp(max(opa, 0.06 * gFlat), 0.0, 1.0);
 
           /* And the reflection that goes with that opacity, which was the
            * missing half of the same physics.
@@ -698,6 +683,31 @@ export class Water {
          * turns a guessing game into one capture. */
         .replace('#include <dithering_fragment>', /* glsl */ `
           #include <dithering_fragment>
+
+          /* Coverage from the light that actually came back.
+           *
+           * A blended surface contributes src * a, so a thin film with a
+           * near-zero alpha cannot show a highlight however bright the
+           * highlight is — the same multiply that makes it see-through erases
+           * the one feature that says "water". Both halves have to move
+           * together, and the only place both are known is here: the specular
+           * has been computed by the standard material against the ripple
+           * normal, with the shadow term applied, so the brook stops glinting
+           * where the canopy closes over it.
+           *
+           * Raising alpha only where the frame is already bright is what keeps
+           * the shallows transparent. The bed shows through everywhere else,
+           * which it must — the refraction and the caustics are drawn on the
+           * bed, and an opaque surface would be a lid over both. */
+          {
+            vec3 sp = reflectedLight.directSpecular + reflectedLight.indirectSpecular;
+            float lum = dot(sp, vec3(0.2126, 0.7152, 0.0722));
+            // Saturating rather than linear: a highlight two stops over is not
+            // twice as opaque, it is simply opaque.
+            float cover = 1.0 - exp(-lum * 2.4);
+            gl_FragColor.a = clamp(max(gl_FragColor.a, cover * gFlat), 0.0, 1.0);
+          }
+
           if (uWaterDbg > 0.5) {
             float v = uWaterDbg < 1.5 ? gFoam
                     : uWaterDbg < 2.5 ? clamp(gWaterDepth * 0.4, 0.0, 1.0)
@@ -2140,6 +2150,23 @@ export class Water {
   }
 
   setViewportHeight(h) { this._vh = h; }
+
+  /** Seconds of surface animation elapsed. Drives the caustics on the bed. */
+  get time() { return this._time; }
+
+  /**
+   * Put the surface at a chosen instant.
+   *
+   * The seam exists for tools/water-bed.mjs, which compares two frames of the
+   * same view at two times to prove the bed under the water is not a still
+   * picture. Stepping the game to get there would move the light, the leaves
+   * and the walker's bob as well, and a diff of everything proves nothing
+   * about the water.
+   */
+  setTimeForTest(t) {
+    this._time = t;
+    this._surfaceUniforms().uTime.value = t;
+  }
 
   stats() {
     return {

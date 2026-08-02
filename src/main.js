@@ -525,6 +525,9 @@ class Game {
     this.ruins.update(dt, this.camera);
     this.water.update(dt, this.camera, this.sky.sunDir, this.sun.color,
                       this.hemi.color, this.sun.intensity);
+    // Read back rather than advanced separately, so the caustics on the bed
+    // stay in phase with the surface that is supposed to be casting them.
+    this.terrainMat.userData.uniforms.uTime.value = this.water.time;
     this.canopy.update(dt);
     /* After the camera's world matrix is current, because the listener's
      * position and orientation are read straight out of it. Placing this
