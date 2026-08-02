@@ -54,12 +54,12 @@
  * meant a variant count per tile and identical blocks besides.
  */
 import * as THREE from 'three';
-import { Noise2D, clamp, smoothstep, lerp } from './noise.js';
-import { makeRng } from './plants.js';
+import { Noise2D, clamp, smoothstep, lerp } from '../../world/noise.js';
+import { makeRng } from '../../world/plants.js';
 import { CLEARING_Y } from './terrain.js';
-import { bakeSurface, bakeImage } from '../gfx/bake.js';
-import { STONE, STONE_MASK, STONE_MACRO } from './stoneTex.js';
-import { SSTEP } from '../gfx/glsl.js';
+import { bakeSurface, bakeImage } from '../../gfx/bake.js';
+import { STONE, STONE_MASK, STONE_MACRO } from '../../world/stoneTex.js';
+import { SSTEP } from '../../gfx/glsl.js';
 /* Where System 5's sheet lands. Imported rather than repeated, because a
  * second copy of that number is a second thing to forget when the fall moves
  * — and it did move: this module had guessed the plunge was in the middle of

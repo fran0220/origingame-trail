@@ -37,8 +37,8 @@
  * rock it is sitting on is the thing that makes composites look composited.
  */
 import * as THREE from 'three';
-import { SSTEP } from '../gfx/glsl.js';
-import { bakeRipple, bakeFoam, bakeStrands, bakeDroplets } from './waterTex.js';
+import { SSTEP } from '../../gfx/glsl.js';
+import { bakeRipple, bakeFoam, bakeStrands, bakeDroplets } from '../../world/waterTex.js';
 import {
   POOL, POOL_Y, spillFloor, spillHalf, spillCentre, runLevel, ALCOVE_Y, poolBed,
 } from './spillway.js';

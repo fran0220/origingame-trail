@@ -45,7 +45,7 @@ const setup = await page.evaluate(async () => {
   g.walker.enabled = true;
   document.getElementById('hud').style.display = 'none';
   g.setSun(38, 152);
-  const { brookOffset } = await import(new URL('src/world/brook.js', document.baseURI).href);
+  const { brookOffset } = await import(new URL('src/levels/jungle/brook.js', document.baseURI).href);
   const { trailOffset } = await import(new URL('src/game/anchors.js', document.baseURI).href);
 
   const t = 0.60;

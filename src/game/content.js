@@ -9,8 +9,8 @@
  * anchor* rather than a position, because an individual plant's coordinates
  * are a placement result and not something a content table can know.
  */
-import { SWALLOW, brookOffset } from '../world/brook.js';
-import { IMPACT, LIP } from '../world/water.js';
+import { SWALLOW, brookOffset } from '../levels/jungle/brook.js';
+import { IMPACT, LIP } from '../levels/jungle/water.js';
 
 /* Trail-relative placement. `off` is a signed lateral offset in metres using
  * the same convention as Trail.nearest().side — negative left of the walking

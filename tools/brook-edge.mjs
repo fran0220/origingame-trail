@@ -79,7 +79,7 @@ const result = await page.evaluate(async ({ EDGE_TOL, COVER_MIN }) => {
     return { fatal: `geometry is ${pos.count} vertices, not a multiple of ${rows} stations` };
   }
 
-  const { poolBed, POOL_Y } = await import(new URL('src/world/spillway.js', document.baseURI).href);
+  const { poolBed, POOL_Y } = await import(new URL('src/levels/jungle/spillway.js', document.baseURI).href);
 
   const edge = [];   // depth at the two rim vertices of each station
   const drowned = []; // stations the basin continues, exempt from the rim rule

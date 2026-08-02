@@ -14,9 +14,9 @@
  */
 import { BROOK_T0, BROOK_T1, BROOK_HEAD, brookOffset, SWALLOW } from './brook.js';
 import { POOL, SPILL_Z0, SPILL_Z1, spillCentre, spillHalf } from './spillway.js';
-import { smoothstep } from './noise.js';
-import { trailOffset } from '../game/anchors.js';
-import { PPM } from '../game/minimap.js';
+import { smoothstep } from '../../world/noise.js';
+import { trailOffset } from '../../game/anchors.js';
+import { PPM } from '../../game/minimap.js';
 
 const TAU = Math.PI * 2;
 const _off = { x: 0, z: 0 };

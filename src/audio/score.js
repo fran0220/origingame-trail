@@ -70,7 +70,7 @@ export function distToFalls(t) {
  * the offline WAV renderer can read it in Node without pulling in three. A
  * private copy here drifted once already and put the babble on the far side
  * of the path from the water. */
-export { brookOffset } from '../world/brook.js';
+export { brookOffset } from '../levels/jungle/brook.js';
 
 /** The brook fades in where the terrain starts carrying water (t ≈ 0.40+). */
 export function brookGain(t) {

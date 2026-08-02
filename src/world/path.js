@@ -1,37 +1,34 @@
 /* The trail.
  *
- * One Catmull-Rom curve through the whole level, and a distance field built
- * from it. Almost every other system asks the same two questions — "how far am
- * I from the trail" and "how far along is that" — to decide whether to carve
- * the ground, plant a tree, thin the canopy or place a ruin, so the answer is
+ * One Catmull-Rom curve through a level, and a distance field built from it.
+ * Almost every other system asks the same two questions — "how far am I from
+ * the trail" and "how far along is that" — to decide whether to carve the
+ * ground, plant a tree, thin the canopy or place a ruin, so the answer is
  * computed once here and shared.
  *
- * Route (looking down -Z, which is the direction of travel):
- *   0.00-0.25  closed canopy, wide soft trail, deep shade
- *   0.25-0.62  the trail narrows and the walls close in
- *   0.62-0.80  ground rises, light starts breaking through
- *   0.80-1.00  clearing: ruins, plunge pool, cliff and falls at the end
+ * The curve, the width and the opening-out are the *level's*; the sampling,
+ * the bucket grid and the nearest-point search are not. A route is the single
+ * strongest statement a level makes about its own pacing — where it pinches,
+ * where it turns so the next thing is hidden, where it finally opens — and it
+ * is not something a shared class can hold an opinion about.
  */
 import * as THREE from 'three';
 import { clamp, smoothstep } from './noise.js';
 
-/* Hand-placed rather than generated. A random walk gives you a trail that
- * wanders without ever arriving; these are chosen so each bend hides what
- * comes next and the clearing is a reveal rather than something visible from
- * the start. */
-const CONTROL = [
-  [0, 24], [0, 0], [5, -30], [-9, -58], [-6, -90],
-  [9, -118], [21, -148], [13, -180], [-4, -208], [-3, -240],
-  [11, -270], [7, -300], [1, -330], [0, -358], [0, -378],
-];
-
-export const PATH_END_Z = -358;   // plunge pool centre
-export const CLIFF_Z = -392;      // cliff face plane
-
 export class Trail {
-  constructor() {
+  /**
+   * @param {object} route the level's own path
+   * @param {number[][]} route.control [x, z] pairs, hand-placed
+   * @param {(t:number)=>number} route.widthAt half-width of tread, metres
+   * @param {(t:number)=>number} [route.clearing] 0 enclosed, 1 open
+   * @param {number} [route.samples] polyline resolution
+   */
+  constructor(route) {
+    this._widthAt = route.widthAt;
+    this._clearing = route.clearing ?? (() => 0);
+
     this.curve = new THREE.CatmullRomCurve3(
-      CONTROL.map(([x, z]) => new THREE.Vector3(x, 0, z)),
+      route.control.map(([x, z]) => new THREE.Vector3(x, 0, z)),
       false, 'catmullrom', 0.5,
     );
 
@@ -40,7 +37,7 @@ export class Trail {
      * terrain samples that need it, and a polyline this dense is
      * indistinguishable from the curve at the scale anything cares about. */
     this.samples = [];
-    const N = 900;
+    const N = route.samples ?? 900;
     let acc = 0;
     let prev = this.curve.getPoint(0);
     for (let i = 0; i <= N; i++) {
@@ -137,24 +134,10 @@ export class Trail {
     return target.set(a.tx, 0, a.tz).normalize();
   }
 
-  /**
-   * Half-width of the walkable dirt at this point, in metres.
-   * The narrowing is the level's only real pacing device, so it is authored
-   * rather than noised: wide and easy at the trailhead, pinched in the middle
-   * where the walls close in, then opening out into the clearing.
-   */
-  widthAt(t) {
-    /* Half-widths, so these are metres either side of the centre line. A foot
-     * trail in rainforest is roughly a metre across at the trailhead and less
-     * than that once the understory starts closing in — anything wider stops
-     * reading as a path worn by walking and starts reading as a road. */
-    let w = 1.00;
-    w -= smoothstep(0.18, 0.55, t) * 0.42;          // narrowing
-    w += smoothstep(0.62, 0.80, t) * 0.45;          // opening toward the light
-    w += smoothstep(0.80, 0.95, t) * 3.1;           // clearing floor
-    return w;
-  }
+  /** Half-width of the walkable tread at this point, in metres. */
+  widthAt(t) { return this._widthAt(t); }
 
-  /** 0 in the forest, 1 in the ruins clearing. Drives canopy density, fog, light. */
-  clearing(t) { return smoothstep(0.78, 0.90, t); }
+  /** 0 where the level encloses you, 1 where it opens out. Drives canopy
+   * density, fog and light. */
+  clearing(t) { return this._clearing(t); }
 }

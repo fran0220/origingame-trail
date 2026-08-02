@@ -23,12 +23,13 @@
  * refuse to grow through it.
  */
 import { Trail } from '../../world/path.js';
-import { Terrain, makeTerrainMaterial } from '../../world/terrain.js';
-import { RuinPlan, Ruins } from '../../world/ruins.js';
-import { Water, IMPACT, LIP } from '../../world/water.js';
+import { ROUTE } from './route.js';
+import { Terrain, makeTerrainMaterial } from './terrain.js';
+import { RuinPlan, Ruins } from './ruins.js';
+import { Water, IMPACT, LIP } from './water.js';
 import { Vegetation, roofDensity } from '../../world/vegetation.js';
-import { standingWater } from '../../world/spillway.js';
-import { drawWater } from '../../world/mapwater.js';
+import { standingWater } from './spillway.js';
+import { drawWater } from './mapwater.js';
 import { Ambience } from '../../audio/engine.js';
 import { content } from '../../game/content.js';
 
@@ -90,7 +91,7 @@ class JungleLevel {
   async _build() {
     const { renderer, scene, collision, tier, step } = this.ctx;
 
-    this.trail = new Trail();
+    this.trail = new Trail(ROUTE);
 
     await step(0.12, '计算遗迹平面');
     this.ruinPlan = new RuinPlan(this.trail);
