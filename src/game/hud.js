@@ -53,6 +53,8 @@ export class Hud {
       bookRec: $('#bookRec'),
       bookQual: $('#bookQual'),
       pause: $('#pause'),
+      qTiers: $('#qTiers'),
+      qNote: $('#qNote'),
       finale: $('#finale'),
       finTitle: $('#finTitle'),
       finRows: $('#finRows'),
@@ -309,6 +311,43 @@ export class Hud {
   /* ----------------------------------------------------------------- misc */
 
   setPaused(on) { this.el.pause.classList.toggle('show', !!on); }
+
+  /**
+   * Wire the quality picker.
+   *
+   * @param {(choice:string) => void} onPick called with 'auto' or a tier name.
+   */
+  bindQuality(onPick) {
+    this.el.qTiers?.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-tier]');
+      if (!b) return;
+      /* The pause overlay sits over the canvas, whose own click resumes the
+       * run. Without this, picking a tier also unpauses. */
+      e.stopPropagation();
+      onPick(b.dataset.tier);
+    });
+    return this;
+  }
+
+  /**
+   * @param {string} choice  what the player asked for: 'auto' or a tier.
+   * @param {string} actual  what is running, which differs from the choice
+   *   whenever the adaptive step has stepped down under load. Showing only the
+   *   choice would make an automatic downgrade invisible, and a player whose
+   *   machine quietly dropped them to low deserves to be told rather than left
+   *   wondering why it looks like that.
+   */
+  setQuality(choice, actual) {
+    for (const b of this.el.qTiers?.children ?? []) {
+      b.classList.toggle('on', b.dataset.tier === choice);
+    }
+    if (!this.el.qNote) return this;
+    const NAME = { low: '低', medium: '中', high: '高', ultra: '极致' };
+    this.el.qNote.textContent = choice === 'auto'
+      ? `随帧率自动调整 · 当前 ${NAME[actual] ?? actual}`
+      : '已锁定，不再自动调整';
+    return this;
+  }
 
   /**
    * @param {object} data { title, rows: [[label, value]], score }

@@ -57,6 +57,14 @@ class Game {
     const hash = new URLSearchParams(location.hash.slice(1));
     this.pinnedTier = TIER_ORDER.includes(location.hash.slice(1)) ? location.hash.slice(1)
                     : hash.get('tier');
+    /* A tier chosen in the pause menu outlives the tab. The hash still wins,
+     * because it is what the test harness and a bug report use to pin one. */
+    if (!this.pinnedTier) {
+      try {
+        const saved = localStorage.getItem('jt.tier');
+        if (TIER_ORDER.includes(saved)) this.pinnedTier = saved;
+      } catch { /* private mode; auto is a fine default */ }
+    }
     this.tier = this.pinnedTier || 'high';
     /* The user of this machine games on it. An uncapped loop on an RTX-class
      * card will happily render this at 300 fps and pull 150 W to do it, for a
@@ -389,6 +397,10 @@ class Game {
     // that the shaft does not touch.
     patchCanopyLight(this.session.glyphs.material, this.canopy);
 
+    this.hud.bindQuality((choice) => this.chooseTier(choice));
+    this.onTierChange = (choice, actual) => this.hud.setQuality(choice, actual);
+    this.hud.setQuality(this.pinnedTier || 'auto', this.tier);
+
     await step(0.98, '准备就绪');
   }
 
@@ -445,9 +457,30 @@ class Game {
     this.water?.setViewportHeight(v.y);
   }
 
+  /**
+   * Answer the pause menu.
+   *
+   * 'auto' hands control back to the adaptive step; anything else pins, which
+   * is the only way to reach ultra — the adaptive step only ever steps *down*,
+   * deliberately, so a machine that could carry ultra would never be offered
+   * it. Persisted, because a choice that resets every load is not a choice.
+   */
+  chooseTier(choice) {
+    if (choice !== 'auto' && !TIERS[choice]) return this;
+    this.pinnedTier = choice === 'auto' ? null : choice;
+    try {
+      if (this.pinnedTier) localStorage.setItem('jt.tier', this.pinnedTier);
+      else localStorage.removeItem('jt.tier');
+    } catch { /* private mode */ }
+    if (this.pinnedTier) this.setTier(this.pinnedTier);
+    this.onTierChange?.(choice, this.tier);
+    return this;
+  }
+
   setTier(name) {
     if (!TIERS[name] || name === this.tier) return;
     this.tier = name;
+    this.onTierChange?.(this.pinnedTier || 'auto', name);
     this._configureShadow();
     this.body?.setQuality(name);
     this.atmos?.setTier(name);

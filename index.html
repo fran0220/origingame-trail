@@ -391,6 +391,26 @@
   #pause .box { text-align: center; }
   #pause .t { font-size: 12px; letter-spacing: .4em; text-transform: uppercase; color: var(--dim); }
   #pause .k { margin-top: 18px; font-size: 11px; letter-spacing: .18em; color: var(--faint); line-height: 2.3; }
+  /* The quality picker. Until now the tiers existed and were reachable only by
+   * typing one into the URL hash, which means ultra shipped unreachable and a
+   * player on a machine that could carry it had no way to ask. */
+  #pause .q { margin-top: 30px; padding-top: 22px; border-top: 1px solid rgba(232,238,222,.12); }
+  #pause .ql { font-size: 10px; letter-spacing: .34em; text-transform: uppercase; color: var(--dim); }
+  #pause .qr { margin-top: 12px; display: flex; gap: 6px; justify-content: center; }
+  /* The HUD root is pointer-events: none so that the whole overlay never eats
+   * a click meant for the canvas. These are the exception, and the only thing
+   * in the pause screen a player is meant to hit. */
+  #pause .qr { pointer-events: auto; }
+  #pause .qr button {
+    font: inherit; font-size: 11px; letter-spacing: .16em; padding: 7px 13px;
+    color: var(--faint); background: rgba(232,238,222,.05);
+    border: 1px solid rgba(232,238,222,.16); border-radius: 2px; cursor: pointer;
+  }
+  #pause .qr button:hover { color: var(--text); border-color: rgba(232,238,222,.4); }
+  #pause .qr button.on {
+    color: #0d100c; background: var(--gold); border-color: var(--gold);
+  }
+  #pause .qn { margin-top: 13px; font-size: 10px; letter-spacing: .1em; color: var(--dim); min-height: 1.4em; }
 
   /* ------------------------------------------------------------- finale */
   #finale {
@@ -531,6 +551,17 @@
       <div class="k">
         <div>点击画面继续</div>
         <div><span class="kbd">Tab</span> 野外手记</div>
+      </div>
+      <div class="q">
+        <div class="ql">画质</div>
+        <div class="qr" id="qTiers">
+          <button data-tier="auto">自动</button>
+          <button data-tier="low">低</button>
+          <button data-tier="medium">中</button>
+          <button data-tier="high">高</button>
+          <button data-tier="ultra">极致</button>
+        </div>
+        <div class="qn" id="qNote"></div>
       </div>
     </div>
   </div>
