@@ -106,7 +106,54 @@ const drift = Math.hypot(after.walker.x - before.where.x, after.walker.z - befor
 if (drift > 1) problems.push(`walker drifted ${drift.toFixed(2)} m from the saved position`);
 if (Math.abs(after.yaw - before.where.yaw) > 0.02) problems.push(`facing ${after.yaw} != saved ${before.where.yaw}`);
 
-console.log(JSON.stringify({ before, after, problems, errors }, null, 2));
+/* One save slot, two levels.
+ *
+ * These two facts are invisible from inside a single level and destructive
+ * when wrong. A session that serialised only the level it was playing would
+ * delete the other level's run every twelve seconds, and it would do it
+ * silently — the run erased is by definition not the one on screen. And a
+ * version-1 save is a bare record with no level named on it, so a level that
+ * reads it as its own inherits another level's record ids.
+ *
+ * Driven through the real RunState rather than by asserting on its source: a
+ * fake record for a level that does not exist goes in, and what comes back out
+ * of serialize() has to still contain it.
+ */
+const multi = await page.evaluate(async () => {
+  const { RunState } = await import(new URL('src/game/state.js', document.baseURI).href);
+  const content = window.__game.session.content;
+  const out = {};
+
+  // A save holding two levels, only one of which this session is playing.
+  const envelope = {
+    v: 2,
+    levels: {
+      jungle: { glyphs: [], photos: {}, t: 0.5, elapsedMs: 1000, sunStep: 1 },
+      lagoon: { glyphs: ['keep-me'], photos: { fish: 0.9 }, t: 0.31, elapsedMs: 77 },
+    },
+  };
+  const a = new RunState(content, 'jungle');
+  a.restore(envelope);
+  const written = a.serialize();
+  out.otherLevelKept = JSON.stringify(written.levels.lagoon) ===
+                       JSON.stringify(envelope.levels.lagoon);
+  out.ownLevelT = written.levels.jungle.t;
+
+  // A version-1 save belongs to the jungle and to nothing else.
+  const v1 = { v: 1, glyphs: [], photos: {}, t: 0.42, elapsedMs: 500 };
+  const b = new RunState(content, 'jungle');
+  out.v1RestoredByJungle = b.restore(v1) && +b.furthestT.toFixed(2) === 0.42;
+  const c = new RunState(content, 'lagoon');
+  out.v1RefusedByOther = c.restore(v1) === false && c.furthestT === 0;
+  return out;
+});
+
+if (!multi.otherLevelKept) problems.push('saving one level deleted another level\u2019s run');
+if (multi.ownLevelT !== 0.5) problems.push(`own level record not written back (t=${multi.ownLevelT})`);
+if (!multi.v1RestoredByJungle) problems.push('a version-1 save no longer restores into the jungle');
+if (!multi.v1RefusedByOther) problems.push('a version-1 save was claimed by a level it cannot belong to');
+
+console.log(JSON.stringify({ before, after, multi, problems, errors }, null, 2));
 await browser.close();
 
 if (problems.length || errors.length) {

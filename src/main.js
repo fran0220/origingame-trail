@@ -300,6 +300,7 @@ class Game {
       ambience: this.ambience,
       mapWater: this.level.mapWater,
       content: this.levelModule.content,
+      levelId: this.levelModule.meta.id,
     });
     scene.add(this.session.glyphs.root);
     // Added to the same exhaustive list as every other opaque surface: a

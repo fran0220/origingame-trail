@@ -14,7 +14,10 @@
  */
 import * as platform from './platform.js';
 
-const SAVE_VERSION = 1;
+/* Bumped to 2 when the save had to hold more than one level. */
+const SAVE_VERSION = 2;
+/* The level every version-1 save belongs to, because it was the only one. */
+const V1_LEVEL = 'jungle';
 const THUMB_KEY = 'jungle-trail/thumbs/v1';
 const SAVE_DEBOUNCE_MS = 12_000;
 
@@ -23,9 +26,14 @@ export class RunState {
    * @param {{GLYPHS:Array, SUBJECTS:Array, TOTAL_RECORDS:number}} content
    *   The level's collection tables. Held rather than imported so that a
    *   restore is checked against the ids of the level being played.
+   * @param {string} levelId which level's run this is, within the one save.
    */
-  constructor(content) {
+  constructor(content, levelId) {
     this.content = content;
+    this.levelId = levelId;
+    /* Other levels' runs, held from the save that was read at boot so that
+     * writing this one back does not delete them. Empty until a restore. */
+    this._others = {};
     this.glyphs = new Set();
     /** id → framing quality in [0,1]. */
     this.photos = new Map();
@@ -44,6 +52,7 @@ export class RunState {
 
     this._listeners = new Map();
     this._saveTimer = null;
+    this._thumbKey = `${THUMB_KEY}.${levelId}`;
     this._loadThumbs();
   }
 
@@ -131,11 +140,11 @@ export class RunState {
 
   /* ------------------------------------------------------------ persistence */
 
-  serialize() {
+  /** This level's run, on its own. */
+  _record() {
     const photos = {};
     for (const [id, q] of this.photos) photos[id] = Math.round(q * 1000) / 1000;
     return {
-      v: SAVE_VERSION,
       glyphs: [...this.glyphs],
       photos,
       t: Math.round(this.furthestT * 1e4) / 1e4,
@@ -148,6 +157,48 @@ export class RunState {
   }
 
   /**
+   * The whole save, which is every level's run and not just this one's.
+   *
+   * The other levels' records are carried through untouched from whatever was
+   * read at boot. There is one save slot for the game, so a session that
+   * serialized only the level it was playing would delete the other one every
+   * twelve seconds — and it would do it silently, because the level erased is
+   * by definition not the one on screen.
+   */
+  serialize() {
+    return {
+      v: SAVE_VERSION,
+      levels: { ...this._others, [this.levelId]: this._record() },
+    };
+  }
+
+  /**
+   * Find this level's run inside a save, whatever shape that save is in.
+   *
+   * Version 1 was written before there was more than one level, so it is a
+   * bare record with no level named on it. There is exactly one level it can
+   * belong to — the only one that existed when it was written — and reading it
+   * as anything else would hand a jungle walk's tablet ids to a level that has
+   * no tablets. A player loading a v1 save into any other level correctly
+   * finds nothing, rather than finding a corrupted something.
+   *
+   * @returns {object|null} the record, or null if this level has no run in it
+   */
+  _unpack(data) {
+    if (!data || typeof data !== 'object') return null;
+    if (data.v === 1) {
+      this._others = {};
+      return this.levelId === V1_LEVEL ? data : null;
+    }
+    if (data.v !== SAVE_VERSION || !data.levels || typeof data.levels !== 'object') {
+      return null;
+    }
+    const { [this.levelId]: mine, ...others } = data.levels;
+    this._others = others;
+    return mine && typeof mine === 'object' ? mine : null;
+  }
+
+  /**
    * Restore, ignoring anything the current content tables no longer contain.
    *
    * A save written before a subject was renamed must not resurrect that
@@ -155,25 +206,26 @@ export class RunState {
    * `new Set(data.glyphs)` would do the first time this content is edited.
    */
   restore(data) {
-    if (!data || data.v !== SAVE_VERSION) return false;
+    const rec = this._unpack(data);
+    if (!rec) return false;
     const glyphIds = new Set(this.content.GLYPHS.map((g) => g.id));
     const subjectIds = new Set(this.content.SUBJECTS.map((s) => s.id));
 
-    if (Array.isArray(data.glyphs)) {
-      for (const id of data.glyphs) if (glyphIds.has(id)) this.glyphs.add(id);
+    if (Array.isArray(rec.glyphs)) {
+      for (const id of rec.glyphs) if (glyphIds.has(id)) this.glyphs.add(id);
     }
-    if (data.photos && typeof data.photos === 'object') {
-      for (const [id, q] of Object.entries(data.photos)) {
+    if (rec.photos && typeof rec.photos === 'object') {
+      for (const [id, q] of Object.entries(rec.photos)) {
         if (subjectIds.has(id) && Number.isFinite(q)) this.photos.set(id, Math.min(1, Math.max(0, q)));
       }
     }
-    if (Number.isFinite(data.t)) this.furthestT = Math.min(1, Math.max(0, data.t));
-    const w = data.where;
+    if (Number.isFinite(rec.t)) this.furthestT = Math.min(1, Math.max(0, rec.t));
+    const w = rec.where;
     if (w && Number.isFinite(w.x) && Number.isFinite(w.z) && Number.isFinite(w.yaw)) this.where = w;
-    if (Number.isFinite(data.elapsedMs)) this.elapsedMs = Math.max(0, data.elapsedMs);
-    if (Number.isInteger(data.sunStep)) this.sunStep = data.sunStep;
-    if (Number.isFinite(data.score)) this.finalScore = data.score;
-    this.finished = !!data.finished;
+    if (Number.isFinite(rec.elapsedMs)) this.elapsedMs = Math.max(0, rec.elapsedMs);
+    if (Number.isInteger(rec.sunStep)) this.sunStep = rec.sunStep;
+    if (Number.isFinite(rec.score)) this.finalScore = rec.score;
+    this.finished = !!rec.finished;
     this.restored = this.records > 0 || this.furthestT > 0.02;
     return this.restored;
   }
@@ -190,7 +242,7 @@ export class RunState {
 
   _loadThumbs() {
     try {
-      const raw = JSON.parse(localStorage.getItem(THUMB_KEY) ?? 'null');
+      const raw = JSON.parse(localStorage.getItem(this._thumbKey) ?? 'null');
       if (raw && typeof raw === 'object') {
         for (const [id, url] of Object.entries(raw)) {
           if (typeof url === 'string' && url.startsWith('data:image/')) this.thumbs.set(id, url);
@@ -201,7 +253,7 @@ export class RunState {
 
   _saveThumbs() {
     try {
-      localStorage.setItem(THUMB_KEY, JSON.stringify(Object.fromEntries(this.thumbs)));
+      localStorage.setItem(this._thumbKey, JSON.stringify(Object.fromEntries(this.thumbs)));
     } catch { /* over quota: the notebook falls back to text entries */ }
   }
 }

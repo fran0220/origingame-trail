@@ -55,7 +55,7 @@ export class Session {
     this.photo = new PhotoCamera(deps.camera, deps.walker, world,
                                  deps.content.SUBJECTS);
     this.cues = new Cues(deps.ambience);
-    this.state = new RunState(deps.content);
+    this.state = new RunState(deps.content, deps.levelId);
     this.minimap = new Minimap(this.hud.el.mapCanvas, world);
     this.compass = new Compass(this.hud.el.compass);
     /* Three states, not two: forty metres is the search radius, eighty is for
