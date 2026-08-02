@@ -1413,6 +1413,156 @@ export function palm(rng, scale = 1, lod = 0, vi = 0) {
   };
 }
 
+/**
+ * Tree fern: a fibrous trunk with a single radial crown of long pinnate
+ * fronds, and — on most of them — a skirt of dead fronds hanging against the
+ * trunk below it.
+ *
+ * This is the plant that decides whether an understory reads as generic
+ * tropical or as southern temperate rainforest. A New Zealand bush interior
+ * is not mostly trees: between the ground ferns and the canopy there is a
+ * whole storey at two to six metres made almost entirely of these, and a
+ * walk-through with nothing in that band shows bare trunks and air exactly
+ * where the reference is most crowded.
+ *
+ * It is not a palm with different numbers. The three tells, in the order the
+ * eye finds them: the crown is a regular parasol — fronds arch evenly from a
+ * single point, without a palm's untidy age scatter; the trunk is matte fibre
+ * that takes moss to well above head height, not ringed cane; and under the
+ * crown hangs the dead skirt, which no palm here carries. The skirt is the
+ * strongest of the three: a brown cone of collapsed fronds at the top of
+ * every trunk is readable in silhouette at fifty metres through fog.
+ *
+ * Architectures by variant, after the three habits worth telling apart:
+ *   0, 2 — ponga: mid-height, full skirt, dense parasol.
+ *   1    — mamaku: tall, near-black trunk, the crown wider and the skirt
+ *          shed — old mamaku drop their dead fronds rather than wear them,
+ *          which is what lets this one read as a different species overhead
+ *          rather than a scaled copy.
+ *   3    — wheki: slender, and wearing the heaviest, most ragged skirt.
+ */
+export function treeFern(rng, scale = 1, lod = 0, vi = 0) {
+  const mamaku = vi === 1;
+  const wheki = vi === 3;
+  const leaf = new Builder(), wood = new Builder();
+  const m = new THREE.Matrix4(), e = new THREE.Euler();
+
+  const h = (mamaku ? 3.6 + rng() * 2.6 : wheki ? 2.1 + rng() * 1.7
+                                                : 1.7 + rng() * 1.9) * scale;
+  const r0 = (mamaku ? 0.15 : wheki ? 0.085 : 0.12) * scale;
+  /* Near-vertical. A tree fern's trunk is a straight column of packed frond
+   * bases — the strong leans and S-curves of the palms would read as palms
+   * again from twenty metres, and verticality is cheap variety against them. */
+  const lean = (rng() - 0.5) * 0.22;
+  const wobA = rng() * 6.283;
+  const pts = [], radii = [];
+  const seg = 6;
+  for (let k = 0; k <= seg; k++) {
+    const s = k / seg;
+    pts.push(new THREE.Vector3(
+      lean * h * s * s + Math.sin(s * 5.1 + wobA) * 0.02 * scale,
+      h * s,
+      lean * 0.5 * h * s * s + Math.cos(s * 4.3 + wobA) * 0.02 * scale));
+    radii.push(r0 * (1.12 - 0.24 * s));
+  }
+  /* The fibre runs vertically and coarsely, so the bark map repeats fast
+   * along the trunk; moss is the point of the surface. In this forest a tree
+   * fern trunk is the mossiest thing standing — fibrous, always damp, never
+   * shed — so the sleeve runs high and all the way round at the base, fading
+   * to the damp side higher up rather than stopping at a boot-top collar. */
+  const mossA = rng() * 6.283;
+  const mossHi = mamaku ? 0.75 : 0.55;
+  addTube(wood, pts, radii, 8, Math.max(4, Math.round(h / 0.34)), 0.8,
+          { u0: 0, v0: 0 }, 1, {
+            occ: (a, s) => (mamaku ? 0.22 : 0.30) + 0.70 * smooth01(s * 3.5),
+            moss: (a, s) => {
+              const collar = smooth01((0.30 - s) / 0.30);
+              const side = Math.max(0, Math.sin(a + mossA)) * smooth01((mossHi - s) / mossHi);
+              return Math.min(1, 0.9 * collar + 0.7 * side);
+            },
+          });
+
+  const crown = pts[seg];
+  /* The koru: one or two unopened fronds standing curled in the crown's
+   * centre. A single hooked stalk each — the spiral is below what these
+   * segment counts can draw, but a hooked tip standing above the parasol is
+   * the readable part of the gesture. */
+  const nk = 1 + (rng() < 0.5 ? 1 : 0);
+  for (let i = 0; i < nk; i++) {
+    const ka = rng() * 6.283;
+    addStalk(wood, crown,
+             _v().set(Math.cos(ka) * 0.2, 1, Math.sin(ka) * 0.2).normalize(),
+             (0.34 + rng() * 0.22) * scale, 0.016 * scale,
+             0.9 + rng() * 0.5, D(lod, 5, 3), { droop: 1.6 + rng() * 0.8 });
+  }
+
+  /* The crown. Yaw walks the golden angle rather than being drawn at random:
+   * fronds emerge in phyllotactic order and the even parasol that produces is
+   * the crown's whole character — random yaws leave gaps and pairs, which is
+   * the palm look this species exists to stand apart from. */
+  const n = mamaku ? 12 + Math.floor(rng() * 5) : 9 + Math.floor(rng() * 4);
+  for (let i = 0; i < n; i++) {
+    const age = i / (n - 1);
+    const yaw = i * 2.39996 + (rng() - 0.5) * 0.22;
+    const pitch = -0.30 + age * 1.55 + (rng() - 0.5) * 0.20;
+    const len = (mamaku ? 1.8 + rng() * 1.0 : 1.25 + rng() * 0.85) * scale;
+    e.set(-pitch, yaw, (rng() - 0.5) * 0.22, 'YXZ');
+    m.makeRotationFromEuler(e);
+    m.setPosition(crown.x, crown.y - 0.03 * scale, crown.z);
+    addPinnate(leaf, m, {
+      len, wid: len * (0.30 + rng() * 0.09),
+      vary: age > 0.72 ? oldLeaf(rng) : freshLeaf(rng),
+      /* Even arcs. The palm crowns randomise curvature per frond to break
+       * their umbrella; here the umbrella is correct, so the arc varies with
+       * age and only a little with anything else. */
+      bend: 0.85 + age * 0.85 + (rng() - 0.5) * 0.30,
+      twist: (rng() - 0.5) * 0.35,
+      sag: (rng() - 0.5) * 0.4, phase: rng() * 6.283, id: rng(),
+      pinnae: Math.round(8 + len * 2.4), nv: D(lod, 6, 4),
+      pnv: D(lod, 3, 2), pnu: D(lod, 2, 1),
+      flex0: 0.05, rng,
+      deadTip: age > 0.78 ? (age - 0.78) * 3.0 + rng() * 0.3 : 0,
+    });
+  }
+
+  /* The skirt. Dead fronds do not fall off a ponga; they fold at the base
+   * and hang, and the result is a brown cone wrapped round the trunk's top
+   * quarter. Shorter than the live fronds — dead pinnae curl and the tips
+   * break — pitched past vertical so they lie against the trunk, and fully
+   * dead rather than dead-tipped. */
+  if (!mamaku) {
+    const n2 = wheki ? 9 + Math.floor(rng() * 5) : 6 + Math.floor(rng() * 4);
+    for (let i = 0; i < n2; i++) {
+      const yaw = i * 2.39996 + 1.1 + (rng() - 0.5) * 0.5;
+      const pitch = 2.35 + rng() * 0.45;
+      const len = (0.62 + rng() * 0.45) * scale * (wheki ? 1.15 : 1);
+      e.set(-pitch, yaw, (rng() - 0.5) * 0.4, 'YXZ');
+      m.makeRotationFromEuler(e);
+      m.setPosition(crown.x, crown.y - 0.10 * scale, crown.z);
+      addPinnate(leaf, m, {
+        len, wid: len * (0.26 + rng() * 0.08),
+        vary: oldLeaf(rng),
+        bend: 0.35 + rng() * 0.35,
+        twist: (rng() - 0.5) * 0.8,
+        sag: (rng() - 0.5) * 0.3, phase: rng() * 6.283, id: rng(),
+        pinnae: 7, nv: D(lod, 4, 3), pnv: 2, pnu: 1,
+        flex0: 0.02, rng,
+        /* Fully dead, not dead-tipped: the whole frond browns before it
+         * folds, and a skirt with green roots reads as a glitch. */
+        deadTip: 1.4 + rng() * 0.4,
+        occ: 0.45,
+      });
+    }
+  }
+
+  addLitterSkirt(leaf, rng, 0.05, 0.50 * scale, 9, 0.14 * scale, lod);
+  return {
+    leaf: leaf.geometry(),
+    wood: wood.geometry(),
+    solid: { type: 'palm', radius: radii[0] * 1.08, height: h },
+  };
+}
+
 /** Small ground sprig: seedlings and low herbs, the layer that hides the
  *  boundary between a plant and the soil it is standing on. */
 export function sprig(rng, scale = 1) {

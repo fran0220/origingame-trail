@@ -31,7 +31,7 @@
 import * as THREE from 'three';
 import { bakeImage, bakeSurface } from '../gfx/bake.js';
 import { LEAF_FRAG, BARK } from './plantTex.js';
-import { makeRng, fern, broadleaf, palm, sprig, tussock, vine, tree, canopyPatch, thicket, sapling, log, deadVine, litterMat, rootRun } from './plants.js';
+import { makeRng, fern, broadleaf, palm, treeFern, sprig, tussock, vine, tree, canopyPatch, thicket, sapling, log, deadVine, litterMat, rootRun } from './plants.js';
 import { BOUNDS } from './terrain.js';
 import { standingWater } from './spillway.js';
 
@@ -103,6 +103,11 @@ const SPECIES_LOD = {
   subcanopy: { tile: 48, cull: 62,  cast: false, v: 3 },
   vine:      { tile: 64, cull: 70,  cast: false, v: 3 },
   palm:      { tile: 40, cull: 72,  cast: true,  v: 4, near: 26 },
+  /* The two-to-six-metre storey. Culled a little past the palms because its
+   * silhouette — the dead skirt under the crown — is the one thing in the
+   * understory that stays readable through fog, and popping it in at forty
+   * metres would be visible where popping a fern in is not. */
+  treeFern:  { tile: 40, cull: 62,  cast: true,  v: 4, near: 26 },
   broadleaf: { tile: 28, cull: 52,  cast: true,  v: 5, near: 24 },
   fern:      { tile: 26, cull: 50,  cast: true,  v: 5, near: 24 },
   tussock:   { tile: 40, cull: 36,  cast: false, v: 4 },
@@ -776,6 +781,7 @@ export class Vegetation {
       log: mk(log, 1, 'log'),
       deadVine: mk(deadVine, 1, 'deadVine'),
       palm: mk(palm, 1, 'palm'),
+      treeFern: mk(treeFern, 1, 'treeFern'),
       broadleaf: mk(broadleaf, 1, 'broadleaf'),
       fern: mk(fern, 1, 'fern'),
       tussock: mk(tussock, 1, 'tussock'),
@@ -1076,6 +1082,27 @@ export class Vegetation {
                        stand(c, 0.35, 0.22), bulk(c.rng, s, 0.12)),
       };
     }, seed + 3));
+
+    /* Where a tree fern stands is the least random placement in the forest:
+     * they are gully plants. Damp floor, shelter, a shaded bank, the stream
+     * margin — and hardly ever the dry rises, which is exactly the split the
+     * terrain already knows as hollow and wet. The trail verge gets its share
+     * too, because a track cut through this kind of bush is walled with them
+     * where the extra light falls. */
+    this._add('treeFern', this._scatter('treeFern', 3.2, (c) => {
+      if (c.stone) return 0;
+      if (!bank(c, 1.6, 58)) return 0;
+      if (c.slope > 0.80) return 0;
+      return 0.50 * edgeLight(c.dist) * (0.50 + 0.80 * c.hollow + 0.55 * c.wet)
+           * wallFoot(c, 0.30) * rooting(c, 0.90, 0.55);
+    }, (c) => {
+      const s = 0.70 + c.rng() * 0.60 + c.dens * 0.35;
+      return {
+        v: (c.rng() * SPECIES_LOD.treeFern.v) | 0,
+        m: M().compose(_p.set(c.x, c.y - 0.06, c.z),
+                       stand(c, 0.30, 0.14), bulk(c.rng, s, 0.10)),
+      };
+    }, seed + 21));
 
     this._add('broadleaf', this._scatter('broadleaf', 1.6, (c) => {
       if (!bank(c, 1.0, 48)) return 0;
@@ -1528,6 +1555,10 @@ export class Vegetation {
         loG.visible = false;
       }
 
+      // The species survives into the scene graph as a name, so a debugger or
+      // a capture tool can ask "where are the tree ferns" without keeping a
+      // parallel registry alive for it.
+      group.name = name;
       group.updateMatrixWorld(true);
       this.root.add(group);
       this.cells.push({
