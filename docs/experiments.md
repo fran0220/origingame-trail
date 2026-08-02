@@ -163,3 +163,38 @@ which is the penumbra no longer leaking.
 Checked first that the sun shafts do not depend on this map: the volumetric
 march gates itself on the canopy transmittance field, so shortening the frustum
 cannot truncate them.
+
+---
+
+## How far should the shadow cascade actually reach?
+
+**Hypothesis.** The fog argument that set `SHADOW_REACH = 46` says shadows past
+that cannot change the frame. It does not say 46 is optimal — pulling in
+further would sharpen the near field, which is where the eye is.
+
+**Measured.** `detail` exists now, so the question can be asked directly.
+Sweeping the frustum at the dense-forest station, `high` tier (2048 map):
+
+| reach | texel | detail | verdict |
+|---|---|---|---|
+| 64 m | 6.3 cm | 0.0366 | |
+| 46 m | 4.5 cm | 0.0365 | shipped |
+| 36 m | 3.5 cm | 0.0367 | no gain |
+| 28 m | 2.7 cm | 0.0380 (+4.1%) | |
+| 22 m | 2.1 cm | 0.0416 (+13.7%) | |
+
+The curve is flat from 36 m to 64 m and only climbs below 28 m, which looks
+like an argument for pulling in hard. It is not. The gallery run at 28 m raised
+`lower` by 0.006 to 0.010 across the stations — the frame getting *brighter* is
+the signature of shadows going missing — and the picture says the same thing:
+the near sunflecks do sharpen, to the point of losing the penumbra a real one
+would have at that distance, while the understorey at twenty to thirty metres
+flattens out and reads as evenly lit. Two things explain it. Fog at 22 m still
+passes half a surface's own colour, so a shadow missing out there is plainly
+visible; and a 26 m canopy tree at a 38-degree sun throws a shadow 33 m long,
+so a frustum that excludes casters at 35 m loses shadows that land right next
+to the player.
+
+**Verdict.** 46 m stands, now on a measurement rather than only on the fog
+argument that suggested it. 36 m buys nothing at all and costs mid-distance
+shading; below 28 m the trade is real but wrong.
