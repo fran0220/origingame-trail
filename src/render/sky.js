@@ -216,27 +216,64 @@ export class Sky {
   }
 
   /**
-   * Prefilter the dome into an environment map and hang it on the scene.
+   * Prefilter the surroundings into an environment map and hang it on the
+   * scene.
+   *
+   * This used to capture a temp scene containing the sky dome and nothing
+   * else, which meant every reflective surface in the level reflected a bright
+   * featureless sky in *every* direction, including downwards. Water is where
+   * that shows: at grazing incidence Fresnel goes to one and the reflection
+   * becomes the whole of the shading, so the plunge basin rendered as a flat
+   * sheet with the canopy's leaf shadows printed on it, and the brook read as
+   * a wet plank. A real forest stream is nearly black because what it reflects
+   * at those angles is trunks and the underside of the canopy; the bright sky
+   * only arrives through the gaps.
+   *
+   * The compensation for that was to turn the whole environment down —
+   * environmentIntensity 0.34, the water's envMapIntensity 0.42 — which fixes
+   * the blow-out by flattening every material in the level. Capturing the
+   * actual scene instead puts the canopy occlusion in the map where it
+   * belongs, and lets the intensities go back up.
    *
    * Expensive enough that it must not run per frame — the sun only moves when
    * something asks it to, so this is called explicitly after a change rather
    * than being kept in sync automatically.
+   *
+   * @param {THREE.Scene} scene
+   * @param {object} [opts]
+   * @param {THREE.Vector3} [opts.probe] where to capture from. An image-based
+   *   light is position-independent by construction, which is wrong under a
+   *   canopy — so this is a deliberate choice of *which* wrong, and the answer
+   *   is a representative spot on the trail rather than the origin.
+   * @param {THREE.Object3D[]} [opts.exclude] hidden for the capture. The water
+   *   goes here: it is the main consumer of the result and including it makes
+   *   the reflection a function of itself.
+   * @param {number} [opts.size]
    */
-  bake(scene, size = 256) {
+  bake(scene, opts = {}) {
+    const { probe = null, exclude = [], size = 128 } = opts;
     const cubeRT = new THREE.WebGLCubeRenderTarget(size, { type: THREE.HalfFloatType });
-    const cam = new THREE.CubeCamera(0.1, 10, cubeRT);
-    const tmp = new THREE.Scene();
-    const domeCopy = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), this.material);
-    domeCopy.scale.setScalar(5);
-    domeCopy.frustumCulled = false;
-    tmp.add(domeCopy);
-    cam.update(this.renderer, tmp);
+    /* Far has to clear the dome, which is a sphere of radius one scaled to
+     * four thousand. Near is a half metre so the litter directly under the
+     * probe does not fill six faces with one leaf. */
+    const cam = new THREE.CubeCamera(0.5, 12000, cubeRT);
+    if (probe) cam.position.copy(probe);
+
+    const hidden = exclude.map((o) => [o, o.visible]);
+    for (const o of exclude) o.visible = false;
+    /* Six more shadow passes buy nothing: the shadow map in hand was rendered
+     * for this same sun and the capture is about to be blurred into an
+     * irradiance basis anyway. */
+    const autoShadow = this.renderer.shadowMap.autoUpdate;
+    this.renderer.shadowMap.autoUpdate = false;
+    cam.update(this.renderer, scene);
+    this.renderer.shadowMap.autoUpdate = autoShadow;
+    for (const [o, v] of hidden) o.visible = v;
 
     const prev = this._envRT;
     this._envRT = this._pmrem.fromCubemap(cubeRT.texture);
     scene.environment = this._envRT.texture;
 
-    domeCopy.geometry.dispose();
     cubeRT.dispose();
     if (prev) prev.dispose();
     return this._envRT.texture;

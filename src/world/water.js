@@ -147,8 +147,6 @@ uniform sampler2D tFoam;
 uniform float uTime;
 uniform vec3 uDeep;
 uniform vec3 uShallow;
-uniform vec3 uSkyRefl;
-uniform vec3 uBankRefl;
 uniform vec3 uFoamCol;
 uniform float uWaterDbg;
 varying vec3 vWorldW;
@@ -358,20 +356,20 @@ export class Water {
        * only the deep middle of the basin is water-coloured. */
       depthWrite: false,
       side: THREE.DoubleSide,
-      /* Above the scene default of 0.34, because open water in a gap in the
-       * roof genuinely does see more sky than the shaded ground around it and
-       * the sheen of sky in it is doing more than any other single term to
-       * say "water" — but nothing like as far above it as the first pass had.
+      /* One, now that the map is worth sampling at full strength.
        *
-       * At 1.7 the pool blew out. A surface this smooth seen from eye height
-       * across a basin is almost entirely at grazing incidence, where the
-       * Fresnel term goes to one and the reflection is the *whole* of the
-       * shading; multiplying a uniform sky dome by five and then by a Fresnel
-       * of one gives a flat white field with the canopy's leaf shadows
-       * printed on it, which is what the arrival shot showed. The reflection
-       * has to stay in range so that the ripple riding on it is visible: a
-       * clipped highlight has no texture in it by definition. */
-      envMapIntensity: 0.42,
+       * At 1.7 against the old sky-only bake the pool blew out, and the note
+       * that replaced it explained why: a surface this smooth seen from eye
+       * height across a basin is almost entirely at grazing incidence, where
+       * Fresnel goes to one and the reflection is the *whole* of the shading.
+       * Multiplying a uniform bright dome by anything and then by a Fresnel of
+       * one gives a flat white field with the canopy's leaf shadows printed on
+       * it. The fault was never the multiplier; it was that the dome had no
+       * forest in it and therefore no dark to interleave with the bright. A
+       * capture of the actual surroundings is mostly trunks and leaf
+       * undersides, so full strength lands in range and the ripple riding on
+       * it keeps its contrast. */
+      envMapIntensity: 1.0,
     });
 
     m.onBeforeCompile = (sh) => {
@@ -515,9 +513,45 @@ export class Water {
           // of why a real pool has a bright far shore and a transparent near
           // one — the single strongest depth cue the surface has.
           vec3 nView = normalize((viewMatrix * vec4(gNormalW, 0.0)).xyz);
-          float ndv = clamp(dot(nView, normalize(vViewPosition)), 0.0, 1.0);
+          vec3 vDir = normalize(vViewPosition);
+          float ndv = clamp(dot(nView, vDir), 0.0, 1.0);
           float fres = pow(1.0 - ndv, 4.0);
           opa = clamp(mix(opa, 1.0, fres * 0.75), 0.0, 1.0);
+
+          /* The floor under that, and the reason the brook read as a paved
+           * path rather than as a stream.
+           *
+           * Coverage was derived from depth alone, which is right for the
+           * *body* of the water — two centimetres of it hides nothing — but a
+           * two-centimetre film still has a full surface, and a surface is
+           * what returns the sun. Alpha at nought scaled that highlight to
+           * nothing along with everything else, so the shallows rendered as
+           * wet gravel with no water on them at all: no glint, no sheen, and
+           * from directly above no Fresnel either, since that term only rescues
+           * the grazing case. A stream seen from the bank is mostly *not* at a
+           * grazing angle.
+           *
+           * So the specular lobe gets to vote on coverage. The highlight
+           * itself is left to the standard material, which computes it against
+           * the same ripple normal and — unlike anything added to emissive
+           * here — has the shadow term applied to it, so the brook stops
+           * glinting where the canopy is closed over it. */
+          #if NUM_DIR_LIGHTS > 0
+            vec3 hv = normalize(vDir + directionalLights[0].direction);
+            /* A hundred and ten, not the several hundred a mirror wants. The
+             * ripple normal here is already a filtered average over rather
+             * more surface than one highlight, so a lobe tight enough to be
+             * physical falls between the samples and never fires: at 380 the
+             * entire gallery moved by twenty-eight bytes. */
+            float glint = pow(clamp(dot(nView, hv), 0.0, 1.0), 110.0);
+            opa = clamp(max(opa, glint * 0.95 * (1.0 - foam) * gFlat), 0.0, 1.0);
+          #endif
+
+          /* And a floor from the sheen, so a film too thin to have a body
+           * still has a top. Small, because water genuinely is close to
+           * invisible from straight above — but not nought, which is what it
+           * was, and nought is why the brook rendered as a gravel path. */
+          opa = clamp(max(opa, (0.05 + fres * 0.45) * gFlat), 0.0, 1.0);
 
           /* And the reflection that goes with that opacity, which was the
            * missing half of the same physics.
@@ -550,9 +584,27 @@ export class Water {
            * is the brightest thing in the clearing. And because the ripple
            * normal is what decides which of those a given fragment gets, the
            * reflection breaks up into the moving mottle a real pool has —
-           * darks and brights interleaved — rather than a wash. */
-          vec3 rdir = reflect(normalize(vWorldW - cameraPosition), gNormalW);
-          vec3 refl = mix(uBankRefl, uSkyRefl, sstep(0.015, 0.34, rdir.y));
+           * darks and brights interleaved — rather than a wash.
+           *
+           * That reasoning is right and the two-colour ramp it produced was
+           * the best available while the environment map contained nothing but
+           * the sky dome — interpolating between a guess at the bank and a
+           * guess at the canopy gap is what you do when there is no image to
+           * sample. There is one now: the bake captures the scene, so the map
+           * holds the actual trunks, the actual litter and the actual hole in
+           * the roof, in the actual directions they lie in. Sampling it gets
+           * the mottle for free and gets it *right* — the far cliff is dark
+           * because the cliff is dark, not because a constant said so.
+           *
+           * View space, because getIBLRadiance reflects about the normal and
+           * then transforms the result out by the inverse view matrix. Both
+           * arguments are already computed above for the Fresnel term.
+           *
+           * Roughness rises with flow: a corrugated surface scatters its
+           * reflection, and asking the prefiltered chain for a blurrier mip is
+           * exactly how that is expressed. */
+          vec3 refl = getIBLRadiance(normalize(vViewPosition), nView,
+                                     mix(0.05, 0.55, min(1.0, gWaterSpd * 0.30)));
           /* And it is switched off where the water is moving fast, which is
            * the correction for the lip.
            *
@@ -701,15 +753,6 @@ export class Water {
          * when it called the pool "opaque matte grey-tan": one colour
          * everywhere is a painted plane by definition, whatever is under it. */
         uShallow: { value: new THREE.Color(0x2c3327) },
-        /* What a canopy gap looks like from below, which is what this pool
-         * reflects at a grazing angle and what it was returning nothing of.
-         * Deliberately a desaturated warm grey rather than a sky blue: the
-         * reflection is of a bright hole in a green roof seen through haze,
-         * and putting a real sky colour here is how water turns cyan. */
-        uSkyRefl: { value: new THREE.Color(0x8d9585) },
-        // The far bank, the cliff and the closed forest behind them, which is
-        // what a nearly horizontal bounce off this pool actually finds.
-        uBankRefl: { value: new THREE.Color(0x151a15) },
         /* Grey, not white, and this was the last thing wrong with the pool.
          *
          * Foam reads as white because it is the brightest thing in a river,

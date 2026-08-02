@@ -296,15 +296,14 @@ class Game {
     scene.add(this.water.root);
 
     await step(0.74, '烘焙环境光');
-    this.sky.bake(scene);
-    /* The environment map is the open sky, and under a roof of leaves only a
-     * fraction of it is visible from any surface. Handing surfaces the full
-     * unoccluded hemisphere is the other half of the blue-shadow problem, and
-     * it is specifically where the cyan cast on the broad understory leaves
-     * was coming from: those blades are near-horizontal and face straight up
-     * into it. The hemisphere light above carries the fill instead, because
-     * its upper colour is the underside of the canopy rather than the sky. */
-    scene.environmentIntensity = 0.34;
+    this._bakeEnv();
+    /* The map now carries the canopy's own occlusion, so surfaces are no
+     * longer handed a full unoccluded hemisphere and this no longer has to be
+     * a global dimmer hiding that. The cyan cast on the near-horizontal
+     * understory blades came from those leaves facing straight up into an open
+     * sky that the roof of the forest does not actually let them see; what
+     * they see now is leaves. */
+    scene.environmentIntensity = 1.0;
 
     await step(0.80, '塑造行者');
     this.walker = new Walker(this.camera, this.terrain, this.trail,
@@ -584,8 +583,32 @@ class Game {
     const sl = this.sky.sunLight();
     this.sun.color.copy(sl.color);
     this.sun.intensity = sl.intensity;
-    this.sky.bake(this.scene);
+    this._bakeEnv();
     this.canopy?.setSun(this.sky.sunDir);
+    return this;
+  }
+
+  /**
+   * Capture the surroundings into the environment map.
+   *
+   * The probe stands on the trail rather than at the origin, because an
+   * image-based light has no position and the only choice available is which
+   * single place in the level it lies about least. Mid-trail under closed
+   * canopy is where the player spends the walk; the clearing and the falls are
+   * brighter than this map says, and they are also the two places with enough
+   * direct sun that the environment term is not carrying the frame.
+   */
+  _bakeEnv() {
+    const p = this._envProbe || (this._envProbe = new THREE.Vector3());
+    this.trail.pointAt(0.5, p);
+    p.y = this.terrain.height(p.x, p.z) + 1.7;
+    this.sky.bake(this.scene, {
+      probe: p,
+      /* The water is the main consumer of this map; capturing it would make
+       * the reflection a function of itself. The body is excluded because a
+       * probe at eye height is standing inside it. */
+      exclude: [this.water?.root, this.body?.root].filter(Boolean),
+    });
     return this;
   }
 
