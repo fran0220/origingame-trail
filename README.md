@@ -1,6 +1,6 @@
 # OriginGame Trail
 
-[![Play](https://img.shields.io/badge/play-origingame.dev-2ea44f)](https://play.origingame.dev/yupadwblpc/)
+[Play on OriginGame](https://play.origingame.dev/yupadwblpc/)
 
 A first-person walk down a winding jungle trail into overgrown stone ruins with a
 waterfall, built in Three.js with zero external art assets — and, on top of that
