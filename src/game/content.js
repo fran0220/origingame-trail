@@ -220,3 +220,16 @@ export function chapterAt(t) {
 
 /** Total records the player can collect. Drives the sun and the finale gate. */
 export const TOTAL_RECORDS = GLYPHS.length + SUBJECTS.length;
+
+/* Everything above, as the one object the game layer is handed.
+ *
+ * The run state, the HUD and the session used to `import { GLYPHS, SUBJECTS }`
+ * from this file directly, which quietly made three general-purpose modules
+ * into modules about *this* level: a notebook that can only count this level's
+ * two collections, and a save that can only be restored against this level's
+ * ids. None of those three files has an opinion about jungles; they were only
+ * ever reaching for whatever tables happened to be here. Handed the tables
+ * instead, they work for any level that can produce a pair, and this file
+ * becomes what it always described itself as — one level's content.
+ */
+export const content = { GLYPHS, SUBJECTS, CHAPTERS, chapterAt, TOTAL_RECORDS };

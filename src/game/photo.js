@@ -14,7 +14,6 @@
  * the falls through a gap in the canopy is a shot of the falls.
  */
 import * as THREE from 'three';
-import { SUBJECTS } from './content.js';
 import { resolveAnchor } from './anchors.js';
 
 /* The viewfinder's frame as a fraction of the canvas, matching the mask in
@@ -58,7 +57,7 @@ export class PhotoCamera {
    * @param {import('../player/controller.js').Walker} walker
    * @param {{trail:object, terrain:object, veg:object}} world
    */
-  constructor(camera, walker, world) {
+  constructor(camera, walker, world, defs = []) {
     this.camera = camera;
     this.walker = walker;
     this.terrain = world.terrain;
@@ -76,7 +75,7 @@ export class PhotoCamera {
      */
     this.advice = null;
 
-    this.subjects = SUBJECTS.map((def) => {
+    this.subjects = defs.map((def) => {
       const ground = resolveAnchor(def.at, world);
       return {
         ...def,

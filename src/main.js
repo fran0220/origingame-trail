@@ -9,7 +9,10 @@ import * as THREE from 'three';
 import { Trail } from './world/path.js';
 import { Terrain, makeTerrainMaterial } from './world/terrain.js';
 import { Sky } from './render/sky.js';
-import { Vegetation } from './world/vegetation.js';
+import { Vegetation, roofDensity } from './world/vegetation.js';
+import { standingWater } from './world/spillway.js';
+import { drawWater } from './world/mapwater.js';
+import { content } from './game/content.js';
 import { RuinPlan, Ruins } from './world/ruins.js';
 import { Water, IMPACT, LIP } from './world/water.js';
 import { Walker } from './player/controller.js';
@@ -308,7 +311,9 @@ class Game {
 
     await step(0.46, '种植林木');
     this.veg = new Vegetation(this.renderer, this.terrain, this.trail, undefined,
-                              this.ruins, this.collision);
+                              this.ruins, this.collision, {
+      waterMask: (x, z, y, q) => standingWater(x, z, y, this.terrain.brook, q),
+    });
     scene.add(this.veg.root);
 
     /* Built after the vegetation, and the order matters even though water
@@ -351,7 +356,7 @@ class Game {
      * can be patched — but the split is also the honest description of what
      * this system is. */
     await step(0.86, '计算林冠透光');
-    this.field = buildWorldField(this.terrain);
+    this.field = buildWorldField(this.terrain, roofDensity);
     this.canopy = new Canopy(this.renderer, this.field);
     this.canopy.setSun(this.sky.sunDir);
     this.atmos = new Atmosphere(this.renderer, this.canopy);
@@ -410,6 +415,8 @@ class Game {
       veg: this.veg,
       collision: this.collision,
       ambience: this.ambience,
+      mapWater: drawWater,
+      content,
     });
     scene.add(this.session.glyphs.root);
     // Added to the same exhaustive list as every other opaque surface: a
@@ -838,7 +845,7 @@ function attachDevWarps(game) {
 }
 
 async function boot() {
-  const hud = new Hud();
+  const hud = new Hud(content);
   if (platform.online) hud.useHostLoading();
   platform.loading.begin();
 

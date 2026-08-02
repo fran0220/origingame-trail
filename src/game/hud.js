@@ -11,13 +11,15 @@
  * scratch, so the styling is all in one place and the HUD cannot drift into
  * having two visual languages.
  */
-import { GLYPHS, SUBJECTS } from './content.js';
+
 import { MIN_QUALITY } from './photo.js';
 
 const $ = (sel) => document.querySelector(sel);
 
 export class Hud {
-  constructor() {
+  /** @param {{GLYPHS:Array, SUBJECTS:Array}} content the level's tables. */
+  constructor(content) {
+    this.content = content;
     this.el = {
       hud: $('#hud'),
       boot: $('#boot'),
@@ -281,6 +283,7 @@ export class Hud {
   }
 
   renderBook(state) {
+    const { GLYPHS, SUBJECTS } = this.content;
     const glyphs = state.glyphs.size, photos = state.photos.size;
     const total = GLYPHS.length + SUBJECTS.length;
     this.el.bookSub.textContent =

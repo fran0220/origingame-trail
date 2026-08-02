@@ -15,30 +15,29 @@
  * with no identity. A map that marked all twelve would turn a game about
  * looking into a game about walking between icons.
  */
-import { BOUNDS } from '../world/terrain.js';
-import { BROOK_T0, BROOK_T1, BROOK_HEAD, brookOffset, SWALLOW } from '../world/brook.js';
-import { smoothstep } from '../world/noise.js';
-import { POOL, SPILL_Z0, SPILL_Z1, spillCentre, spillHalf } from '../world/spillway.js';
-import { trailOffset } from './anchors.js';
-
 /** Pixels per metre in the baked image. */
-const PPM = 2;
+export const PPM = 2;
 /** View radii the M key cycles through, in metres. */
 export const ZOOMS = [40, 100];
 
 const TAU = Math.PI * 2;
-const _off = { x: 0, z: 0 };
 
 export class Minimap {
   /**
    * @param {HTMLCanvasElement} canvas
-   * @param {{trail:object, terrain:object}} world
+   * @param {{trail:object, terrain:object, mapWater?: (ctx:CanvasRenderingContext2D, map:Minimap) => void}} world
+   *   `mapWater` draws the level's surface water into the bake, in map pixels,
+   *   through `mx`/`my`. It is the level's job and not this file's: a map can
+   *   only draw water from the geometry that made it, and that geometry is a
+   *   different set of modules in every level. A level with no surface water
+   *   omits it.
    */
   constructor(canvas, world) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.trail = world.trail;
     this.terrain = world.terrain;
+    this.mapWater = world.mapWater ?? null;
     this.zoom = 0;
     this.size = 0;
     this.dpr = 1;
@@ -55,7 +54,7 @@ export class Minimap {
    * is five times less work for a picture 180 pixels across.
    */
   bake() {
-    const { x0, x1, z0, z1 } = BOUNDS;
+    const { x0, x1, z0, z1 } = this.terrain.bounds;
     const w = this.bw = Math.round((x1 - x0) * PPM);
     const h = this.bh = Math.round((z0 - z1) * PPM);
     this.x0 = x0; this.z1 = z1;
@@ -132,75 +131,10 @@ export class Minimap {
      * drawn over water: the brook is never nearer than 3.6 m to the tread, and
      * where the two do meet, the water is the fact that decides where you can
      * walk. */
-    this._water(bctx);
+    this.mapWater?.(bctx, this);
 
     this.base = base;
     return this;
-  }
-
-  /**
-   * The water, drawn from the geometry that made it.
-   *
-   * Not from Terrain.wetAt(): that field is *moisture*, and it reaches forty
-   * metres out from the falls as spray. Painting it as water put a lake over
-   * the whole ruins clearing. The pool, the channel, the spillway and the
-   * swallow hole each know their own plan, so the map asks them.
-   */
-  _water(ctx) {
-    ctx.fillStyle = 'rgba(46,104,118,.92)';
-    ctx.strokeStyle = 'rgba(46,104,118,.92)';
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    ctx.beginPath();
-    ctx.arc(this.mx(POOL.x), this.my(POOL.z), POOL.r * PPM, 0, TAU);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(this.mx(SWALLOW.x), this.my(SWALLOW.z), SWALLOW.r * PPM, 0, TAU);
-    ctx.fill();
-
-    // The run below the pool, which is where the falls actually land.
-    ctx.beginPath();
-    let first = true;
-    for (let z = SPILL_Z0; z >= SPILL_Z1; z -= 1) {
-      const cx = spillCentre(z);
-      const px = this.mx(cx + spillHalf(z)), py = this.my(z);
-      if (first) { ctx.moveTo(px, py); first = false; } else ctx.lineTo(px, py);
-    }
-    for (let z = SPILL_Z1; z <= SPILL_Z0; z += 1) {
-      ctx.lineTo(this.mx(spillCentre(z) - spillHalf(z)), this.my(z));
-    }
-    ctx.closePath();
-    ctx.fill();
-
-    /* The brook, on the trail's own offset curve, resolved through the same
-     * trailOffset() the content anchors use.
-     *
-     * This started out with its own copy of the lateral basis and got the sign
-     * backwards, which drew the stream on the dry side of the path — twenty-two
-     * metres from the water at the point the level asks you to photograph it.
-     * There is exactly one right answer to "which side is `off` on" and it is
-     * not one worth writing down twice. */
-    ctx.lineWidth = 2.6 * PPM;
-    let prev = null;
-    for (let t = BROOK_T0; t <= BROOK_T1 + 1e-6; t += 0.002) {
-      const c = trailOffset(t, brookOffset(t), this.trail, _off);
-      const px = this.mx(c.x), py = this.my(c.z);
-      /* The head of the channel is a seep, not a stream: the level ramps the
-       * water in over BROOK_HEAD of arc length. Stroking the full-weight line
-       * all the way to BROOK_T0 would promise a brook some twenty-five metres
-       * before there is one to find. */
-      if (prev) {
-        ctx.globalAlpha = smoothstep(BROOK_T0, BROOK_T0 + BROOK_HEAD, t);
-        ctx.beginPath();
-        ctx.moveTo(prev[0], prev[1]);
-        ctx.lineTo(px, py);
-        ctx.stroke();
-      }
-      prev = [px, py];
-    }
-    ctx.globalAlpha = 1;
   }
 
   mx(x) { return (x - this.x0) * PPM; }

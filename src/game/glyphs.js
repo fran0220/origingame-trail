@@ -14,7 +14,6 @@
 import * as THREE from 'three';
 import { bakeSurface } from '../gfx/bake.js';
 import { TABLET_ATLAS, ATLAS_COLS, ATLAS_ROWS, BLANK_PANEL } from './glyphTex.js';
-import { GLYPHS } from './content.js';
 import { resolveAnchor } from './anchors.js';
 
 const W = 0.92;         // slab width
@@ -36,7 +35,10 @@ export class Glyphs {
    * @param {{trail:object, terrain:object, veg:object}} world
    * @param {import('../player/collision.js').CollisionWorld} [collision]
    */
-  constructor(renderer, world, collision = null) {
+  constructor(renderer, world, collision = null, defs = []) {
+    /** The level's tablets. Handed in, because which tablets exist — and
+     * whether the level has any at all — is that level's content. */
+    this.defs = defs;
     this.root = new THREE.Group();
     this.root.name = 'glyphs';
     this.items = [];
@@ -66,7 +68,7 @@ export class Glyphs {
      * one aliased rather than a duplicate attribute. */
     geo.setAttribute('uv1', geo.getAttribute('uv'));
 
-    GLYPHS.forEach((def, i) => {
+    this.defs.forEach((def, i) => {
       const mesh = new THREE.Mesh(remapToPanel(geo.clone(), i), this.material);
       const ground = resolveAnchor(def.at, world);
       const facing = faceTowardTrail(ground, world.trail);

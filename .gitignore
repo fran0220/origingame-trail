@@ -26,3 +26,11 @@ media/smoke.png
 # under a baseline are ignored and the numbers beside them are not.
 media/iter-*/
 media/base-*/*.jpg
+
+# The level regression baseline and its working shots. Machine-specific for
+# the same reason the gallery's images are — these frames are software-rendered
+# here and a real GPU produces different bytes for the same scene — so the
+# baseline is captured fresh before a refactor rather than shipped. Rebuild it
+# with `node tools/leveldiff.mjs --save`.
+media/baseline/
+media/leveldiff/

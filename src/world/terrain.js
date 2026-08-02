@@ -71,6 +71,18 @@ export class Terrain {
     this.n = new Noise2D(seed);
     this.nb = new Noise2D(seed ^ 0x9e3779b9);
 
+    /* The extent of the world, carried on the instance rather than read off a
+     * module constant by everyone who needs it.
+     *
+     * Four other systems — the world field, the minimap, the scatter grid and
+     * the terrain itself — have to agree on where the level stops, and each of
+     * them used to import the same constant from this file. That is fine while
+     * there is one level and wrong the moment there are two: a second level
+     * with a different extent cannot import a first level's constant, and a
+     * shared system that does has quietly picked a side. Asking the terrain
+     * instance in front of you is the same answer with none of that. */
+    this.bounds = BOUNDS;
+
     this.step = STEP;
     this.x0 = BOUNDS.x0; this.z0 = BOUNDS.z0;
     this.W = Math.round((BOUNDS.x1 - BOUNDS.x0) / STEP) + 1;

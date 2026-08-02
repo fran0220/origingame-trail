@@ -12,7 +12,6 @@
  * seconds. The debounce is flushed on the events that mean "this session may
  * not get another frame": pagehide, visibility change and the finale.
  */
-import { GLYPHS, SUBJECTS, TOTAL_RECORDS } from './content.js';
 import * as platform from './platform.js';
 
 const SAVE_VERSION = 1;
@@ -20,7 +19,13 @@ const THUMB_KEY = 'jungle-trail/thumbs/v1';
 const SAVE_DEBOUNCE_MS = 12_000;
 
 export class RunState {
-  constructor() {
+  /**
+   * @param {{GLYPHS:Array, SUBJECTS:Array, TOTAL_RECORDS:number}} content
+   *   The level's collection tables. Held rather than imported so that a
+   *   restore is checked against the ids of the level being played.
+   */
+  constructor(content) {
+    this.content = content;
     this.glyphs = new Set();
     /** id → framing quality in [0,1]. */
     this.photos = new Map();
@@ -62,7 +67,7 @@ export class RunState {
   /* ------------------------------------------------------------ queries */
 
   get records() { return this.glyphs.size + this.photos.size; }
-  get complete() { return this.records >= TOTAL_RECORDS; }
+  get complete() { return this.records >= this.content.TOTAL_RECORDS; }
   hasGlyph(id) { return this.glyphs.has(id); }
   hasPhoto(id) { return this.photos.has(id); }
 
@@ -151,8 +156,8 @@ export class RunState {
    */
   restore(data) {
     if (!data || data.v !== SAVE_VERSION) return false;
-    const glyphIds = new Set(GLYPHS.map((g) => g.id));
-    const subjectIds = new Set(SUBJECTS.map((s) => s.id));
+    const glyphIds = new Set(this.content.GLYPHS.map((g) => g.id));
+    const subjectIds = new Set(this.content.SUBJECTS.map((s) => s.id));
 
     if (Array.isArray(data.glyphs)) {
       for (const id of data.glyphs) if (glyphIds.has(id)) this.glyphs.add(id);

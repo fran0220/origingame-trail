@@ -13,7 +13,6 @@ import { Minimap, Compass, ZOOMS } from './minimap.js';
 import { PhotoCamera, captureThumbnail } from './photo.js';
 import { Cues } from './cues.js';
 import { RunState } from './state.js';
-import { chapterAt, GLYPHS, SUBJECTS, TOTAL_RECORDS } from './content.js';
 import { formatTime } from './hud.js';
 import * as platform from './platform.js';
 
@@ -36,7 +35,7 @@ const _tan = new THREE.Vector3();
 export class Session {
   /**
    * @param {object} deps { game, hud, renderer, camera, canvas, walker,
-   *                        trail, terrain, veg, collision, ambience }
+   *                        trail, terrain, veg, collision, ambience, mapWater }
    */
   constructor(deps) {
     this.game = deps.game;
@@ -46,11 +45,17 @@ export class Session {
     this.walker = deps.walker;
     this.trail = deps.trail;
 
-    const world = { trail: deps.trail, terrain: deps.terrain, veg: deps.veg };
-    this.glyphs = new Glyphs(deps.renderer, world, deps.collision);
-    this.photo = new PhotoCamera(deps.camera, deps.walker, world);
+    const world = {
+      trail: deps.trail, terrain: deps.terrain, veg: deps.veg,
+      mapWater: deps.mapWater ?? null,
+    };
+    this.content = deps.content;
+    this.glyphs = new Glyphs(deps.renderer, world, deps.collision,
+                             deps.content.GLYPHS);
+    this.photo = new PhotoCamera(deps.camera, deps.walker, world,
+                                 deps.content.SUBJECTS);
     this.cues = new Cues(deps.ambience);
-    this.state = new RunState();
+    this.state = new RunState(deps.content);
     this.minimap = new Minimap(this.hud.el.mapCanvas, world);
     this.compass = new Compass(this.hud.el.compass);
     /* Three states, not two: forty metres is the search radius, eighty is for
@@ -109,7 +114,7 @@ export class Session {
     this.chapterOf = new Map();
     this.byChapter = new Map();
     const file = (key, x, z) => {
-      const ch = chapterAt(this.trail.nearest(x, z, this._q).t);
+      const ch = this.content.chapterAt(this.trail.nearest(x, z, this._q).t);
       this.chapterOf.set(key, ch);
       if (!this.byChapter.has(ch.id)) this.byChapter.set(ch.id, []);
       this.byChapter.get(ch.id).push(key);
@@ -149,7 +154,7 @@ export class Session {
     if (this.state.restored) {
       this.hud.toast({
         kind: '继续', title: '回到你上次停下的地方',
-        sub: `已记录 ${this.state.records}/${TOTAL_RECORDS} · ${formatTime(this.state.elapsedMs)}`,
+        sub: `已记录 ${this.state.records}/${this.content.TOTAL_RECORDS} · ${formatTime(this.state.elapsedMs)}`,
       });
     }
   }
@@ -305,8 +310,8 @@ export class Session {
 
   refreshCounters(bump = null) {
     this.hud.setCounters(
-      this.state.glyphs.size, GLYPHS.length,
-      this.state.photos.size, SUBJECTS.length,
+      this.state.glyphs.size, this.content.GLYPHS.length,
+      this.state.photos.size, this.content.SUBJECTS.length,
       bump,
     );
     if (this.hud.bookOpen) this.hud.renderBook(this.state);
@@ -365,8 +370,8 @@ export class Session {
     this.hud.showFinale({
       title: wasFinished ? '记录已更新' : title,
       rows: [
-        ['铭文拓片', `${this.state.glyphs.size} / ${GLYPHS.length}`],
-        ['物种图鉴', `${this.state.photos.size} / ${SUBJECTS.length}`],
+        ['铭文拓片', `${this.state.glyphs.size} / ${this.content.GLYPHS.length}`],
+        ['物种图鉴', `${this.state.photos.size} / ${this.content.SUBJECTS.length}`],
         ['平均构图', `${Math.round(avg * 100)}%`],
         ['行程用时', formatTime(this.state.elapsedMs)],
         ['成绩', this.state.finalScore + (submitted ? `　第 ${submitted.rank} 名` : ''), true],
@@ -451,17 +456,17 @@ export class Session {
     return (this.byChapter.get(chapterId) ?? []).map((key) => {
       const id = key.slice(key.indexOf(':') + 1);
       if (key.startsWith('glyph:')) {
-        const g = GLYPHS.find((d) => d.id === id);
+        const g = this.content.GLYPHS.find((d) => d.id === id);
         return { title: g.title, hint: g.hint ?? '在小径沿途', found: this.state.hasGlyph(id) };
       }
-      const s = SUBJECTS.find((d) => d.id === id);
+      const s = this.content.SUBJECTS.find((d) => d.id === id);
       return { title: s.title, hint: s.hint, found: this.state.hasPhoto(id) };
     });
   }
 
   _syncChapter(force) {
     const t = this._trailT();
-    const ch = chapterAt(t);
+    const ch = this.content.chapterAt(t);
     const p = this._chapterProgress(ch.id);
     this.hud.setChapter(ch.name, t * this.trail.length, p.done, p.total);
     /* Rebuilt only when its contents can have changed. The panel is otherwise

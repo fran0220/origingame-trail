@@ -32,8 +32,7 @@ import * as THREE from 'three';
 import { bakeImage, bakeSurface } from '../gfx/bake.js';
 import { LEAF_FRAG, BARK } from './plantTex.js';
 import { makeRng, fern, broadleaf, palm, treeFern, sprig, tussock, vine, tree, canopyPatch, thicket, sapling, log, deadVine, supplejack, litterMat, rootRun } from './plants.js';
-import { BOUNDS } from './terrain.js';
-import { standingWater } from './spillway.js';
+
 
 const ATLAS_PX = 2048;
 
@@ -571,13 +570,21 @@ export class Vegetation {
    *   stone rather than through it, and so that the wall feet get the extra
    *   density every real ruin has along them.
    * @param {import('../player/collision.js').CollisionWorld} [collision]
+   * @param {{waterMask?: (x:number, z:number, y:number, q:object) => number}} [opts]
+   *   `waterMask` returns how deep the standing water is at a point, and is
+   *   the level's to answer: the scatter grid needs to know not to root a
+   *   plant in a stream, but *what counts as a stream* is a fact about the
+   *   level's own hydrology and not something a shared scatterer can know.
+   *   A level with no surface water omits it and every candidate reads dry.
    */
-  constructor(renderer, terrain, trail, seed = 7717, ruins = null, collision = null) {
+  constructor(renderer, terrain, trail, seed = 7717, ruins = null, collision = null,
+              opts = {}) {
     this.renderer = renderer;
     this.terrain = terrain;
     this.trail = trail;
     this.ruins = ruins;
     this.collision = collision;
+    this.waterMask = opts.waterMask ?? (() => 0);
     this.root = new THREE.Group();
     this.root.name = 'vegetation';
     this.time = 0;
@@ -825,11 +832,12 @@ export class Vegetation {
      * normal and mask lookups, is the difference between a boot that takes a
      * second and one that takes ten. */
     const maxDist = SPECIES_LOD[name].cull;
-    for (let z = BOUNDS.z0; z > BOUNDS.z1; z -= spacing) {
-      for (let x = BOUNDS.x0; x < BOUNDS.x1; x += spacing) {
+    const B = this.terrain.bounds;
+    for (let z = B.z0; z > B.z1; z -= spacing) {
+      for (let x = B.x0; x < B.x1; x += spacing) {
         const px = x + (rng() - 0.5) * spacing * 1.7;
         const pz = z + (rng() - 0.5) * spacing * 1.7;
-        if (px < BOUNDS.x0 || px > BOUNDS.x1 || pz > BOUNDS.z0 || pz < BOUNDS.z1) continue;
+        if (px < B.x0 || px > B.x1 || pz > B.z0 || pz < B.z1) continue;
         this.trail.nearest(px, pz, q);
         if (q.dist > maxDist) continue;
         let y = t.height(px, pz);
@@ -850,7 +858,7 @@ export class Vegetation {
          * passed the generous test above. Debris also conforms fully to the
          * ground, so it has no vertical extent to lift it clear the way a plant
          * does; there is nothing for the tolerance to buy. */
-        const wd = standingWater(px, pz, y, t.brook, q);
+        const wd = this.waterMask(px, pz, y, q);
         if (wd > (name === 'litterMat' ? 0.005 : 0.06)) continue;
         /* And the same question asked of the patch rather than of the point.
          *
@@ -872,7 +880,7 @@ export class Vegetation {
             const ax = px + R * Math.cos(a * Math.PI / 2);
             const az = pz + R * Math.sin(a * Math.PI / 2);
             this.trail.nearest(ax, az, qw);
-            if (standingWater(ax, az, t.height(ax, az), t.brook, qw) > 0.005) { over = true; break; }
+            if (this.waterMask(ax, az, t.height(ax, az), qw) > 0.005) { over = true; break; }
           }
           if (over) continue;
         }
@@ -1880,6 +1888,37 @@ export class Vegetation {
 function smoothstep(e0, e1, x) {
   const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
   return t * t * (3 - 2 * t);
+}
+
+/* How much roof is over a point, 0 for open sky and 1 for closed canopy.
+ *
+ * The world field samples this so the volumetric light knows where the holes
+ * are. It lives here, next to the `canopy` and `canopy2` scatter rules, and
+ * not in the renderer that consumes it, because it is not an approximation of
+ * those rules — it is the same two gap functions at the same phases and the
+ * same scales, read as a continuous field instead of as an acceptance
+ * probability. Kept in the other file it was a comment asking two sets of
+ * magic numbers to be edited together, which is a promise a comment cannot
+ * keep. Kept here, a shaft cannot land somewhere the roof is solid without
+ * someone editing these lines to make it happen.
+ */
+export function roofDensity(x, z, t, dist) {
+  const gap1 = smoothstep(0.12, 0.52,
+    Math.abs(Math.sin(x * 0.058) * Math.cos(z * 0.046)
+           + 0.55 * Math.sin(x * 0.023 + z * 0.019)));
+  const gap2 = smoothstep(0.10, 0.50,
+    Math.abs(Math.sin(x * 0.037 + 2.1) * Math.cos(z * 0.029 - 1.3)
+           + 0.6 * Math.sin(z * 0.019 - x * 0.014)));
+  // The two storeys multiply: light has to find a hole in both to get down.
+  let d = (0.52 + 0.48 * gap1) * (0.58 + 0.42 * gap2);
+  /* The light well over the path. Only the subcanopy layer thins here, so the
+   * effect is modest by design — the roof above a jungle trail is not open,
+   * it is merely thinner, and a corridor of bright sky over the path would
+   * read as a fire break rather than as a footpath. */
+  d *= 1 - 0.20 * (1 - smoothstep(2.5, 13.0, dist));
+  // And the clearing at the end of the walk genuinely has no canopy over it.
+  d *= 1 - 0.90 * smoothstep(0.79, 0.93, t);
+  return d;
 }
 
 function vhash(i, j, s) {

@@ -19,7 +19,6 @@
  * the eye is looking at.
  */
 import * as THREE from 'three';
-import { BOUNDS } from '../world/terrain.js';
 
 export const FIELD_STEP = 1.0;
 
@@ -28,47 +27,32 @@ const smoothstep = (e0, e1, x) => {
   return t * t * (3 - 2 * t);
 };
 
-/* How much roof there is over a point, 0 for open sky and 1 for closed canopy.
+/* An unroofed world, for a level that has no canopy to describe.
  *
- * This is not a guess at the canopy; it is the *same* pair of gap functions
- * that vegetation.js uses to decide where to place the two canopy storeys,
- * evaluated as a continuous field instead of as an acceptance probability.
- * That matters more than it might look: the whole point of the dappled light
- * is that the shafts land where the roof actually has holes in it, and a
- * shaft arriving somewhere the geometry above is solid is the kind of error
- * that is not noticeable frame by frame and is deeply wrong when you walk
- * through it. If those constants ever move in vegetation.js they have to move
- * here as well.
- */
-function roofDensity(x, z, t, dist) {
-  const gap1 = smoothstep(0.12, 0.52,
-    Math.abs(Math.sin(x * 0.058) * Math.cos(z * 0.046)
-           + 0.55 * Math.sin(x * 0.023 + z * 0.019)));
-  const gap2 = smoothstep(0.10, 0.50,
-    Math.abs(Math.sin(x * 0.037 + 2.1) * Math.cos(z * 0.029 - 1.3)
-           + 0.6 * Math.sin(z * 0.019 - x * 0.014)));
-  // The two storeys multiply: light has to find a hole in both to get down.
-  let d = (0.52 + 0.48 * gap1) * (0.58 + 0.42 * gap2);
-  /* The light well over the path. Only the subcanopy layer thins here, so the
-   * effect is modest by design — the roof above a jungle trail is not open,
-   * it is merely thinner, and a corridor of bright sky over the path would
-   * read as a fire break rather than as a footpath. */
-  d *= 1 - 0.20 * (1 - smoothstep(2.5, 13.0, dist));
-  // And the clearing at the end of the walk genuinely has no canopy over it.
-  d *= 1 - 0.90 * smoothstep(0.79, 0.93, t);
-  return d;
-}
+ * The roof channel is a *level's* answer, not the engine's: it says where that
+ * level's foliage has holes in it, and the constants that answer it belong
+ * beside the scatter rules that put the foliage there. A basin under open sky
+ * is 0 everywhere and says so here rather than by shipping a canopy function
+ * that happens to evaluate to nothing. */
+const NO_ROOF = () => 0;
 
 /**
  * @param {import('../world/terrain.js').Terrain} terrain
+ * @param {(x:number, z:number, t:number, dist:number) => number} [roof]
+ *   How much roof is over a point, 0 for open sky and 1 for closed canopy.
+ *   Supplied by the level, because the whole value of this channel is that it
+ *   agrees with the geometry that level actually scattered — a light shaft
+ *   arriving somewhere the canopy above is solid is an error you cannot see
+ *   frame by frame and cannot unsee once you walk through it.
  * @returns {{texture: THREE.DataTexture, map: THREE.Vector4, width:number, height:number}}
  *   `map` is (x0, z0, 1/spanX, 1/spanZ) — everything a shader needs to turn a
  *   world xz into a uv, packed into the one uniform it will already be reading.
  */
-export function buildWorldField(terrain) {
-  const x0 = BOUNDS.x0, z0 = BOUNDS.z0;
-  const spanX = BOUNDS.x1 - BOUNDS.x0;
-  const spanZ = BOUNDS.z0 - BOUNDS.z1;
+export function buildWorldField(terrain, roof = NO_ROOF) {
+  const b = terrain.bounds;
+  const x0 = b.x0, z0 = b.z0;
+  const spanX = b.x1 - b.x0;
+  const spanZ = b.z0 - b.z1;
   const W = Math.round(spanX / FIELD_STEP) + 1;
   const H = Math.round(spanZ / FIELD_STEP) + 1;
 
@@ -83,7 +67,7 @@ export function buildWorldField(terrain) {
       const k = (j * W + i) * 4;
       data[k] = half(terrain.height(x, z));
       data[k + 1] = half(terrain.hollowAt(x, z));
-      data[k + 2] = half(roofDensity(x, z, q.t, q.dist));
+      data[k + 2] = half(roof(x, z, q.t, q.dist));
       data[k + 3] = half(terrain.wetAt(x, z));
     }
   }
