@@ -45,8 +45,8 @@ const setup = await page.evaluate(async () => {
   g.walker.enabled = true;
   document.getElementById('hud').style.display = 'none';
   g.setSun(38, 152);
-  const { brookOffset } = await import('/src/world/brook.js');
-  const { trailOffset } = await import('/src/game/anchors.js');
+  const { brookOffset } = await import(new URL('src/world/brook.js', document.baseURI).href);
+  const { trailOffset } = await import(new URL('src/game/anchors.js', document.baseURI).href);
 
   const t = 0.60;
   const wet = trailOffset(t, brookOffset(t), g.trail);
@@ -163,4 +163,5 @@ console.log(JSON.stringify({
   dryMovedPct: +(dryMoved * 100).toFixed(2),
   failures,
 }, null, 1));
-process.exit(failures.length ? 1 : 0);
+if (failures.length) process.exit(1);
+console.log('ok — the bed under the water moves, and the bank beside it does not');

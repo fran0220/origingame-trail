@@ -71,9 +71,9 @@ await page.evaluate(() => {
 const stations = await page.evaluate(async () => {
   const g = window.__game;
   const THREE = window.THREE;
-  const { brookOffset } = await import('/src/world/brook.js');
-  const { trailOffset } = await import('/src/game/anchors.js');
-  const { POOL } = await import('/src/world/spillway.js');
+  const { brookOffset } = await import(new URL('src/world/brook.js', document.baseURI).href);
+  const { trailOffset } = await import(new URL('src/game/anchors.js', document.baseURI).href);
+  const { POOL } = await import(new URL('src/world/spillway.js', document.baseURI).href);
   const P = new THREE.Vector3(), T = new THREE.Vector3();
   const out = [];
 

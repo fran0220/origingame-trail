@@ -57,8 +57,8 @@ const result = await page.evaluate(async () => {
     return false;
   };
 
-  const { BROOK_T0, BROOK_T1, BROOK_HEAD, brookOffset } = await import('/src/world/brook.js');
-  const { trailOffset } = await import('/src/game/anchors.js');
+  const { BROOK_T0, BROOK_T1, BROOK_HEAD, brookOffset } = await import(new URL('src/world/brook.js', document.baseURI).href);
+  const { trailOffset } = await import(new URL('src/game/anchors.js', document.baseURI).href);
 
   /* 1. Wherever the level has water, the map has to show water — and, just as
    * importantly, where the level is dry the map has to be dry. The inverted
@@ -94,7 +94,7 @@ const result = await page.evaluate(async () => {
   }
 
   // 3. The pool, at its centre and at its rim.
-  const { POOL } = await import('/src/world/spillway.js');
+  const { POOL } = await import(new URL('src/world/spillway.js', document.baseURI).href);
   for (const [dx, dz, name] of [[0, 0, 'centre'], [POOL.r * 0.7, 0, 'rim']]) {
     const drawn = isWaterAt(POOL.x + dx, POOL.z + dz, 1);
     samples.push({ what: `pool-${name}`, drawn });
