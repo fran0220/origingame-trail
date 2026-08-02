@@ -1517,7 +1517,16 @@ export class Vegetation {
      * well past anything the fog lets through, so there is no distance at
      * which the eye finds a way out of the forest. */
     this._add('thicket', this._scatter('thicket', 3.4, (c) => {
-      if (c.dist < 16 || c.dist > 125 || c.stone) return 0;
+      /* The card cheat is safe exactly as far as the air is thick. Under the
+       * closed roof sixteen metres of fog and layered understory keep a card
+       * from ever being resolved; in the clearing the fog thins, the light
+       * comes in, and a card at that range stops being a mass and becomes
+       * what it is — leaves hanging in the open air with no stem under them,
+       * strung in a line over the rubble. So the near edge of the wall backs
+       * off as the sky opens, and the clearing keeps only the far members the
+       * haze can still cover for. */
+      const minD = 16 + 34 * c.clr;
+      if (c.dist < minD || c.dist > 125 || c.stone) return 0;
       if (c.slope > 0.85) return 0;
       return 0.80 * (1 - 0.7 * smoothstep(0.82, 0.95, c.t)) * rooting(c, 0.95, 0.3);
     }, (c) => {
