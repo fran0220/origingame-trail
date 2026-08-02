@@ -6,15 +6,8 @@
  * load-bearing rather than debug convenience.
  */
 import * as THREE from 'three';
-import { Trail } from './world/path.js';
-import { Terrain, makeTerrainMaterial } from './world/terrain.js';
 import { Sky } from './render/sky.js';
-import { Vegetation, roofDensity } from './world/vegetation.js';
-import { standingWater } from './world/spillway.js';
-import { drawWater } from './world/mapwater.js';
-import { content } from './game/content.js';
-import { RuinPlan, Ruins } from './world/ruins.js';
-import { Water, IMPACT, LIP } from './world/water.js';
+import * as jungle from './levels/jungle/index.js';
 import { Walker } from './player/controller.js';
 import { CollisionWorld } from './player/collision.js';
 import {
@@ -24,7 +17,6 @@ import {
 import { buildWorldField } from './render/field.js';
 import { Canopy, patchCanopyLight } from './render/canopy.js';
 import { Atmosphere } from './render/atmosphere.js';
-import { Ambience } from './audio/engine.js';
 import { Hud } from './game/hud.js';
 import { Session } from './game/session.js';
 import * as platform from './game/platform.js';
@@ -65,9 +57,17 @@ const TIERS = {
 };
 const TIER_ORDER = ['low', 'medium', 'high', 'ultra'];
 
+/* The levels this build ships, in the order the picker offers them. */
+export const LEVELS = { jungle };
+
 class Game {
-  constructor(canvas) {
+  /**
+   * @param {HTMLCanvasElement} canvas
+   * @param {object} levelModule one of LEVELS — the world this host will run.
+   */
+  constructor(canvas, levelModule) {
     this.canvas = canvas;
+    this.levelModule = levelModule;
     this.clock = new THREE.Clock();
     this.paused = false;
     this.running = false;
@@ -157,38 +157,21 @@ class Game {
 
     const scene = new THREE.Scene();
     this.scene = scene;
+    const mood = this.levelModule.mood;
 
-    this.camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.08, 900);
+    const cm = mood.camera;
+    this.camera = new THREE.PerspectiveCamera(cm.fov, innerWidth / innerHeight, cm.near, cm.far);
 
     await step(0.04, '生成天空');
     this.sky = new Sky(this.renderer);
-    this.sky.setSun(38, 152);
+    this.sky.setSun(mood.sun.elevation, mood.sun.azimuth);
     scene.add(this.sky.mesh);
 
-    /* Depth cue. Real jungle air is thick with water vapour and the visibility
-     * through it is short — you rarely see more than 30-40 m of forest. This is
-     * a placeholder for the volumetric pass; exponential-squared falls off in
-     * roughly the right shape and stops the far chunks reading as a hard edge. */
-    /* Depth cue. Rainforest air is saturated and full of transpired water, and
-     * the visibility through it is genuinely short — you rarely see more than
-     * 30-40 m of forest, and that limit is a big part of why the space feels
-     * enclosed. Exponential-squared falls off in roughly the right shape;
-     * the volumetric pass in the atmosphere system replaces the look of it,
+    /* Depth cue, and its colour and density are the level's — see the `mood`
+     * block in the level module for why this one is dark rather than bright.
+     * The volumetric pass in the atmosphere system replaces the look of it,
      * but this stays underneath as the thing that closes the far distance. */
-    /* Dense, and dark. The rule the first few passes broke is that in a closed
-     * forest the haze is *darker* than the foreground, not brighter: the air
-     * between you and a tree thirty metres away is itself in shade, so it
-     * scatters almost nothing back. Aerial perspective that brightens with
-     * distance is what a mountain range does, and applying it here turned the
-     * end of the trail into a lit white wall the eye reads as an exit. */
-    /* Darkened and taken off yellow in the tenth pass. Fog is a lerp toward
-     * its own colour, so it is also a contrast floor: nothing past twenty
-     * metres can be darker than this value, and at the old one that floor sat
-     * high enough that trunks, thicket and gaps all converged on the same
-     * sage as they receded — the middle distance was not losing detail
-     * gradually, it was being clamped flat. A darker, greyer haze lets the far
-     * boles keep their silhouettes while still closing the corridor off. */
-    scene.fog = new THREE.FogExp2(0x323c2c, 0.038);
+    scene.fog = new THREE.FogExp2(mood.fog.color, mood.fog.density);
 
     const sl = this.sky.sunLight();
     this.sun = new THREE.DirectionalLight(sl.color, sl.intensity);
@@ -197,79 +180,20 @@ class Game {
     scene.add(this.sun);
     scene.add(this.sun.target);
 
-    /* Sky/ground bounce. The environment map handles specular and most of the
-     * diffuse, but a hemisphere light on top of it is the cheap way to keep the
-     * undersides of things from going to pure black, which is where CG forests
-     * usually give themselves away. */
-    /* Sky/ground bounce, and the colour of it matters more than the amount.
+    /* Sky/ground bounce, and the colour of it matters far more than the
+     * amount — which is why the pair is the level's and not this file's. Its
+     * reasoning lives with it, in the level module's `mood`.
      *
-     * The obvious value for the sky term is the colour of the sky — a clean
-     * pale blue — and under a closed canopy that is simply wrong. Almost no
-     * fill light down here has come straight from the sky; it has been through
-     * one or more leaves or bounced off them, so it arrives green and warm,
-     * and the ground bounce is wet brown litter. Feeding real sky blue into
-     * the shadows is what makes CG forests look like they were shot on an
-     * overcast day in a car park, and it was the single loudest wrong note in
-     * the first vegetation pass. */
-    /* The upper colour is the underside of the canopy and the lower one is the
-     * litter, and both are doing the same job: there is no black in a jungle
-     * shadow. Almost nothing at eye level here is lit directly, so this pair is
-     * what is actually lighting the picture — a shadow that goes neutral grey
-     * is the difference between a forest and a car park at dusk. */
-    /* Raised, and pulled off yellow. The frame was splitting into two
-     * exposures — small mustard highlights on the canopy against black
-     * understory — which is what happens when nearly all the fill is coming
-     * from a sun that only reaches a few per cent of the surfaces. A closed
-     * forest is lit almost entirely by this term, and more of it (with less
-     * chroma in it) is what turns a set of lit objects in the dark back into
-     * one space full of soft green light. */
-    /* The level was raised again once alpha-to-coverage came off the leaves.
-     * A2C had been leaking bright background through a fraction of the MSAA
-     * samples at nearly every foliage pixel, and that leak was carrying a
-     * surprising amount of the frame's apparent exposure — removing the
-     * artefact took the median luminance down by a third, which is the sort of
-     * thing that is easy to mistake for a lighting change and chase in the
-     * wrong file. This is the honest amount of fill needed to light the
-     * understory now that nothing is being lit by a bug. */
-    /* The ground term was raised harder than the sky term, because it is the
-     * one that lights a trunk. A hemisphere light weights its two colours by
-     * the surface normal's y, so a vertical bole — and the underside of every
-     * leaf above it — sees the average of the pair rather than the sky colour,
-     * and with a dark ground term that average was low enough that any trunk
-     * standing in the canopy's own shadow went to near black regardless of how
-     * pale its bark map was. A rainforest floor is wet mid-brown litter with a
-     * good deal of bounce in it, so the previous near-black value was not
-     * defensible on physical grounds either. */
-    /* Trimmed in the ninth pass. A hemisphere light is by construction the
-     * least directional light there is — it varies only with the surface
-     * normal's y — so it is simultaneously the thing keeping the understory
-     * out of the black and the thing flattening it. The critique's fourth
-     * finding was "no sense of light direction", and the honest first move is
-     * to stop spending quite so much of the exposure on a term that cannot
-     * have one, and to let the sun and the leaves' own transmission lobe
-     * carry the difference. Dappled light through the canopy is a later
-     * system and is not being attempted here. */
-    /* The sky term lost most of its yellow in the tenth pass at the same
-     * luminance. A green ambient multiplying a green albedo is squaring the
-     * hue, and the two together were pushing every lit leaf toward the same
-     * chartreuse regardless of what its atlas said — pale ones came out cream,
-     * which is the "muddy but inconsistent colour" finding. Real shade under a
-     * canopy is filtered, but it is also skylight, so it belongs on the cool
-     * side of green rather than the warm one. The ground term stays warm and
-     * stays brown: that half is bounce off wet litter and it is the only thing
-     * keeping the underside of anything from reading as grey. */
-    /* Trimmed again when the canopy fill arrived, and the amount matters less
-     * than what it was replaced with. A hemisphere light is the least
-     * directional light there is and it was carrying nearly the whole frame,
-     * which is a complete account of why the middle distance read as one flat
-     * wall: every surface at a given normal.y was receiving exactly the same
-     * light no matter where in the world it stood. Most of that budget now
-     * goes through canopyFill() in render/canopy.js, which is the same idea
-     * with the roof's own thickness modulating it, so a thin patch of canopy
-     * puts a well of light under itself and a thick one does not. This is what
-     * is left: the isotropic floor under everything, which still has to exist,
-     * because there is no black in a jungle shadow. */
-    this.hemi = new THREE.HemisphereLight(0x82a081, 0x63513a, 0.55);
+     * A hemisphere light is by construction the least directional light there
+     * is: it varies only with the surface normal's y, so it is simultaneously
+     * the thing keeping a shaded surface out of the black and the thing
+     * flattening it. Most of that budget goes through canopyFill() in
+     * render/canopy.js, which is the same idea with the roof's own thickness
+     * modulating it, so a thin patch of canopy puts a well of light under
+     * itself and a thick one does not. This is what is left: the isotropic
+     * floor under everything, which still has to exist. */
+    const hm = mood.hemi;
+    this.hemi = new THREE.HemisphereLight(hm.sky, hm.ground, hm.intensity);
     scene.add(this.hemi);
 
     /* The scene used to carry a second, weak, unshadowed DirectionalLight here
@@ -280,63 +204,38 @@ class Game {
      * by the roof density field, and it costs one fewer light in every shader
      * in the scene as well. */
 
-    this.trail = new Trail();
-
-    /* The build order through here is a dependency chain and none of the links
-     * are optional. The ruin *plan* is pure arithmetic over the trail, so it
-     * comes first and the heightfield can consult it while it is being built —
-     * which is what puts the terrace, the earthwork and the spoil banks into
-     * the ground itself rather than leaving the masonry to be sunk into a
-     * hillside that does not know it is there. The ruin *geometry* then needs
-     * the finished heightfield to know where the ground is under every block,
-     * and the vegetation needs the finished geometry so that it can grow on
-     * the stone and refuse to grow through it. */
-    await step(0.12, '计算遗迹平面');
-    this.ruinPlan = new RuinPlan(this.trail);
-    await step(0.18, '生成地形');
-    this.terrain = new Terrain(this.trail, undefined, this.ruinPlan);
-    this.terrainMat = makeTerrainMaterial(this.renderer);
-    scene.add(this.terrain.build(this.terrainMat));
-
     /* Solids are registered while their procedural generators still know
      * what each merged or instanced piece represents. Keeping this registry
      * beside the walker avoids turning the render scene back into physics data
      * every frame, after that identity has deliberately been batched away. */
     this.collision = new CollisionWorld({ cellSize: 4 });
 
-    await step(0.34, '砌筑遗迹');
-    this.ruins = new Ruins(this.renderer, this.terrain, this.trail, this.ruinPlan,
-                           undefined, this.collision);
-    scene.add(this.ruins.root);
-
-    await step(0.46, '种植林木');
-    this.veg = new Vegetation(this.renderer, this.terrain, this.trail, undefined,
-                              this.ruins, this.collision, {
-      waterMask: (x, z, y, q) => standingWater(x, z, y, this.terrain.brook, q),
+    /* The world itself, which is the level's to make.
+     *
+     * What comes back is aliased onto the host below rather than reached for
+     * through `this.level` everywhere. Partly because half this file was
+     * written against those names, but mostly because they are the surface the
+     * probes drive: nine test tools, the gallery and the regression guard all
+     * ask `window.__game` for its trail and its terrain, and a refactor that
+     * renames the thing every probe holds onto has moved the cost rather than
+     * paid it. */
+    this.level = await this.levelModule.build({
+      renderer: this.renderer, scene, camera: this.camera,
+      tier: this.tier, collision: this.collision, step,
     });
-    scene.add(this.veg.root);
-
-    /* Built after the vegetation, and the order matters even though water
-     * grows nothing. Every surface in it is clipped per fragment against the
-     * finished heightfield, and its levels were cut from the same spillway
-     * tables the terrain used, so it has to see a terrain that has stopped
-     * changing. It registers no collision: the causeway that keeps the trail
-     * out of the pool is ground, and the walker is already stopped by the
-     * bank's fifty-degree slope rather than by anything here. */
-    await step(0.66, '注水');
-    this.water = new Water(this.renderer, this.terrain, this.trail,
-                           { tier: this.tier });
-    scene.add(this.water.root);
+    this.trail = this.level.trail;
+    this.terrain = this.level.terrain;
+    this.terrainMat = this.level.terrainMat;
+    this.ruins = this.level.ruins;
+    this.veg = this.level.veg;
+    this.water = this.level.water;
 
     await step(0.74, '烘焙环境光');
     this._bakeEnv();
-    /* The map now carries the canopy's own occlusion, so surfaces are no
-     * longer handed a full unoccluded hemisphere and this no longer has to be
-     * a global dimmer hiding that. The cyan cast on the near-horizontal
-     * understory blades came from those leaves facing straight up into an open
-     * sky that the roof of the forest does not actually let them see; what
-     * they see now is leaves. */
-    scene.environmentIntensity = 1.0;
+    /* The cyan cast on the near-horizontal understory blades came from those
+     * leaves facing straight up into an open sky that the roof of the forest
+     * does not actually let them see; what they see now is leaves. */
+    scene.environmentIntensity = mood.environmentIntensity;
 
     await step(0.80, '塑造行者');
     this.walker = new Walker(this.camera, this.terrain, this.trail,
@@ -356,7 +255,7 @@ class Game {
      * can be patched — but the split is also the honest description of what
      * this system is. */
     await step(0.86, '计算林冠透光');
-    this.field = buildWorldField(this.terrain, roofDensity);
+    this.field = buildWorldField(this.terrain, this.level.roof);
     this.canopy = new Canopy(this.renderer, this.field);
     this.canopy.setSun(this.sky.sunDir);
     this.atmos = new Atmosphere(this.renderer, this.canopy);
@@ -367,36 +266,20 @@ class Game {
      * deliberately exhaustive rather than a traversal: a surface that misses
      * the patch is not subtly wrong, it is a leaf standing in a shaft of light
      * that the shaft does not touch, and that reads instantly. */
-    for (const m of [this.terrainMat, this.veg.leafMat, this.veg.woodMat,
-                     this.ruins.material, ...this.water.materials,
-                     ...this.body.materials]) {
+    for (const m of [...this.level.materials(), ...this.body.materials]) {
       patchCanopyLight(m, this.canopy);
     }
 
-    /* Nothing is allocated on the audio device here and no buffer is
-     * synthesized: constructing Ambience only chains the walker's footfall
-     * callbacks and arms a listener for the first user gesture. Browsers
-     * refuse to start an AudioContext without one, so the bake and the graph
-     * happen on the click that grabs pointer lock — which is also the moment
-     * the player starts walking, and therefore the first moment any of it
-     * would be heard. */
-    this.ambience = new Ambience({
-      camera: this.camera,
-      trail: this.trail,
-      terrain: this.terrain,
-      walker: this.walker,
+    /* The soundscape is the level's, and it is built here rather than in the
+     * level's own build because it needs a walker to chain its footfalls to.
+     * Browsers refuse to start an AudioContext without a user gesture, so the
+     * bake and the graph happen on the click that grabs pointer lock — which
+     * is also the moment the player starts walking, and therefore the first
+     * moment any of it would be heard. */
+    this.ambience = this.level.makeAmbience({
+      camera: this.camera, walker: this.walker,
     });
-    /* The score guessed at these from the terrain constants before the falls
-     * existed — a base at the pool's rim and a lip on the cliff plane. Both
-     * were out: the real impact is 1.3 m short in z and 0.8 m higher, and the
-     * real lip is 4.4 m higher than the guess and two metres further into the
-     * cliff, because the water leaves the rock at the top of an undercut
-     * rather than at the notch's plan position. Four metres of error in the
-     * lip is audible — it is most of the vertical separation between the
-     * rumble and the hiss, which is the cue that tells you how tall the thing
-     * in front of you is. */
-    this.ambience.setWaterfallPosition(IMPACT, LIP);
-    this.atmos.setFallsPlume(IMPACT);
+    this.level.attachAtmosphere?.(this.atmos);
 
     /* The game layer is built last because it consumes finished world systems
      * and nothing in the world consumes it: the tablets are set into the
@@ -415,8 +298,8 @@ class Game {
       veg: this.veg,
       collision: this.collision,
       ambience: this.ambience,
-      mapWater: drawWater,
-      content,
+      mapWater: this.level.mapWater,
+      content: this.levelModule.content,
     });
     scene.add(this.session.glyphs.root);
     // Added to the same exhaustive list as every other opaque surface: a
@@ -498,7 +381,7 @@ class Game {
     // Spray sprites are sized in pixels, so they have to be told how many
     // pixels tall the frame is or the plume changes physical size with the
     // window and with whatever DPR the current tier picked.
-    this.water?.setViewportHeight(v.y);
+    this.level?.setViewportHeight(v.y);
   }
 
   /**
@@ -528,7 +411,7 @@ class Game {
     this._configureShadow();
     this.body?.setQuality(name);
     this.atmos?.setTier(name);
-    this.water?.setTier(name);
+    this.level?.setTier(name);
     this.resize();
   }
 
@@ -565,13 +448,7 @@ class Game {
     // rotates the sun into view space for its transmission term.
     this.camera.updateMatrixWorld();
     this.camera.matrixWorldInverse.copy(this.camera.matrixWorld).invert();
-    this.veg.update(dt, this.camera, this.sky.sunDir, this.sun.color, this.hemi.color);
-    this.ruins.update(dt, this.camera);
-    this.water.update(dt, this.camera, this.sky.sunDir, this.sun.color,
-                      this.hemi.color, this.sun.intensity);
-    // Read back rather than advanced separately, so the caustics on the bed
-    // stay in phase with the surface that is supposed to be casting them.
-    this.terrainMat.userData.uniforms.uTime.value = this.water.time;
+    this.level.update(dt, this);
     this.canopy.update(dt);
     /* After the camera's world matrix is current, because the listener's
      * position and orientation are read straight out of it. Placing this
@@ -691,8 +568,7 @@ class Game {
      * through a different door: not an empty temp scene this time, but a real
      * scene whose forest is switched off. Because `setSun` rebakes and the sun
      * advances with the walk, it got worse the further the player went. */
-    this.veg?.cullAround(p.x, p.z);
-    this.ruins?.cullAround(p.x, p.z);
+    this.level?.cullAround(p.x, p.z);
 
     /* And aim the shadow cascade there too, with one update requested. `bake`
      * holds shadows still across the six faces, which is right — one depth
@@ -706,7 +582,7 @@ class Game {
       /* The water is the main consumer of this map; capturing it would make
        * the reflection a function of itself. The body is excluded because a
        * probe at eye height is standing inside it. */
-      exclude: [this.water?.root, this.body?.root].filter(Boolean),
+      exclude: [...(this.level?.envExclude() ?? []), this.body?.root].filter(Boolean),
     });
 
     /* Hand the cull back to the camera. `update` would do this on the next
@@ -714,8 +590,7 @@ class Game {
      * loading sequence bakes without stepping, and `setSun` is called from
      * game code — and one frame of forest culled for a point the player is
      * not standing at is a visible pop. */
-    this.veg?.cullAround(this.camera.position.x, this.camera.position.z);
-    this.ruins?.cullAround(this.camera.position.x, this.camera.position.z);
+    this.level?.cullAround(this.camera.position.x, this.camera.position.z);
     this._trackSun();
     this.renderer.shadowMap.needsUpdate = true;
     return this;
@@ -794,8 +669,7 @@ class Game {
       triangles: this._sceneTris ?? i.render.triangles,
       geometries: i.memory.geometries, textures: i.memory.textures,
       programs: i.programs ? i.programs.length : 0,
-      water: this.water ? this.water.stats() : null,
-      veg: this.veg ? this.veg.stats() : null,
+      ...(this.level?.stats() ?? {}),
       body: this.body ? this.body.stats() : null,
       collision: this.collision ? this.collision.stats() : null,
     };
@@ -844,12 +718,25 @@ function attachDevWarps(game) {
   });
 }
 
+/* Which level to run.
+ *
+ * A URL fragment for now, and it is deliberately the *only* selector: the
+ * picker UI that will replace it has to choose between the same modules
+ * through the same door, and a boot path that a probe cannot drive is a boot
+ * path that stops being tested. `#level=jungle` is what the tools use.
+ */
+function pickLevel() {
+  const m = /(?:^|[#&])level=([a-z0-9-]+)/i.exec(location.hash);
+  return LEVELS[m?.[1]] ?? jungle;
+}
+
 async function boot() {
-  const hud = new Hud(content);
+  const levelModule = pickLevel();
+  const hud = new Hud(levelModule.content);
   if (platform.online) hud.useHostLoading();
   platform.loading.begin();
 
-  const game = new Game(document.getElementById('view'));
+  const game = new Game(document.getElementById('view'), levelModule);
   game.hud = hud;
   window.THREE = THREE;
 
