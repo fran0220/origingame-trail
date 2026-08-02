@@ -1,4 +1,13 @@
-# Jungle Trail
+# OriginGame Trail
+
+[![Play](https://img.shields.io/badge/play-origingame.dev-2ea44f)](https://play.origingame.dev/yupadwblpc/)
+[![Licence](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+
+A fork of [Jungle Trail](https://github.com/StarKnightt/jungle-trail) by
+Prasenjit (StarKnightt), which contributed the procedural Three.js walking sim
+this is built on. Everything that makes it a *game* — the notebook loop, the
+HUD, the map, the platform integration and the test harness — was added here.
+See [Provenance](#provenance).
 
 A first-person walk down a winding jungle trail into overgrown stone ruins with a
 waterfall, built in Three.js with zero external art assets — and, on top of that
@@ -20,8 +29,8 @@ There is no build step. The page is plain ES modules with an importmap, so it
 only needs a static file server.
 
 ```
-git clone https://github.com/StarKnightt/jungle-trail.git
-cd jungle-trail
+git clone https://github.com/fran0220/origingame-trail.git
+cd origingame-trail
 npm run serve
 ```
 
@@ -210,7 +219,9 @@ services, each of which degrades to the local behaviour if it is unavailable:
 ```
 npm run pack                       # dist/: index.html, src/, vendor/ — 2.3 MB
 npm run cover                      # media/cover.jpg, rendered not cropped
-scripts/deploy.sh dist --title "Jungle Trail" --cover media/cover.jpg
+scripts/deploy.sh dist --title "Jungle Trail" --cover media/cover.jpg \
+  --license open --license-name MIT \
+  --source-url https://github.com/fran0220/origingame-trail
 ```
 
 It is live at
@@ -289,6 +300,34 @@ Honest version: this is not finished.
 The vegetation and lighting critics signed off at 5/10 and 6/10 respectively, and
 they signed off on diminishing returns rather than on perfection.
 
+## Provenance
+
+This is a fork of **[StarKnightt/jungle-trail](https://github.com/StarKnightt/jungle-trail)**
+by Prasenjit (StarKnightt), MIT licensed. The upstream history is preserved in
+this repository — `git log` starts at the original root commit, and the
+upstream remote is kept as `upstream`.
+
+What came from where, measured rather than estimated:
+
+| | Lines | What it is |
+|---|---|---|
+| Upstream, at the root commit | ~20,100 in `src/` | The procedural renderer: terrain, vegetation, water, sky, ruins, the skeletal body with foot IK, and the audio synthesis. Zero external art assets — every texture, mesh and sound is generated in code. |
+| Added by this fork | 11 new files in `src/game/` | The game: inscriptions, field camera, notebook, chapters, HUD, minimap and compass, save state, and the OriginGame platform adapter. |
+| | 12 new files in `tools/` | The harness: packaging, cover rendering, and seven tests. |
+| | +3,356 / −95 across 18 upstream files | Mostly the movement basis fix, the environment bake, and the water and terrain shading work. |
+
+Upstream wrote the walk. This fork made it a game, and then spent most of its
+effort on the light: the environment map was being baked from a scene
+containing only the sky dome, so every reflective surface in the world was
+reflecting a uniform bright sky in all directions. Fixing that one input was
+worth more than any amount of material tuning.
+
+Not everything attempted worked, and the failures are recorded in the commit
+messages rather than quietly dropped — the block tessellation experiment made
+the ruins *more* angular at four times the triangle count, and was reverted.
+
 ## Licence
 
-MIT. See [LICENSE](LICENSE).
+MIT, and the original copyright notice is retained as that licence requires.
+See [LICENSE](LICENSE) — it carries both copyright lines and the vendored
+three.js attribution.
