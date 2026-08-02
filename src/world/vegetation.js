@@ -1639,8 +1639,14 @@ export class Vegetation {
          * multiplied by an already yellow-green atlas, so its warm end was
          * landing on screen as cream — which is what put the pale, almost
          * unrelated-looking leaves through the middle of the frame. */
+        /* Shifted a step colder than the atlas underneath it. The atlas is
+         * yellow-green, which multiplied by a warm tint spread put the whole
+         * understory at the tropical end; pulling the red multiplier under
+         * 1.0 and letting blue reach past it moves the mass toward the deep
+         * blue-greens of a cool wet forest while the dying-plant lerps below
+         * keep their warm notes for contrast. */
         const col = new THREE.Color(
-          v * (0.90 + rng() * 0.16), v, v * (0.84 + rng() * 0.20));
+          v * (0.85 + rng() * 0.15), v, v * (0.88 + rng() * 0.20));
         /* Roughly one plant in nine is dying, and it is the most valuable
          * one in the frame. Uniform health is a strong CG tell: a real
          * understory always has senescing fronds going yellow and dead ones
