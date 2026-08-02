@@ -876,6 +876,22 @@ export class Vegetation {
           }
           if (over) continue;
         }
+        /* The same disc-versus-point argument, asked of masonry. A supplejack
+         * tangle throws cane a couple of metres from its centre, so a centre
+         * that merely *isn't on* a block can still lay rope across the rubble
+         * beside it — thin lines hovering over stone with nothing holding
+         * them up. The centre test below already refuses stone; this refuses
+         * straddling it. */
+        if (name === 'supplejack' && this.ruins) {
+          const R = 1.7;
+          let over = false;
+          for (let a = 0; a < 4; a++) {
+            const ax = px + R * Math.cos(a * Math.PI / 2);
+            const az = pz + R * Math.sin(a * Math.PI / 2);
+            if (this.ruins.topAt(ax, az) > t.height(ax, az) - 0.05) { over = true; break; }
+          }
+          if (over) continue;
+        }
         t.normal(px, pz, nrm);
 
         /* Stone under this candidate.
@@ -1270,6 +1286,14 @@ export class Vegetation {
      * rather than a texture laid over it. */
     this._add('litterMat', this._scatter('litterMat', 0.95, (c) => {
       if (c.dist > 34) return 0;
+      /* Never on a block top. The mat is a disc of leaves and twigs laid out
+       * to nearly a metre times a scale that runs past three, and a masonry
+       * perch is almost always smaller than that: whatever the disc lays
+       * beyond the arris hangs in the air, leaves hovering beside the stone
+       * and whole twigs cantilevered over the trail — which is what the
+       * rubble field was showing. The small rooted perch flora keeps its
+       * footholds; loose debris this large keeps to the ground. */
+      if (c.stone) return 0;
       /* Thinned over the trodden strip, not removed from it.
        *
        * The previous version went to zero wherever the path material took
@@ -1466,11 +1490,21 @@ export class Vegetation {
     }
     this._add('subcanopy', subPatches.concat(this._scatter('subcanopy', 4.4, (c) => {
       if (c.dist < 26 || c.dist > 66 || c.stone) return 0;
-      const open = 1 - 0.85 * smoothstep(0.78, 0.92, c.t);
+      /* The thinning starts earlier than the clearing does. A free cloud is
+       * hidden by fog and layering when the roof above it is closed; at the
+       * clearing rim it stands against open sky, where a lobed dark blob at
+       * eight metres with clear air under it reads as exactly what it is —
+       * the same disconnection this storey's near band was rebuilt to fix,
+       * exposed by the one place the sky shows. */
+      const open = 1 - 0.85 * smoothstep(0.70, 0.88, c.t);
       return 0.80 * open * rooting(c, 0.95, 0);
     }, (c) => {
       const s = 0.8 + c.rng() * 0.9;
-      const hh = 5.5 + c.rng() * 7.0;
+      /* And what survives near the rim hangs at crown height, not head
+       * height: the floor is set where a mid-storey tree's crown could
+       * plausibly be, so a silhouetted cloud reads as canopy rather than as
+       * a floating bush. */
+      const hh = 7.0 + c.rng() * 6.0;
       return {
         v: (c.rng() * SPECIES_LOD.subcanopy.v) | 0,
         m: M().compose(_p.set(c.x, c.y + hh, c.z),
