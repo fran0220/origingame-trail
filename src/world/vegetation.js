@@ -1110,7 +1110,13 @@ export class Vegetation {
       return 0.62 * edgeLight(c.dist) * (0.7 + 0.5 * c.wet)
            * wallFoot(c, 0.55) * (c.stone ? 0.28 : 1) * rooting(c, 0.85, 0.58);
     }, (c) => {
-      const s = 0.58 + c.rng() * 0.72 + c.dens * 0.40;
+      /* Held to herb height. The old range ran to 1.7 before the bulk jitter,
+       * which stood the biggest rosettes over two metres with blades to match
+       * — a player at a 1.66 m eye walked *under* their leaves, and the whole
+       * scene read as if seen by something knee-high. A broadleaf here is a
+       * waist-height stool at most; anything taller is a shrub and belongs to
+       * other species. */
+      const s = 0.42 + c.rng() * 0.42 + c.dens * 0.22;
       return {
         v: (c.rng() * SPECIES_LOD.broadleaf.v) | 0,
         m: M().compose(_p.set(c.x, c.y - 0.04, c.z),
@@ -1347,24 +1353,49 @@ export class Vegetation {
      * forest: sightlines out are blocked at head height rather than at knee
      * height, which is the difference between standing in a wood and standing
      * in a jungle.
-     */
-    this._add('subcanopy', this._scatter('subcanopy', 4.4, (c) => {
-      if (c.dist < 3.0 || c.dist > 66 || c.stone) return 0;
+     *
+     * Two placement regimes, split by whether the viewer can resolve trunks.
+     * The canopy's own excuse — a continuous crown nobody can attribute to a
+     * tree — is true at twenty metres up and false at five: a leaf cloud
+     * hanging over the trail with clear air under it reads as exactly what it
+     * is. So inside the band where individual trunks are legible the storey
+     * is grown from the tree list, crowns offset a little from a real stem,
+     * and the free grid keeps only the far field, where fog and layering hide
+     * the attachment. */
+    const subPatches = [];
+    {
+      const srng = makeRng(seed + 23);
+      for (const sp of treeSpots) {
+        const n = 1 + ((srng() * 2) | 0);
+        for (let i = 0; i < n; i++) {
+          const a = srng() * 6.283;
+          const rr = (0.5 + srng() * 1.6) * sp.s;
+          const hh = (5.0 + srng() * 4.5) * sp.s;
+          const sc = 0.7 + srng() * 0.7;
+          subPatches.push({
+            v: (srng() * SPECIES_LOD.subcanopy.v) | 0,
+            m: M().compose(
+              _p.set(sp.x + Math.cos(a) * rr, sp.y + hh, sp.z + Math.sin(a) * rr),
+              _q.setFromEuler(_e.set(0, srng() * 6.283, 0)),
+              _s.set(sc, sc * 0.85, sc)),
+          });
+        }
+      }
+    }
+    this._add('subcanopy', subPatches.concat(this._scatter('subcanopy', 4.4, (c) => {
+      if (c.dist < 26 || c.dist > 66 || c.stone) return 0;
       const open = 1 - 0.85 * smoothstep(0.78, 0.92, c.t);
-      // Thinner directly over the trail, so the light well above the path
-      // survives all three storeys.
-      const lane = smoothstep(3.0, 11.0, c.dist);
-      return 0.80 * open * (0.30 + 0.70 * lane) * rooting(c, 0.95, 0);
+      return 0.80 * open * rooting(c, 0.95, 0);
     }, (c) => {
       const s = 0.8 + c.rng() * 0.9;
-      const hh = 4.5 + c.rng() * 8.0;
+      const hh = 5.5 + c.rng() * 7.0;
       return {
         v: (c.rng() * SPECIES_LOD.subcanopy.v) | 0,
         m: M().compose(_p.set(c.x, c.y + hh, c.z),
                        _q.setFromEuler(_e.set(0, c.rng() * 6.283, 0)),
                        _s.set(s * (0.85 + c.rng() * 0.32), s * 0.85, s * (0.85 + c.rng() * 0.32))),
       };
-    }, seed + 11));
+    }, seed + 11)));
 
     /* The far wall. Starts where the real understory is thinning out and runs
      * well past anything the fog lets through, so there is no distance at
@@ -1402,10 +1433,16 @@ export class Vegetation {
         const rr = (2.0 + rng() * 5.5) * s.s;
         const hh = (10 + rng() * 14) * s.s;
         const sc = 0.7 + rng() * 0.8;
+        const hx = s.x + Math.cos(a) * rr, hz = s.z + Math.sin(a) * rr;
+        /* The offset can carry a strand a few metres into a rising bank, and
+         * a hang point below the ground there is a whole vine spent inside
+         * the hill. Measured against the terrain under the hang point, not
+         * under the trunk, because that is where the difference is. */
+        if (this.terrain.height(hx, hz) > s.y + hh - 1.5) continue;
         vines.push({
           v: (rng() * SPECIES_LOD.vine.v) | 0,
           m: M().compose(
-            _p.set(s.x + Math.cos(a) * rr, s.y + hh, s.z + Math.sin(a) * rr),
+            _p.set(hx, s.y + hh, hz),
             _q.setFromEuler(_e.set(0, rng() * 6.283, 0)),
             _s.set(sc, sc, sc)),
         });
@@ -1422,10 +1459,12 @@ export class Vegetation {
         const rr = (1.5 + rng() * 7.0) * s.s;
         const hh = (7 + rng() * 17) * s.s;
         const sc = 0.7 + rng() * 0.9;
+        const hx = s.x + Math.cos(a) * rr, hz = s.z + Math.sin(a) * rr;
+        if (this.terrain.height(hx, hz) > s.y + hh - 1.5) continue;
         dead.push({
           v: (rng() * SPECIES_LOD.deadVine.v) | 0,
           m: M().compose(
-            _p.set(s.x + Math.cos(a) * rr, s.y + hh, s.z + Math.sin(a) * rr),
+            _p.set(hx, s.y + hh, hz),
             _q.setFromEuler(_e.set(0, rng() * 6.283, 0)),
             _s.set(sc, sc, sc)),
         });
