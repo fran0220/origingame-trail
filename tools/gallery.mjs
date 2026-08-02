@@ -203,7 +203,8 @@ if (PERF) {
       envBakeMs: +Math.min(...bake).toFixed(1),
       drawCalls: info.render.calls, triangles: info.render.triangles,
       programs: info.programs?.length ?? null,
-      textureMB: +(info.memory.textures).toFixed(0),
+      // A count, not a size. It was labelled textureMB and is neither.
+      textures: info.memory.textures,
       geometries: info.memory.geometries,
     };
   });
@@ -241,7 +242,7 @@ if (BASE) {
     process.exit(2);
   }
   const base = JSON.parse(readFileSync(f, 'utf8'));
-  const KEYS = ['median', 'mean', 'contrast', 'blackPct', 'blownPct', 'upper', 'lower', 'calls'];
+  const KEYS = ['median', 'mean', 'contrast', 'detail', 'blackPct', 'blownPct', 'lower', 'calls'];
   const w = 14;
   console.log(`\ndelta vs ${BASE}\n${'station'.padEnd(w)}${KEYS.map((k) => k.padStart(10)).join('')}`);
   for (const name of Object.keys(shots)) {

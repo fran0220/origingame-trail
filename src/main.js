@@ -746,12 +746,33 @@ class Game {
         if (j > h * 0.62) { skyL += l; skyN++; } else { gndL += l; gndN++; }
       }
     }
+    /* High-frequency energy, which is the one thing the percentiles cannot
+     * see. Sharpening a texture, refining a shadow or resolving a leaf edge
+     * moves no part of the histogram — the frame keeps the same distribution
+     * of brightnesses and merely arranges them at a finer scale — so a change
+     * that is entirely about detail reads as all zeroes in every other number
+     * here. Mean absolute gradient between neighbouring samples reads it
+     * directly. It is a comparison figure and nothing else: its value depends
+     * on `sampleStep` and on the resolution, so only compare runs that share
+     * both. */
+    let grad = 0, gradN = 0;
+    for (let j = 0; j < h; j += sampleStep) {
+      for (let i = 0; i < w - sampleStep; i += sampleStep) {
+        const k = (j * w + i) * 4, k2 = (j * w + i + sampleStep) * 4;
+        const a = px[k] * 0.2126 + px[k + 1] * 0.7152 + px[k + 2] * 0.0722;
+        const b = px[k2] * 0.2126 + px[k2 + 1] * 0.7152 + px[k2 + 2] * 0.0722;
+        grad += Math.abs(a - b) / 255;
+        gradN++;
+      }
+    }
+
     lum.sort((a, b) => a - b);
     const q = (p) => +lum[Math.min(lum.length - 1, Math.floor(p * lum.length))].toFixed(3);
     return {
       p01: q(0.01), p10: q(0.10), median: q(0.5), p90: q(0.90), p99: q(0.99),
       mean: +(lum.reduce((a, b) => a + b, 0) / lum.length).toFixed(3),
       contrast: +((q(0.95) - q(0.05)) * 255).toFixed(0),
+      detail: +(grad / Math.max(1, gradN)).toFixed(4),
       blackPct: +(100 * black / total).toFixed(1),
       blownPct: +(100 * blown / total).toFixed(1),
       upper: +(skyL / Math.max(1, skyN)).toFixed(3),
