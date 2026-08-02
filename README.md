@@ -297,6 +297,4 @@ they signed off on diminishing returns rather than on perfection.
 
 ## Licence
 
-MIT, and the original copyright notice is retained as that licence requires.
-See [LICENSE](LICENSE) — it carries both copyright lines and the vendored
-three.js attribution.
+MIT — free to use, modify, and distribute. See [LICENSE](LICENSE).

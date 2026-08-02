@@ -1,13 +1,7 @@
 MIT License
 
-Copyright (c) 2026 Prasenjit (StarKnightt)
 Copyright (c) 2026 OriginGame
-
-This project is a derivative work of Jungle Trail by Prasenjit (StarKnightt),
-https://github.com/StarKnightt/jungle-trail, used and redistributed under the
-MIT License. The original copyright notice above is retained as that licence
-requires; the second line covers the changes made in this repository. Both are
-offered under the same terms.
+Copyright (c) 2026 Prasenjit (StarKnightt)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,13 +23,5 @@ SOFTWARE.
 
 ---
 
-Third-party code redistributed in this repository:
-
-  vendor/three.module.js — three.js r170, Copyright 2010-2024 Three.js Authors,
-                  MIT License. https://github.com/mrdoob/three.js
-                  The file carries its own SPDX licence header, which is left
-                  intact; it is vendored rather than installed so the game runs
-                  from a static server with no build step and no CDN.
-
-There are no other third-party assets. Every texture, mesh, sound and font in
-the scene is generated in code at load time.
+vendor/three.module.js — three.js r170, MIT.
+https://github.com/mrdoob/three.js
