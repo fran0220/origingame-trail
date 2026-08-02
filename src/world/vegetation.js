@@ -1599,9 +1599,27 @@ export class Vegetation {
     this.uniforms.uProj.value =
       camera.projectionMatrix.elements[5] * 0.5 * this.renderer.domElement.height;
 
-    const cx = camera.position.x, cz = camera.position.z;
+    this.cullAround(camera.position.x, camera.position.z);
+  }
+
+  /**
+   * Choose which tiles are visible, and at which level, around a point.
+   *
+   * Split out from `update` because the camera is not the only viewpoint the
+   * forest is drawn from. The environment probe stands at a fixed spot on the
+   * trail and captures the scene as it is at the moment of the bake — so with
+   * the cull left centred on a camera that has walked two hundred metres on,
+   * the probe photographs a clearing where the forest is, and the map every
+   * reflective surface reads becomes bare sky. `tools/env-truth.mjs` measures
+   * exactly that. Re-culling around the probe first costs one pass over the
+   * tile list and makes the capture true.
+   *
+   * @param {number} x
+   * @param {number} z
+   */
+  cullAround(x, z) {
     for (const c of this.cells) {
-      const dx = c.x - cx, dz = c.z - cz;
+      const dx = c.x - x, dz = c.z - z;
       const d2 = dx * dx + dz * dz;
       c.group.visible = d2 < c.cull * c.cull;
       if (c.lo) {
@@ -1613,6 +1631,7 @@ export class Vegetation {
         c.lo.visible = !fine;
       }
     }
+    return this;
   }
 
   /* Counts the fine build only. The coarse copies are alternatives to it,

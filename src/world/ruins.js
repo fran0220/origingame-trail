@@ -1553,11 +1553,27 @@ export class Ruins {
    * vegetation does it: the fog closes at about forty metres and a tile past
    * that contributes nothing but is still submitted, and still casts. */
   update(dt, camera) {
-    const cx = camera.position.x, cz = camera.position.z;
+    this.cullAround(camera.position.x, camera.position.z);
+  }
+
+  /**
+   * Choose which tiles are visible around a point.
+   *
+   * Split out for the same reason the vegetation's is: the environment probe
+   * renders from a fixed point on the trail, and with the cull left centred on
+   * the camera a bake from the falls hid the stonework standing beside the
+   * probe — the nearest block is four metres from it, which is a large part of
+   * that capture's lower hemisphere. `tools/env-truth.mjs` measures it.
+   *
+   * @param {number} x
+   * @param {number} z
+   */
+  cullAround(x, z) {
     for (const c of this.cells) {
-      const dx = c.x - cx, dz = c.z - cz;
+      const dx = c.x - x, dz = c.z - z;
       c.mesh.visible = dx * dx + dz * dz < 110 * 110;
     }
+    return this;
   }
 
   stats() {

@@ -426,12 +426,29 @@ class Game {
    * the camera it is under 4 cm, which is the difference between leaf shadows
    * and grey blobs. */
   _trackSun() {
-    const p = this.camera.position;
+    return this._aimShadow(this.camera.position);
+  }
+
+  /**
+   * Point the one shadow cascade at a place.
+   *
+   * Parameterized because the camera is not the only thing that needs shadows
+   * where it is standing. The environment probe renders from a fixed point on
+   * the trail while this frustum follows the player, and `sky.bake` reuses the
+   * shadow map already in hand rather than paying for six more passes — so a
+   * bake from the falls lit the ground under the probe with a depth map that
+   * did not cover it, i.e. did not shadow it at all. That showed up as the
+   * probe's lower hemisphere reading three times too bright.
+   *
+   * @param {THREE.Vector3} p
+   */
+  _aimShadow(p) {
     const d = this.sky.sunDir;
     const dist = TIERS[this.tier].shadowDist * 1.6;
     this.sun.position.set(p.x + d.x * dist, p.y + d.y * dist, p.z + d.z * dist);
     this.sun.target.position.copy(p);
     this.sun.target.updateMatrixWorld();
+    return this;
   }
 
   resize() {
@@ -638,6 +655,25 @@ class Game {
     const p = this._envProbe || (this._envProbe = new THREE.Vector3());
     this.trail.pointAt(0.5, p);
     p.y = this.terrain.height(p.x, p.z) + 1.7;
+
+    /* Move the forest's cull to the probe before photographing from it.
+     * Vegetation tiles are hidden per frame by distance to the camera, and the
+     * probe does not move with the camera — so a bake triggered at the falls
+     * was capturing the trail's midpoint with every tree around it culled
+     * away. That is the same failure the probe was introduced to fix, arriving
+     * through a different door: not an empty temp scene this time, but a real
+     * scene whose forest is switched off. Because `setSun` rebakes and the sun
+     * advances with the walk, it got worse the further the player went. */
+    this.veg?.cullAround(p.x, p.z);
+    this.ruins?.cullAround(p.x, p.z);
+
+    /* And aim the shadow cascade there too, with one update requested. `bake`
+     * holds shadows still across the six faces, which is right — one depth
+     * pass then serves all of them — but the map it holds still has to be the
+     * one that covers the probe. */
+    this._aimShadow(p);
+    this.renderer.shadowMap.needsUpdate = true;
+
     this.sky.bake(this.scene, {
       probe: p,
       /* The water is the main consumer of this map; capturing it would make
@@ -645,6 +681,16 @@ class Game {
        * probe at eye height is standing inside it. */
       exclude: [this.water?.root, this.body?.root].filter(Boolean),
     });
+
+    /* Hand the cull back to the camera. `update` would do this on the next
+     * frame anyway, but a bake can land between the cull and the draw — the
+     * loading sequence bakes without stepping, and `setSun` is called from
+     * game code — and one frame of forest culled for a point the player is
+     * not standing at is a visible pop. */
+    this.veg?.cullAround(this.camera.position.x, this.camera.position.z);
+    this.ruins?.cullAround(this.camera.position.x, this.camera.position.z);
+    this._trackSun();
+    this.renderer.shadowMap.needsUpdate = true;
     return this;
   }
 

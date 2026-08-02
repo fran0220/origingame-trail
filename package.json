@@ -8,7 +8,7 @@
     "serve": "node tools/serve.mjs",
     "shoot": "node tools/shoot.mjs",
     "pack": "node tools/pack.mjs",
-    "test": "node tools/smoke.mjs && node tools/movement.mjs && node tools/journey.mjs && node tools/save-roundtrip.mjs && node tools/map-truth.mjs && node tools/quality.mjs && node tools/water-bed.mjs",
+    "test": "node tools/smoke.mjs && node tools/movement.mjs && node tools/journey.mjs && node tools/save-roundtrip.mjs && node tools/map-truth.mjs && node tools/quality.mjs && node tools/water-bed.mjs && node tools/env-truth.mjs",
     "test:smoke": "node tools/smoke.mjs",
     "test:movement": "node tools/movement.mjs",
     "test:water-bed": "node tools/water-bed.mjs",

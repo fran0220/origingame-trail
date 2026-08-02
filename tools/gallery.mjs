@@ -13,14 +13,33 @@
  * every shot, and the only way to know whether it moved them the right way is
  * to put before and after side by side.
  *
+ * Pictures are the judgement, but they are not the record. A shot that looks
+ * "moodier" is the same shot with the black point dropped, and three rounds of
+ * judging that by eye is how the exposure ended up being re-graded twice. So
+ * every station also writes numbers — the frame's own histogram, and what it
+ * cost to draw — into metrics.json next to the images. Two runs then diff, and
+ * `--compare` puts the deltas on screen so a change that quietly crushed the
+ * understorey has to say so.
+ *
  * Usage:  node tools/serve.mjs &
- *         node tools/gallery.mjs [outDir] [--perf]
+ *         node tools/gallery.mjs [outDir] [--perf] [--compare <baselineDir>]
  */
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { chromium } from 'playwright';
 
-const OUT = process.argv[2] || 'media/gallery';
-const PERF = process.argv.includes('--perf');
+/* `--compare` takes a value, so its argument is not a positional one. Consuming
+ * it explicitly keeps `gallery.mjs --compare media/base` from reading the
+ * baseline path as the output directory and overwriting the baseline. */
+const argv = process.argv.slice(2);
+const VALUED = new Set(['--compare']);
+const positional = [];
+let BASE = null;
+for (let i = 0; i < argv.length; i++) {
+  if (VALUED.has(argv[i])) { if (argv[i] === '--compare') BASE = argv[++i] ?? ''; }
+  else if (!argv[i].startsWith('--')) positional.push(argv[i]);
+}
+const OUT = positional[0] || 'media/gallery';
+const PERF = argv.includes('--perf');
 const URL_BASE = process.env.GALLERY_URL || 'http://localhost:8099/';
 
 mkdirSync(OUT, { recursive: true });
@@ -126,10 +145,24 @@ const stations = await page.evaluate(async () => {
   return out;
 });
 
+const shots = {};
 for (const s of stations) {
   await page.evaluate((s) => window.__g.stand(s), s);
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/${s.name}.jpg`, type: 'jpeg', quality: 90 });
+  /* Read the frame back at this station rather than once at the end: the whole
+   * value of a fixed viewpoint is that its numbers belong to that viewpoint,
+   * and an average over eight of them hides the one that went black. */
+  shots[s.name] = await page.evaluate(() => {
+    const g = window.__game;
+    const p = g.probe();
+    const i = g.info();
+    return {
+      ...p,
+      calls: i.calls, triangles: i.triangles,
+      textures: i.textures, geometries: i.geometries, programs: i.programs,
+    };
+  });
 }
 
 let perf = null;
@@ -150,8 +183,24 @@ if (PERF) {
     });
     const ms = (performance.now() - t0) / frames;
     const info = g.renderer.info;
+
+    /* The environment bake, timed on its own. It is the one cost in the frame
+     * budget that is paid in lumps rather than per-frame — every sun step
+     * rebakes — and it is geometry-bound rather than fill-bound, so it does
+     * not move with resolution and will not show up in the fps above. Best of
+     * three, because the first is warming caches. */
+    const gl = g.renderer.getContext();
+    const bake = [];
+    for (let i = 0; i < 3; i++) {
+      const a = performance.now();
+      g._bakeEnv();
+      gl.finish();
+      bake.push(performance.now() - a);
+    }
+
     return {
       fps: +(1000 / ms).toFixed(1), msPerFrame: +ms.toFixed(2),
+      envBakeMs: +Math.min(...bake).toFixed(1),
       drawCalls: info.render.calls, triangles: info.render.triangles,
       programs: info.programs?.length ?? null,
       textureMB: +(info.memory.textures).toFixed(0),
@@ -160,6 +209,53 @@ if (PERF) {
   });
 }
 
-console.log(JSON.stringify({ out: OUT, shots: stations.map((s) => s.name), perf, errors }, null, 1));
 await browser.close();
-if (errors.length) process.exit(1);
+
+const metrics = { out: OUT, when: new Date().toISOString(), perf, shots, errors };
+writeFileSync(`${OUT}/metrics.json`, JSON.stringify(metrics, null, 1));
+
+/* Absolute sanity, not a look-freeze. These runs exist to *change* the look,
+ * so pinning a median would fail on every improvement. What can be asserted
+ * without knowing the intent is that a frame still carries a picture: not
+ * crushed to black, not blown to white, and not flattened to one value. The
+ * bounds are set wide of the eight stations' real spread, so tripping one
+ * means something broke rather than something moved. */
+const GATES = [
+  ['blackPct', (v) => v <= 45, 'crushed to black'],
+  ['blownPct', (v) => v <= 8, 'blown to white'],
+  ['contrast', (v) => v >= 18, 'flattened to one value'],
+  ['median', (v) => v > 0.005 && v < 0.97, 'frame is a solid colour'],
+  ['calls', (v) => v > 50, 'scene did not draw'],
+];
+const failures = [];
+for (const [name, shot] of Object.entries(shots)) {
+  for (const [key, ok, why] of GATES) {
+    if (!ok(shot[key])) failures.push(`${name}: ${key}=${shot[key]} — ${why}`);
+  }
+}
+
+if (BASE) {
+  const f = `${BASE}/metrics.json`;
+  if (!existsSync(f)) {
+    console.error(`no baseline at ${f} — run the gallery there first`);
+    process.exit(2);
+  }
+  const base = JSON.parse(readFileSync(f, 'utf8'));
+  const KEYS = ['median', 'mean', 'contrast', 'blackPct', 'blownPct', 'upper', 'lower', 'calls'];
+  const w = 14;
+  console.log(`\ndelta vs ${BASE}\n${'station'.padEnd(w)}${KEYS.map((k) => k.padStart(10)).join('')}`);
+  for (const name of Object.keys(shots)) {
+    const b = base.shots?.[name];
+    if (!b) { console.log(`${name.padEnd(w)}  (new station)`); continue; }
+    const cells = KEYS.map((k) => {
+      const d = shots[name][k] - b[k];
+      const s = Math.abs(d) < 1e-9 ? '·' : (d > 0 ? '+' : '') + d.toFixed(Math.abs(d) < 10 ? 3 : 0);
+      return s.padStart(10);
+    });
+    console.log(`${name.padEnd(w)}${cells.join('')}`);
+  }
+}
+
+console.log(JSON.stringify(
+  { out: OUT, shots: Object.keys(shots), perf, errors, failures }, null, 1));
+if (errors.length || failures.length) process.exit(1);

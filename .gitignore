@@ -19,3 +19,10 @@ Thumbs.db
 
 # Smoke-test frame, rewritten on every run.
 media/smoke.png
+
+# Gallery working runs. Regenerated in a minute by tools/gallery.mjs, and
+# machine-specific: these are software-rendered here and would differ on a
+# real GPU. Only the milestone metrics.json is worth keeping, so the images
+# under a baseline are ignored and the numbers beside them are not.
+media/iter-*/
+media/base-*/*.jpg
