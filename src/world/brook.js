@@ -211,6 +211,10 @@ export class Brook {
     const a = this.st[i], b = this.st[i + 1];
     out.off = a.off + (b.off - a.off) * k;
     out.half = a.half + (b.half - a.half) * k;
+    if (a.wlP !== undefined) {
+      out.wlP = a.wlP + (b.wlP - a.wlP) * k;
+      out.wlN = a.wlN + (b.wlN - a.wlN) * k;
+    }
     out.y = a.y + (b.y - a.y) * k;
     out.bed = a.bed + (b.bed - a.bed) * k;
     return out;
@@ -245,12 +249,88 @@ export class Brook {
     return h + (f - h) * m;
   }
 
+  /**
+   * Find the waterline, once the ground this cut exists.
+   *
+   * `half` is the width of the *stream*, and it is the wrong answer to "how
+   * wide is the water". The cross-section `cut` leaves is a flat floor out to
+   * `half + 0.55` and only then a bank climbing BANK_H over BANK_RUN, so the
+   * ground does not come back up through the surface until well over a metre
+   * outside `half` — and every consumer that used `half` as the edge of the
+   * water was therefore wrong by that much. The surface ribbon stopped in
+   * eighty centimetres of standing water with a straight polygonal rim, which
+   * no amount of depth-driven alpha can soften because there is no shallow
+   * water inside the mesh to fade. The scatter refused litter over a strip
+   * narrower than the stream it was protecting. The margin field started its
+   * falloff from inside the channel.
+   *
+   * The waterline is not something to author a second time. It is where the
+   * carved ground crosses `y`, so it is measured: march outward from the
+   * centreline and take the first crossing. That is the only definition all
+   * three consumers can share, and sharing it is the whole point — this file
+   * exists because the stream used to be described in two places at once.
+   *
+   * Must be called after the height field is filled and before anything reads
+   * `depthAt` or `wetAt`. Terrain does both, in that order.
+   *
+   * @param {(x:number, z:number) => number} h sampled, carved ground height.
+   */
+  solveWaterline(h) {
+    /* How far out to look, and it is exactly how far `cut` reaches: past
+     * `inner + BANK_FEATHER` the carve has faded to nothing, so ground below
+     * the surface beyond that belongs to the valley and not to this channel.
+     * Bounding it at BANK_RUN instead — where the bank has finished climbing —
+     * is a metre shorter, and on the reaches where the cut lands on ground
+     * that is already falling away the real waterline is just outside it:
+     * seven stations found no bank at all, fell back to the stream width, and
+     * ended their rim in three metres of water. The bound has to be the
+     * carve's own reach. */
+    const STEP_OUT = 0.10;
+    for (const s of this.st) {
+      const limit = s.half + 0.55 + BANK_FEATHER;
+      /* Solved per bank, because the two are not the same distance away.
+       *
+       * A meander cuts the outside of its bend and deposits on the inside, so
+       * an asymmetric cross-section is the normal case rather than an edge
+       * one, and the symmetric version of this ran the ribbon to whichever
+       * bank was nearer: coverage came right, and the far rim still ended in
+       * three quarters of a metre of water. Water is not obliged to be
+       * symmetric about the line someone drew down the middle of it. */
+      for (const sign of [1, -1]) {
+        /* No crossing means no bank, and the honest reading of that is not
+         * "the water is as wide as the search". It happens in one place — the
+         * delta, where the channel is drowned by the basin and its surface has
+         * been clamped to pool level — and there the water really does
+         * continue past the search, so the basin's own mesh is what should
+         * draw it. Falling back to the limit instead ran the ribbon out to
+         * five metres of half-width beside the falls: a sheet of open water
+         * wide enough to move the environment probe's lower hemisphere by
+         * forty per cent from that standpoint while changing nothing a camera
+         * pointed at the curtain could see. Falling back to the authored
+         * stream width leaves the overlap to the pool, which is what it is
+         * for. */
+        let wl = s.half;
+        for (let d = 0.15; d <= limit; d += STEP_OUT) {
+          if (h(s.cx + s.tz * sign * d, s.cz - s.tx * sign * d) >= s.y) {
+            wl = Math.max(s.half, d);
+            break;
+          }
+        }
+        if (sign > 0) s.wlP = wl; else s.wlN = wl;
+      }
+    }
+    this.solved = true;
+  }
+
   /** Depth of water over a point of ground, 0 if it is dry. */
   depthAt(h, q) {
     const t = q.t;
     if (t <= BROOK_T0 || t >= BROOK_T1) return 0;
     const a = this.at(t, this._tmp2 || (this._tmp2 = {}));
-    if (Math.abs(q.side - a.off) > a.half) return 0;
+    const du = q.side - a.off;
+    const e = du >= 0 ? (a.wlP !== undefined ? a.wlP : a.half)
+                      : (a.wlN !== undefined ? a.wlN : a.half);
+    if (Math.abs(du) > e) return 0;
     return Math.max(0, a.y - h);
   }
 
@@ -259,7 +339,12 @@ export class Brook {
     const t = q.t;
     if (t <= BROOK_T0 - 0.02 || t >= BROOK_T1 + 0.02) return 0;
     const a = this.at(t, this._tmp3 || (this._tmp3 = {}));
-    return smoothstep(a.half + 2.6, a.half + 0.2, Math.abs(q.side - a.off))
+    /* Anchored to the waterline rather than to the stream's width, so the damp
+     * strip begins where the water ends instead of a metre inside it. */
+    const du = q.side - a.off;
+    const e = du >= 0 ? (a.wlP !== undefined ? a.wlP : a.half)
+                      : (a.wlN !== undefined ? a.wlN : a.half);
+    return smoothstep(e + 2.2, e - 0.1, Math.abs(du))
          * smoothstep(BROOK_T0, BROOK_T0 + BROOK_HEAD, t);
   }
 }

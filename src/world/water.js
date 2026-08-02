@@ -848,11 +848,26 @@ export class Water {
     const B = this.terrain.brook;
     const st = B.st.slice(B.i0, B.i1 + 1);
     const n = st.length - 1;
-    const M = 5;
+    /* Across the waterline, not across the stream.
+     *
+     * `s.half` is how wide the water runs; `s.wl` is where the bank it cut
+     * comes back up through the surface, which is over a metre further out and
+     * is where a water surface has to end. Building to `half` left the rim of
+     * the mesh sitting in eighty centimetres of water: a straight polygonal
+     * edge at full opacity, lying across the channel like a dropped pane of
+     * glass, with the real margin — the shallow, half-transparent, gravel-
+     * showing part that is most of what makes a stream read as water — simply
+     * absent. See Brook.solveWaterline.
+     *
+     * Twice the lateral segments because the ribbon is now roughly twice as
+     * wide and the interesting gradient is all in the outer third of it. */
+    const M = 10;
     const g = this._grid(M, n, (i, j) => {
       const s = st[j];
-      const u = (i / M) * 2 - 1;
-      return [s.cx + s.tz * u * s.half, s.y, s.cz - s.tx * u * s.half];
+      const wN = s.wlN !== undefined ? s.wlN : s.half;
+      const wP = s.wlP !== undefined ? s.wlP : s.half;
+      const u = -wN + (wP + wN) * (i / M);
+      return [s.cx + s.tz * u, s.y, s.cz - s.tx * u];
     }, (i, j) => {
       const s = st[j];
       /* Speed and foam are the station's own, which after the step-pool

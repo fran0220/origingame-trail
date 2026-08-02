@@ -380,10 +380,29 @@ export class Terrain {
     for (let j = 0; j < H; j++) {
       const z = this.z0 - j * STEP;
       for (let i = 0; i < W; i++) {
+        h[j * W + i] = this.evalHeight(this.x0 + i * STEP, z, q);
+      }
+    }
+    /* The height field has to exist before the water fields can be asked for,
+     * because the edge of the water is a fact about the carved ground and not
+     * a number anyone wrote down. Publishing `h` here is what lets the brook
+     * sample the very surface it just cut. */
+    this.h = h;
+    this.brook.solveWaterline((x, z) => this.height(x, z));
+
+    for (let j = 0; j < H; j++) {
+      const z = this.z0 - j * STEP;
+      for (let i = 0; i < W; i++) {
         const x = this.x0 + i * STEP;
         const k = j * W + i;
-        const y = this.evalHeight(x, z, q);
-        h[k] = y;
+        const y = h[k];
+        /* Refilled here, and it has to be: everything below reads the trail
+         * field out of `q` and nothing below puts it there. In the single-pass
+         * version `evalHeight` sampled it as its first act and the rest of the
+         * body inherited it, so splitting the loop silently left mud, wetness
+         * and standing water reading whichever cell the height pass finished
+         * on — one stale answer for the entire level. */
+        this.sampleField(x, z, q);
         mud[k] = this.evalMud(x, z, q);
         wet[k] = this.evalWet(x, z, y, q);
         /* Asked of the same function the plant grids ask, which is the same
@@ -395,7 +414,7 @@ export class Terrain {
         sub[k] = standingWater(x, z, y, this.brook, q);
       }
     }
-    this.h = h; this.mud = mud; this.wet = wet; this.sub = sub;
+    this.mud = mud; this.wet = wet; this.sub = sub;
     this._buildHollow();
   }
 
@@ -702,7 +721,7 @@ export function makeTerrainMaterial(renderer) {
       // are computed once into globals rather than three times.
       vec3 gW; vec2 gUvF; vec2 gUvW; float gWall;
       vec3 gMacro; vec3 gMid; float gMoss; float gWet; float gAO; float gRough;
-      float gSoak; float gSub; float gCaustic;
+      float gSoak; float gSub; float gCaustic; float gRockS;
 
       /* ── what is under the water ───────────────────────────────────────────
        *
@@ -879,6 +898,43 @@ export function makeTerrainMaterial(renderer) {
         gW.z += (1.0 - gW.x - gW.y - gW.z) * gSoak;
         gW /= max(1e-3, gW.x + gW.y + gW.z);
 
+        /* And it goes under water, for the same reason with better cause.
+         *
+         * A stream bed is the one surface in this forest that is swept
+         * continuously. Anything loose enough to be called litter is carried
+         * off it, and what is left is the mineral bed — gravel, sand and the
+         * rock the channel is cut into. The splat had no term for that: gSub
+         * was computed a few lines above and spent entirely on refraction and
+         * caustics, so the weights under the brook were whatever the bank
+         * beside it happened to be, which was leaf litter. The result was a
+         * channel paved in whole dry leaves, and since the shallows are
+         * transparent precisely so the bed can be seen through them, that one
+         * omission is most of why the stream read as wet ground rather than as
+         * water. Widening the surface to its true waterline only made it
+         * easier to see.
+         *
+         * Six centimetres to make the change, which is a waterline: leaves
+         * stop where the water starts, and they do not fade out over a metre
+         * of it. */
+        float scour = sstep(0.0, 0.06, gSub);
+        gW.y *= 1.0 - 0.92 * scour;
+        gW.z += (1.0 - gW.x - gW.y - gW.z) * scour;
+        gW /= max(1e-3, gW.x + gW.y + gW.z);
+
+        /* And it is not the same rock.
+         *
+         * S_ROCK is a bedding plane — the comment beside it says 3.6 m, and it
+         * is sized for a cliff face, where a cell a quarter of a metre across
+         * is a block of the wall. Handing the stream bed straight to that
+         * channel paved the brook in cobbles the size of dinner plates with
+         * grout between them, which is a garden path and not a river. The map
+         * is the right map; the period is wrong by about the ratio of a cliff
+         * to a pebble. Four and a half times finer puts the cells at four or
+         * five centimetres, which is gravel a stream this size can actually
+         * move, and it also breaks the run of the bank texture at the
+         * waterline instead of continuing it underwater at the same scale. */
+        gRockS = S_ROCK * mix(1.0, 4.5, scour);
+
         // Moss grows on the flat, the shaded and the damp, and not on the part
         // that gets walked on. Tying it to all four is what makes it land in
         // plausible places instead of scattering evenly.
@@ -927,13 +983,13 @@ export function makeTerrainMaterial(renderer) {
 
            vec3 alb = biplanar(tDirtA, S_DIRT) * gW.x
                     + litA * gW.y
-                    + biplanar(tRockA, S_ROCK) * gW.z;
+                    + biplanar(tRockA, gRockS) * gW.z;
 
            // ORM is fetched once here and reused by the roughness stage below,
            // which runs later in three's chunk order.
            vec3 orm = biplanar(tDirtO, S_DIRT) * gW.x
                     + biplanar(tLitO, S_LIT) * gW.y
-                    + biplanar(tRockO, S_ROCK) * gW.z;
+                    + biplanar(tRockO, gRockS) * gW.z;
            gAO = orm.r; gRough = orm.g;
 
            alb *= 0.78 + 0.44 * gMacro.x;
@@ -1013,7 +1069,7 @@ export function makeTerrainMaterial(renderer) {
           '#include <normal_fragment_maps>',
           `vec3 mapN = (biplanar(tDirtN, S_DIRT) * gW.x
                       + biplanar(tLitN, S_LIT) * gW.y
-                      + biplanar(tRockN, S_ROCK) * gW.z) * 2.0 - 1.0;
+                      + biplanar(tRockN, gRockS) * gW.z) * 2.0 - 1.0;
            mapN.xy *= normalScale;
            // A film of water fills in the micro-relief, so wet ground is
            // visibly flatter as well as darker and shinier.

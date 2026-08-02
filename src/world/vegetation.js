@@ -805,6 +805,9 @@ export class Vegetation {
     const nrm = new THREE.Vector3();
     const out = [];
     const q = {};
+    // A second field scratch, for asking the same questions a patch-radius away
+    // without clobbering the candidate's own answers.
+    const qw = {};
     /* The ground-cover grids are the expensive ones — a 0.9 m lattice over the
      * whole corridor is ~110k candidates — and almost all of them are rejected
      * for being too far from the trail. Testing that first, before the height,
@@ -838,6 +841,30 @@ export class Vegetation {
          * does; there is nothing for the tolerance to buy. */
         const wd = standingWater(px, pz, y, t.brook, q);
         if (wd > (name === 'litterMat' ? 0.005 : 0.06)) continue;
+        /* And the same question asked of the patch rather than of the point.
+         *
+         * A litter patch is not a candidate, it is a disc: `litterMat` lays
+         * its leaves out to 0.85 m times an instance scale that runs past
+         * three, so a drift centred a metre up the bank still throws leaves
+         * into the middle of the stream. Testing only the centre passed all of
+         * them, and the brook's bed — the one surface the shallows are
+         * transparent in order to show — came out paved in whole dry leaves.
+         *
+         * Four points on a ring, at the reach of a typical drift. The largest
+         * ones will still overhang the waterline by a little, which is what a
+         * real drift banked against a stream edge does; what this stops is a
+         * mat lying across open water. */
+        if (name === 'litterMat') {
+          const R = 0.75;
+          let over = false;
+          for (let a = 0; a < 4; a++) {
+            const ax = px + R * Math.cos(a * Math.PI / 2);
+            const az = pz + R * Math.sin(a * Math.PI / 2);
+            this.trail.nearest(ax, az, qw);
+            if (standingWater(ax, az, t.height(ax, az), t.brook, qw) > 0.005) { over = true; break; }
+          }
+          if (over) continue;
+        }
         t.normal(px, pz, nrm);
 
         /* Stone under this candidate.

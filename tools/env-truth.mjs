@@ -45,17 +45,33 @@ const URL_BASE = process.env.GALLERY_URL || 'http://localhost:8099/';
  * sky. Before the cull fix it read +0.0149 standing on the probe and -0.0100
  * standing at the falls, so the sign alone catches the failure.
  *
- * `lower` is the loosest, and honestly so. It still drifts about 21% against a
- * 7.6% floor for a reason not yet found: vegetation and ruins are re-culled to
- * the probe, the shadow cascade is re-aimed there, the spray is excluded, and
- * none of camera yaw, a level-wide shadow frustum or terrain LOD accounts for
- * it — the two mirror balls are structurally the same picture with a slightly
- * brighter floor in one. The bound is therefore set to catch a regression, not
- * to certify the number. docs/experiments.md keeps the open question.
+ * `lower` is the loosest, and honestly so. It drifts for a reason not yet
+ * found: vegetation and ruins are re-culled to the probe, the shadow cascade
+ * is re-aimed there, the spray is excluded, and none of camera yaw, a
+ * level-wide shadow frustum or terrain LOD accounts for it — the two mirror
+ * balls are structurally the same picture with a slightly brighter floor in
+ * one. The bound is therefore set to catch a regression, not to certify the
+ * number. docs/experiments.md keeps the open question.
+ *
+ * Re-baselined once, when the brook was widened to its true waterline. That
+ * fix removed 3,966 plant and litter instances that had been standing in the
+ * outer half of the stream — the old channel width under-reported the water by
+ * about 1.3 m on each bank, so the scatter had been happily rooting ferns in
+ * it — and the strip is widest at the delta, a few metres from the second
+ * standpoint. `lower` went 22.8% -> 67.3% and `mean` 8.7% -> 20.3%.
+ *
+ * That was measured, not assumed. Reverting each file in turn moved these
+ * numbers only when the change altered where plants stand: the wider surface
+ * mesh, the scoured bed material and the finer gravel scale are all bit-for-
+ * bit invisible here. `green` is unmoved and still the right sign at both
+ * standpoints, which is the signal that says the probe still has a forest in
+ * it. So this is the world differing between two places 300 m apart, which is
+ * what a single level-wide probe cannot represent and what these bounds were
+ * never able to certify — not the capture going wrong.
  */
-const TOL_MEAN = 0.12;
+const TOL_MEAN = 0.26;
 const TOL_UPPER = 0.06;
-const TOL_LOWER = 0.30;
+const TOL_LOWER = 0.80;
 const TOL_GREEN = 0.30;
 
 const browser = await chromium.launch({
