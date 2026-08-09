@@ -49,7 +49,8 @@
  * offset to remember and no offset to get wrong.
  */
 import * as THREE from 'three';
-import { LIVERY_PARS, LIVERY_BODY } from './livery.js';
+import { LIVERY_PARS, LIVERY_BODY,
+         DAMAGE_PARS, DAMAGE_VERT, DAMAGE_FRAG } from './livery.js';
 import { buildCockpit, EYE as COCKPIT_EYE } from './cockpit.js';
 import { setInstruments } from './instruments.js';
 
@@ -57,14 +58,24 @@ import { setInstruments } from './instruments.js';
  * projection in object space, so it needs no UV map and survives the body
  * sections being retuned. */
 function liveryPaint(material) {
+  /* One uniform array shared by the material, so damage can be written from
+   * outside without reaching into the compiled shader. */
+  material.userData.dents = { value: [
+    new THREE.Vector4(), new THREE.Vector4(),
+    new THREE.Vector4(), new THREE.Vector4(),
+  ] };
   material.onBeforeCompile = (sh) => {
+    sh.uniforms.uDents = material.userData.dents;
     sh.vertexShader = 'varying vec3 vCarLocal;\nvarying vec3 vCarNrm;\n' +
+      DAMAGE_PARS +
       sh.vertexShader.replace('#include <begin_vertex>',
-        '#include <begin_vertex>\n  vCarLocal = position;\n  vCarNrm = normal;');
-    sh.fragmentShader = LIVERY_PARS + sh.fragmentShader.replace(
-      '#include <color_fragment>', '#include <color_fragment>\n' + LIVERY_BODY);
+        '#include <begin_vertex>\n  vCarLocal = position;\n  vCarNrm = normal;\n'
+        + DAMAGE_VERT);
+    sh.fragmentShader = LIVERY_PARS + DAMAGE_PARS + sh.fragmentShader.replace(
+      '#include <color_fragment>',
+      '#include <color_fragment>\n' + LIVERY_BODY + DAMAGE_FRAG);
   };
-  material.customProgramCacheKey = () => 'car-livery-v1';
+  material.customProgramCacheKey = () => 'car-livery-damage-v1';
   return material;
 }
 import { bakeSurface } from '../gfx/bake.js';
@@ -2211,6 +2222,21 @@ export class CarMesh {
    *
    * @param {number} angleRad steering angle of the equivalent single wheel
    */
+  /**
+   * Write the damage record onto the bodywork.
+   *
+   * @param {Array<{x,y,z,amt}>} dents  mesh-space, from driver.js
+   */
+  setDamage(dents) {
+    const u = this.mat.paint.userData.dents;
+    if (!u || !dents) return;
+    for (let i = 0; i < u.value.length; i++) {
+      const d = dents[i];
+      if (d) u.value[i].set(d.x, d.y, d.z, d.amt);
+      else u.value[i].set(0, 0, 0, 0);
+    }
+  }
+
   /** Point the tacho and light the shift lamps. Called from main's car step. */
   setInstruments(rpm, limit) {
     if (this.instruments) setInstruments(this.instruments, rpm, limit);

@@ -210,6 +210,19 @@ export class Driver {
     this.surface = 'seal';
     this.offRoad = 0;                 // 0 sealed, 1 fully off the formation
     this.impact = 0;                  // closing speed of the last hit, m/s
+    /* Where the car has been hit, in MESH space, and how hard.
+     *
+     * Four slots, because that is what the paint shader can carry and because
+     * a rally car that has been hit in more than four places is a rally car
+     * that is on a truck. Kept in mesh space rather than world space so the
+     * dents travel with the bodywork — recording them in world coordinates
+     * would leave the damage behind on the road, which is a mistake that is
+     * very easy to make and very obvious once made. */
+    this.dents = [
+      { x: 0, y: 0, z: 0, amt: 0 }, { x: 0, y: 0, z: 0, amt: 0 },
+      { x: 0, y: 0, z: 0, amt: 0 }, { x: 0, y: 0, z: 0, amt: 0 },
+    ];
+    this._dentNext = 0;
     this.skid = 0;                    // 0..1, how hard the tyres are complaining
 
     /* Camera. A chase camera is not a position, it is a filter: it lags the
@@ -482,6 +495,40 @@ export class Driver {
    * putting a wheel down onto the shoulder is a gradual loss rather than a
    * switch, which is both true and much easier to catch.
    */
+  /**
+   * Remember a hit.
+   *
+   * The contact normal points away from what was struck, so the panel that
+   * took it is on the opposite side — the dent goes at the car's surface in
+   * the direction the car was pushed FROM, which is -normal.
+   *
+   * Repeat hits in the same place deepen rather than occupy a second slot: a
+   * car that scrapes a fence for twenty metres would otherwise consume every
+   * slot with the same crease and lose the record of the pole it hit first.
+   */
+  _recordDent(ux, uz, speed) {
+    if (speed < 2.0) return;
+    const s = Math.sin(this.yaw), c = Math.cos(this.yaw);
+    /* World normal into mesh space: the mesh is yawed by this.yaw and its
+     * origin is the rear axle, WHEELBASE * WEIGHT_FRONT ahead of the CG. */
+    const lx = -(ux * c - uz * s);
+    const lz = -(ux * s + uz * c);
+    /* Push it out to the bodywork rather than leaving it at the centreline. */
+    const x = lx * 0.95;
+    const z = WHEELBASE * 0.61 + lz * 2.0;
+    const y = 0.75;
+    const amt = Math.min(1, (speed - 2.0) / 16);
+    for (const dn of this.dents) {
+      if (dn.amt > 0 && Math.hypot(dn.x - x, dn.z - z) < 0.7) {
+        dn.amt = Math.min(1, dn.amt + amt * 0.5);
+        return;
+      }
+    }
+    const slot = this.dents[this._dentNext];
+    this._dentNext = (this._dentNext + 1) % this.dents.length;
+    slot.x = x; slot.y = y; slot.z = z; slot.amt = amt;
+  }
+
   _surfaceAt(x, z) {
     const q = this.trail.nearest(x, z, this._q);
     const d = q.dist;
@@ -799,6 +846,7 @@ export class Driver {
             this.yawRate += (ux * c2 - uz * s2) * Math.min(1, Math.abs(vn) * 0.06)
                           * (vn < -4 ? 1 : 0.35);
             this.impact = Math.max(this.impact || 0, Math.abs(vn));
+            this._recordDent(ux, uz, Math.abs(vn));
           }
         }
       }

@@ -25,6 +25,56 @@
  */
 import { DIGIT_GLSL } from '../render/digits.js';
 
+/* Damage, as four dents.
+ *
+ * A car that is hit, makes a noise, throws debris and then drives on
+ * unmarked is telling the player that the collision did not really happen.
+ * The bodywork is the only place that record can live.
+ *
+ * Dents are done in the VERTEX shader as an inward pull toward the impact
+ * point, not as a dark patch in the fragment shader. A painted-on dent has no
+ * silhouette and disappears the moment the car is seen against the sky, which
+ * is most of the time in this basin; a displaced one changes the outline and
+ * catches the light wrongly, which is what a real dent does.
+ *
+ * The scuff is fragment work and is secondary: bare metal and abraded paint
+ * where the panel was actually struck. */
+export const DAMAGE_PARS = /* glsl */ `
+  uniform vec4 uDents[4];        // xyz = mesh-space centre, w = 0..1 severity
+  varying float vScuff;
+`;
+
+export const DAMAGE_VERT = /* glsl */ `
+  {
+    vScuff = 0.0;
+    for (int i = 0; i < 4; i++) {
+      float amt = uDents[i].w;
+      if (amt <= 0.0) continue;
+      vec3 c = uDents[i].xyz;
+      float d = distance(transformed, c);
+      /* A dent is a local pit with a raised lip, because sheet steel has to
+       * put the displaced material somewhere. Without the lip it reads as a
+       * soft dimple rather than as damage. */
+      float r = 0.62;
+      float k = 1.0 - smoothstep(0.0, r, d);
+      float lip = smoothstep(r * 0.55, r, d) * (1.0 - smoothstep(r, r * 1.45, d));
+      vec3 dir = normalize(transformed - c + vec3(0.0, 0.001, 0.0));
+      transformed -= dir * (k * k * 0.24 - lip * 0.05) * amt;
+      vScuff = max(vScuff, k * amt);
+    }
+  }
+`;
+
+export const DAMAGE_FRAG = /* glsl */ `
+  {
+    /* Abraded paint: darker, and much less saturated, because what shows is
+     * primer and bare steel rather than a darker shade of the colour. */
+    vec3 bare = vec3(0.130, 0.126, 0.122);
+    float s = smoothstep(0.15, 0.85, vScuff);
+    diffuseColor.rgb = mix(diffuseColor.rgb, bare, s * 0.80);
+  }
+`;
+
 export const LIVERY_PARS = DIGIT_GLSL + /* glsl */ `
   varying vec3 vCarLocal;
   varying vec3 vCarNrm;
