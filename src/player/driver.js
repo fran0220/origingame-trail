@@ -39,6 +39,7 @@
 import * as THREE from 'three';
 import { clamp, lerp, smoothstep, Noise2D } from '../world/noise.js';
 import { WHEELBASE, TRACK, WHEEL_R } from './carMesh.js';
+import { EYE as COCKPIT_EYE } from './cockpit.js';
 
 /* The car, as the collision world sees it. Half the track plus a little, which
  * puts the disc inside the bodywork rather than around it: a disc circumscribing
@@ -900,6 +901,53 @@ export class Driver {
     }
 
     const sinY = Math.sin(this.yaw), cosY = Math.cos(this.yaw);
+
+    if (this.camMode === 'cockpit') {
+      /* Inside the car, which is only possible now that there IS an inside —
+       * see player/cockpit.js. The exterior shell is a front-sided loft, so
+       * from in here every one of its faces is turned away and the car would
+       * otherwise vanish; the interior is a separate inward-facing shell.
+       *
+       * The eye is at the driver's seat, on the RIGHT: this is a New Zealand
+       * car on a New Zealand road. That is not decoration — it changes which
+       * way the apex sits and where the A-pillar hides it, which is the whole
+       * reason a cockpit view plays differently from a chase one. */
+      /* EYE is in MESH space, and the mesh is not at this.pos.
+       *
+       * driver.js owns a rigid body whose origin is the centre of mass;
+       * carMesh.js owns geometry whose origin is the centre of the rear axle,
+       * and main.js reconciles them by pushing the mesh back along its heading
+       * by WHEELBASE * WEIGHT_FRONT. Placing the camera from this.pos without
+       * that offset puts the eye 1.6 m forward of where the seat actually is —
+       * which rendered as a view of the BACK of both seats, from outside the
+       * cabin, looking the right way. The geometry was fine; the frame it was
+       * measured in was not. */
+      const back = WHEELBASE * 0.61;
+      const ez0 = COCKPIT_EYE.z - back;
+      const ex = this.pos.x + sinY * ez0 + cosY * COCKPIT_EYE.x;
+      const ez = this.pos.z + cosY * ez0 - sinY * COCKPIT_EYE.x;
+      /* No fudge factor on the height. The first version subtracted 0.10 "to
+       * be safe", which put the eye level with the dash top and hid the road
+       * behind it — the one thing a driving view must never do. EYE is a
+       * measured seating position; using it unmodified is the point of having
+       * measured it. */
+      cam.position.set(ex, this.pos.y + COCKPIT_EYE.y, ez);
+      cam.rotation.set(0, 0, 0);
+      cam.rotateY(this.yaw - this.lookYaw + Math.PI);
+      /* Body motion is felt far more strongly from inside, because the frame
+       * of the screen moves with you. Full pitch and roll rather than the
+       * bonnet cam's damped 0.6 and 0.8. */
+      cam.rotateX(this.bodyPitch + this.lookPitch - 0.02);
+      cam.rotateZ(-this.bodyRoll);
+      /* A tighter field than the bonnet view. A wide angle from a seated
+       * position exaggerates the cabin into a fisheye and pushes the road
+       * away; a cockpit should feel closer to the screen, not further. */
+      cam.fov = lerp(this._baseFov - 4, this._baseFov + 6,
+                     Math.min(1, this.speed / 42));
+      cam.updateProjectionMatrix();
+      cam.updateMatrixWorld();
+      return;
+    }
 
     if (this.camMode === 'hood') {
       /* A bonnet camera, not a cockpit one.

@@ -437,6 +437,10 @@ class Game {
      * The fixed-view capture tools set it: every station there places a camera
      * by hand, which leaves the physics body parked on the lens. */
     car.root.visible = !this.hideCar;
+    /* The interior only exists for the cockpit view. Its panels face inward,
+     * so from outside they are backfaces that would z-fight the shell they sit
+     * behind, and it is several hundred triangles nobody can see. */
+    if (car.cockpit) car.cockpit.visible = d.camMode === 'cockpit';
   }
 
   _configureShadow() {

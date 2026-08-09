@@ -50,6 +50,7 @@
  */
 import * as THREE from 'three';
 import { LIVERY_PARS, LIVERY_BODY } from './livery.js';
+import { buildCockpit, EYE as COCKPIT_EYE } from './cockpit.js';
 
 /* Paint the competition livery on. See livery.js — it is a two-plane
  * projection in object space, so it needs no UV map and survives the body
@@ -820,6 +821,8 @@ const ARCH_REVERSED = ARCH_SECTION.slice().reverse();
 
 /* ── the car ──────────────────────────────────────────────────────────── */
 
+export { COCKPIT_EYE };
+
 export class CarMesh {
   /**
    * @param {THREE.WebGLRenderer} renderer  used only to bake the tyre surface
@@ -1120,6 +1123,15 @@ export class CarMesh {
     this._addShutLines(trim);
     this._addGlazing(glass);
     this._addCabin(cabin, cage);
+
+    /* The interior, built once and hidden until the cockpit camera asks for
+     * it. It is invisible from outside — the panels face inward — so there is
+     * no reason to pay for it on the other two camera modes. */
+    const inside = buildCockpit(this._detail.spoke > 1 ? 1 : 0);
+    this.cockpit = inside.root;
+    this.cockpitWheel = inside.wheel;
+    this.cockpit.visible = false;
+    this.root.add(this.cockpit);
 
     for (const b of [paint, trim, glass, lampC, lampR, cabin, cage]) {
       if (b.empty) continue;
@@ -2200,6 +2212,15 @@ export class CarMesh {
   setSteer(angleRad) {
     const a = clamp(angleRad, -0.72, 0.72);
     this._steer = a;
+    /* Turn the steering wheel too.
+     *
+     * The road wheels move about 0.72 rad lock to lock; the rim moves far
+     * more, because a car has a steering RATIO. Roughly 2.2 turns lock to
+     * lock is a quick rack, which is what a rally car runs, and it is the
+     * difference between a wheel that answers the input and a wheel that
+     * twitches: at 1:1 the rim barely moves and the whole object reads as
+     * decoration rather than as the thing the player is holding. */
+    if (this.cockpitWheel) this.cockpitWheel.rotation.z = -a * 9.6;
     const mag = Math.abs(a);
     let inner = mag, outer = mag;
     if (mag > 1e-4) {
