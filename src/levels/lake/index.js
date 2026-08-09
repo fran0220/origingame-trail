@@ -35,6 +35,7 @@ import { LakeProps } from './props.js';
 import { LakeShelter } from './shelter.js';
 import { LakeFences } from './fences.js';
 import { LakeFarm } from './farm.js';
+import { LakeRoadside } from './roadside.js';
 import { LakeFauna } from './fauna.js';
 import { LakeAmbience } from './audio.js';
 
@@ -215,12 +216,14 @@ class LakeLevel {
     this.fences = new LakeFences(this.terrain, tier); scene.add(this.fences.root);
     await step(0.70, '放牧');
     this.farm = new LakeFarm(this.terrain, tier); scene.add(this.farm.root);
+    await step(0.71, '架起电线与弯道标志');
+    this.roadside = new LakeRoadside(this.terrain, tier); scene.add(this.roadside.root);
     this.fauna = new LakeFauna(this.trail, this.terrain, tier); scene.add(this.fauna.root);
     await step(0.72, '抬升南阿尔卑斯');
     this.distance = new LakeDistance(); this.distance.setTier(tier); scene.add(this.distance.root);
   }
 
-  materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.veg.materials, ...this.props.materials, ...this.shelter.materials, ...this.fences.materials, ...this.farm.materials, ...this.fauna.materials, ...this.distance.materials]; }
+  materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.veg.materials, ...this.props.materials, ...this.shelter.materials, ...this.fences.materials, ...this.farm.materials, ...this.roadside.materials, ...this.fauna.materials, ...this.distance.materials]; }
 
   makeAmbience({ camera, walker }) { return new LakeAmbience({ camera, walker }); }
 
@@ -270,7 +273,7 @@ class LakeLevel {
 
   setViewportHeight() {}
 
-  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), farm:this.farm?.stats(), fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
+  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), farm:this.farm?.stats(), roadside:this.roadside?.stats(), fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
 
   dispose() {
     this.road?.dispose();
@@ -280,6 +283,7 @@ class LakeLevel {
     this.shelter?.dispose();
     this.fences?.dispose();
     this.farm?.dispose();
+    this.roadside?.dispose();
     this.fauna?.dispose();
     this.distance?.dispose();
     new Set(this.terrainMat?.userData.groundTextures || []).forEach((texture) => texture.dispose());
