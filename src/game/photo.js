@@ -61,6 +61,7 @@ export class PhotoCamera {
     this.camera = camera;
     this.walker = walker;
     this.terrain = world.terrain;
+    this.world = world;
     this.raised = false;
     this.zoom = 0;              // 0 open, 1 fully at the lens
     this.target = null;         // the subject currently framed, or null
@@ -83,7 +84,7 @@ export class PhotoCamera {
         /* The point the lens is judged against sits above the ground anchor by
          * the subject's own height, because a canopy and a pool are anchored
          * at the same z but photographed in completely different directions. */
-        focus: new THREE.Vector3(ground.x, ground.y + (def.up ?? 0), ground.z),
+        focus: def.at.kind === 'fauna' ? world.fauna.notable[def.at.species].focus : new THREE.Vector3(ground.x, ground.y + (def.up ?? 0), ground.z),
       };
     });
   }
@@ -91,7 +92,7 @@ export class PhotoCamera {
   byId(id) { return this.subjects.find((s) => s.id === id) ?? null; }
 
   /** Where this subject is best photographed from, in metres. */
-  idealDistanceFor(subject) { return idealDistance(subject.radius, LENS_FOV); }
+  idealDistanceFor(subject) { return idealDistance(subject.radius, LENS_FOV) * (IDEAL_FILL / (subject.idealFill ?? IDEAL_FILL)); }
 
   setRaised(on) {
     if (this.raised === on) return false;
@@ -123,6 +124,10 @@ export class PhotoCamera {
     let best = null, bestQ = -1, bestBox = null, bestFill = 0, bestDist = 0;
 
     for (const s of this.subjects) {
+      if (s.at.kind === 'fauna') {
+        const entity = this.world.fauna?.notable?.[s.at.species];
+        if (entity) { s.position = entity.position; s.focus = entity.focus; }
+      }
       const dist = cam.position.distanceTo(s.focus);
       if (dist < s.range[0] || dist > s.range[1]) continue;
 
@@ -145,7 +150,8 @@ export class PhotoCamera {
        * the right size are penalised equally. A linear falloff would make
        * every distant subject "nearly perfect", which is the opposite of what
        * a photograph of it looks like. */
-      const framed = 1 - Math.min(1, Math.abs(Math.log(Math.max(1e-3, fill) / IDEAL_FILL)) / Math.log(3.2));
+      const idealFill = s.idealFill ?? IDEAL_FILL;
+      const framed = 1 - Math.min(1, Math.abs(Math.log(Math.max(1e-3, fill) / idealFill)) / Math.log(3.2));
       /* Clipped at the frame edge. A subject whose extent runs past the
        * border is a worse photograph than one that sits inside it, and this
        * is what stops "walk up and fill the screen" being the answer to
@@ -178,7 +184,7 @@ export class PhotoCamera {
      * who is already at 70% turns a hint into noise, and the number beside it
      * is telling them the same thing more precisely. */
     this.advice = !best || bestQ >= 0.62 ? null
-      : bestFill < IDEAL_FILL ? 'far' : 'near';
+      : bestFill < (best.idealFill ?? IDEAL_FILL) ? 'far' : 'near';
   }
 
   /**

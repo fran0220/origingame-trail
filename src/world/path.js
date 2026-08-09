@@ -119,9 +119,47 @@ export class Trail {
     return out;
   }
 
+  /**
+   * Fractional sample index at a normalised *arc length*.
+   *
+   * This exists because `t` meant two different things in this class and the
+   * difference was invisible until something built geometry from one and
+   * terrain from the other.
+   *
+   * `nearest()` has always returned `sample.t`, which is `s / length` — a true
+   * arc-length fraction. `pointAt()` and `tangentAt()` took the same argument
+   * and used it as a fraction of the sample *index*. Those agree only if the
+   * curve is sampled at uniform arc length, and a Catmull-Rom evaluated at
+   * uniform parameter is not: it runs fast through straights and slow through
+   * bends. On this project's lakeshore alignment the two parameterisations
+   * diverge by up to 0.03, which is 23 m of road.
+   *
+   * Nothing noticed while the only consumers were scatter rules and a walking
+   * track, because both are smooth in `t` and a 23 m shift along a 760 m route
+   * just moves where a bush goes. It stopped being invisible the moment a road
+   * mesh was placed with `pointAt()` over ground carved with `nearest()`: the
+   * two surfaces were then sampling different points of the same elevation
+   * profile, and the seal floated up to 1.34 m over its own formation.
+   *
+   * The samples are dense and monotonic in `s`, so resolve it by binary search
+   * and interpolate. Every caller now gets arc length, which is what they all
+   * already assumed they were getting.
+   */
+  indexAt(t) {
+    const S = this.samples;
+    const target = clamp(t, 0, 1) * this.length;
+    let lo = 0, hi = S.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (S[mid].s <= target) lo = mid; else hi = mid;
+    }
+    const span = S[hi].s - S[lo].s;
+    return lo + (span > 1e-9 ? (target - S[lo].s) / span : 0);
+  }
+
   /** Point on the trail at normalised arc length. */
   pointAt(t, target = new THREE.Vector3()) {
-    const s = clamp(t, 0, 1) * (this.samples.length - 1);
+    const s = this.indexAt(t);
     const i = Math.min(this.samples.length - 2, Math.floor(s));
     const f = s - i;
     const a = this.samples[i], b = this.samples[i + 1];
@@ -129,9 +167,15 @@ export class Trail {
   }
 
   tangentAt(t, target = new THREE.Vector3()) {
-    const s = clamp(t, 0, 1) * (this.samples.length - 1);
-    const a = this.samples[Math.min(this.samples.length - 1, Math.floor(s))];
-    return target.set(a.tx, 0, a.tz).normalize();
+    const s = this.indexAt(t);
+    const i = Math.min(this.samples.length - 2, Math.floor(s));
+    const f = s - i;
+    const a = this.samples[i], b = this.samples[i + 1];
+    /* Interpolated rather than nearest-sample. A road's crossfall, its
+     * markings and its marker posts are all placed off this vector, and a
+     * piecewise-constant tangent puts a visible kink in all three at every
+     * sample boundary. */
+    return target.set(a.tx + (b.tx - a.tx) * f, 0, a.tz + (b.tz - a.tz) * f).normalize();
   }
 
   /** Half-width of the walkable tread at this point, in metres. */

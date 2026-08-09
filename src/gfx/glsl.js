@@ -177,6 +177,32 @@ vec2 pworley(vec2 p, vec2 period){
 }
 vec2 pworley(vec2 p, float period){ return pworley(p, vec2(period)); }
 
+/* Same field, plus a random per nearest cell in .z.
+ *
+ * Without it the only way to vary one stone against its neighbour is a smooth
+ * noise sampled at the cell frequency, and that is not the same thing: it
+ * varies *across* stones instead of *between* them, so every cobble shares a
+ * tone with the half of its neighbours on the same side of the gradient. The
+ * thing that makes gravel read as gravel is that adjacent pieces are
+ * uncorrelated, which needs the cell index itself. */
+vec3 pworleyId(vec2 p, vec2 period){
+  vec2 ip = floor(p), fp = fract(p);
+  float d1 = 8.0, d2 = 8.0, id = 0.0;
+  for(int y = -1; y <= 1; y++){
+    for(int x = -1; x <= 1; x++){
+      vec2 o = vec2(float(x), float(y));
+      vec2 cell = mod(ip + o, period);
+      vec2 h = hash22(cell) * 0.5 + 0.5;
+      vec2 fpt = o + h - fp;
+      float d = dot(fpt, fpt);
+      if(d < d1){ d2 = d1; d1 = d; id = fract(h.x * 71.13 + h.y * 29.71); }
+      else if(d < d2){ d2 = d; }
+    }
+  }
+  return vec3(sqrt(d1), sqrt(d2), id);
+}
+vec3 pworleyId(vec2 p, float period){ return pworleyId(p, vec2(period)); }
+
 /* Scattered leaves.
  *
  * The reason a leaf-litter texture usually fails is that it is made by

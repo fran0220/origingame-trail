@@ -15,9 +15,56 @@ import { bakeSurface } from '../../gfx/bake.js';
 import { SSTEP } from '../../gfx/glsl.js';
 import { SHINGLE, TUSSOCK_MAT, GREYWACKE, MACRO_HI } from './groundTex.js';
 
-export function makeBasinMaterial(renderer) {
-  const shingle = bakeSurface(renderer, SHINGLE, { size: 1024, normalStrength: 3.4 });
-  const mat_ = bakeSurface(renderer, TUSSOCK_MAT, { size: 1024, normalStrength: 2.4 });
+const MEADOW_MAPS = {
+  color: new URL('../../../media/lake-assets/ground/Grass004_1K-JPG_Color.jpg', import.meta.url).href,
+  normal: new URL('../../../media/lake-assets/ground/Grass004_1K-JPG_NormalGL.jpg', import.meta.url).href,
+  orm: new URL('../../../media/lake-assets/ground/Grass004_1K-JPG_ORM.jpg', import.meta.url).href,
+};
+const SHINGLE_MAPS = {
+  color: new URL('../../../media/lake-assets/ground/gravel_stones/gravel_stones_diff_1k.jpg', import.meta.url).href,
+  normal: new URL('../../../media/lake-assets/ground/gravel_stones/gravel_stones_nor_gl_1k.jpg', import.meta.url).href,
+  orm: new URL('../../../media/lake-assets/ground/gravel_stones/gravel_stones_arm_1k.jpg', import.meta.url).href,
+};
+
+/** Load the scanned meadow and shingle before the first real world frame. */
+export async function loadBasinGroundAssets(renderer) {
+  const loader = new THREE.TextureLoader();
+  const [map, normalMap, ormMap, shingleMap, shingleNormalMap, shingleOrmMap] = await Promise.all([
+    loader.loadAsync(MEADOW_MAPS.color),
+    loader.loadAsync(MEADOW_MAPS.normal),
+    loader.loadAsync(MEADOW_MAPS.orm),
+    loader.loadAsync(SHINGLE_MAPS.color),
+    loader.loadAsync(SHINGLE_MAPS.normal),
+    loader.loadAsync(SHINGLE_MAPS.orm),
+  ]);
+  map.colorSpace = THREE.SRGBColorSpace;
+  shingleMap.colorSpace = THREE.SRGBColorSpace;
+  const anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  for (const texture of [map, normalMap, ormMap, shingleMap, shingleNormalMap, shingleOrmMap]) {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.anisotropy = anisotropy;
+    texture.needsUpdate = true;
+  }
+  return {
+    map, normalMap, ormMap,
+    shingleMap, shingleNormalMap, shingleOrmMap,
+    textures: [map, normalMap, ormMap, shingleMap, shingleNormalMap, shingleOrmMap],
+  };
+}
+
+export function makeBasinMaterial(renderer, meadowAssets = null) {
+  const shingle = meadowAssets?.shingleMap ? {
+    map: meadowAssets.shingleMap,
+    normalMap: meadowAssets.shingleNormalMap,
+    ormMap: meadowAssets.shingleOrmMap,
+  } : bakeSurface(renderer, SHINGLE, { size: 1024, normalStrength: 2.1 });
+  /* The shader-authored mat remains a deterministic fallback for tools and
+   * for old cached builds. Production Lake uses the locally bundled ambientCG
+   * scan: real blade fragments, moss and soil states are a stronger foundation
+   * than asking more procedural noise to imitate a photograph. */
+  const mat_ = meadowAssets || bakeSurface(renderer, TUSSOCK_MAT, { size: 1024, normalStrength: 2.4 });
   const rock = bakeSurface(renderer, GREYWACKE, { size: 1024, normalStrength: 3.6 });
   const macro = bakeSurface(renderer, MACRO_HI, { size: 256, normal: false, orm: false });
 
@@ -31,7 +78,7 @@ export function makeBasinMaterial(renderer) {
      * high-country ground sees the entire hemisphere, and at this altitude
      * that hemisphere is very bright and very blue — which is exactly why
      * shadows in the mountains are blue and shadows in a forest are green. */
-    envMapIntensity: 1.0,
+    envMapIntensity: 0.62,
   });
 
   const U = {
@@ -40,10 +87,26 @@ export function makeBasinMaterial(renderer) {
     tRokA: { value: rock.map }, tRokN: { value: rock.normalMap }, tRokO: { value: rock.ormMap },
     tMacro: { value: macro.map },
     uWetTint: { value: new THREE.Color(0x2b3238) },
+    uMossTint: { value: new THREE.Color(0x234b1d) },
     uDebug: { value: 0 },
     uTime: { value: 0 },
   };
   mat.userData.uniforms = U;
+  mat.userData.groundTextures = [
+    shingle.map, shingle.normalMap, shingle.ormMap,
+    mat_.map, mat_.normalMap, mat_.ormMap,
+    rock.map, rock.normalMap, rock.ormMap,
+    macro.map,
+  ];
+  /* Named so tools/atlas.mjs can dump any of them to a PNG. Judging a ground
+   * texture from a frame confuses "no detail was authored" with "the detail is
+   * there and the blend threw it away". */
+  mat.userData.maps = {
+    shingle: shingle.map, shingleN: shingle.normalMap, shingleO: shingle.ormMap,
+    tussock: mat_.map, tussockN: mat_.normalMap, tussockO: mat_.ormMap,
+    rock: rock.map, rockN: rock.normalMap, rockO: rock.ormMap,
+    macro: macro.map,
+  };
 
   /* Injected source must be reflected in the program cache key, or three will
    * hand this material a program compiled for a different one whose stock
@@ -53,7 +116,7 @@ export function makeBasinMaterial(renderer) {
    * apparently switched off and hard-edged black across the valley side. It
    * looked like a flaky rasteriser because it was bimodal and load-dependent;
    * it was a compile-order race. */
-  mat.customProgramCacheKey = () => 'basin-splat-v1';
+  mat.customProgramCacheKey = () => 'basin-splat-v6';
 
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
@@ -77,29 +140,45 @@ export function makeBasinMaterial(renderer) {
       uniform sampler2D tMatA, tMatN, tMatO;
       uniform sampler2D tRokA, tRokN, tRokO;
       uniform sampler2D tMacro;
-      uniform vec3 uWetTint;
+      uniform vec3 uWetTint, uMossTint;
       uniform float uDebug;
       /* Held for the debug output below. Reading the blended albedo *before*
        * any light touches it is the only way to tell "the textures are wrong"
        * apart from "the lighting is wrong", and those two look identical in a
        * finished frame. */
       vec3 gSurf = vec3(0.0);
+      vec3 gGrvO, gMatO, gRokO;
+      float gAO, gDamp;
       varying vec4 vSplat;
       varying vec3 vWPos;
       varying vec3 vWNrm;
 
-      /* Two tap scales per surface, the coarse one rotated.
+      /* Tile breakup at a *constant* physical scale.
        *
        * One scale over open ground two hundred metres deep tiles visibly no
        * matter how good the texture is; the eye finds a 1 m period in a
        * gradient far more easily than it finds one in clutter, and this level
-       * is nothing but gradients. Compositing the same map at two scales, with
-       * the second turned so its lattice does not line up with the first,
-       * costs one extra fetch and removes the period entirely. */
+       * is nothing but gradients. So the period has to be broken. But this
+       * used to break it by mixing the same map at p*0.5 and p*0.137 — a 3.6x
+       * scale jump, at 40% weight — and that is only safe for a surface that
+       * is noise all the way down. The shingle bake describes *objects* of a
+       * known physical size, and compositing a 3.6x copy over them destroys
+       * the only absolute scale cue the ground has: every cobble shipped with
+       * a 1.2 m ghost of itself, and the gravel track read as flagstone
+       * paving rather than as river gravel.
+       *
+       * Break the lattice by *selecting* between two rotated and offset taps
+       * of the same scale, on a low-frequency field, instead of by blending
+       * scales. The selector band is deliberately narrow: a 50/50 blend of two
+       * rotations averages toward the map's mean, which flattens the surface
+       * and is the other way to lose the stones. The soft boundary that
+       * remains reads as a deposit edge, which is what a beach actually has.
+       */
       vec3 tap2(sampler2D t, vec2 p){
-        vec3 a = texture2D(t, p * 0.5).rgb;
-        vec3 b = texture2D(t, mat2(0.80, -0.60, 0.60, 0.80) * p * 0.137).rgb;
-        return mix(a, b, 0.4);
+        float sel = sstep(0.45, 0.55, texture2D(tMacro, p * 0.021).y);
+        vec3 a = texture2D(t, p).rgb;
+        vec3 b = texture2D(t, mat2(0.80, -0.60, 0.60, 0.80) * p + vec2(0.37, 0.71)).rgb;
+        return mix(a, b, sel);
       }
     ` + sh.fragmentShader;
 
@@ -109,7 +188,25 @@ export function makeBasinMaterial(renderer) {
     sh.fragmentShader = sh.fragmentShader.replace(
       '#include <map_fragment>',
       `
-      vec2 tuv = vWPos.xz * 0.5;
+      /* The Poly Haven scan covers two physical metres. Keep that measured
+       * scale instead of enlarging a procedural stone cell until the foreshore
+       * reads as paving. Meadow and rock can share the same coordinates; only
+       * shingle needs the half-frequency tap below. */
+      vec2 tuv = vWPos.xz * 0.85;
+      vec2 grvUv = vWPos.xz * 0.50;
+      /* Fine shingle and thatch are useful at the player's feet and alias into
+       * a screen-door pattern on a hillside hundreds of metres away. Mipmaps
+       * cannot remove the pattern completely because this shader combines two
+       * independently rotated scales after sampling them. Fade each material
+       * toward its measured middle value over distance, and flatten the normal
+       * below by the same amount, so the far basin carries landform and macro
+       * colour rather than sub-pixel gravel. */
+      /* Pulled in from 55..210 m when tuv went from a 4 m period to a 1.18 m
+       * one: the distance at which a texel goes sub-pixel scales with the
+       * texture's world period, so a 3.4x finer surface starts aliasing 3.4x
+       * closer. Leaving the old range in place put the screen-door pattern
+       * right back on the mid-distance basin. */
+      float farDetail = sstep(22.0, 150.0, distance(cameraPosition, vWPos));
       float grv = clamp(vSplat.x, 0.0, 1.0);
       float wet = clamp(vSplat.y, 0.0, 1.0);
       float hol = clamp(vSplat.z, 0.0, 1.0);
@@ -120,20 +217,80 @@ export function makeBasinMaterial(renderer) {
       float slope = 1.0 - clamp(vWNrm.y, 0.0, 1.0);
       float rok = sstep(0.42, 0.72, slope);
 
-      vec3 cGrv = tap2(tGrvA, tuv);
+      vec3 cGrv = tap2(tGrvA, grvUv);
       vec3 cMat = tap2(tMatA, tuv);
       vec3 cRok = tap2(tRokA, tuv * 0.7);
+      /* These are the *measured* means of each bake, not chosen colours: a fade
+       * to anything else makes the surface change value with camera distance,
+       * which is far more visible than the aliasing it is there to prevent. */
+      /* The scanned Grass004 map's measured linear mean. Matching it during
+       * the detail fade keeps distant hills green instead of fading back to
+       * the obsolete grey/tawny procedural average. */
+      cGrv = mix(cGrv, vec3(0.081, 0.080, 0.075), farDetail);
+      cMat = mix(cMat, vec3(0.127, 0.161, 0.034), farDetail);
+      cRok = mix(cRok, vec3(0.380, 0.388, 0.377), farDetail);
 
       vec3 surf = mix(cMat, cGrv, grv);
       surf = mix(surf, cRok, rok);
 
-      // Macro break-up, and a darkening in the hollows where fines collect.
-      surf *= texture2D(tMacro, vWPos.xz * 0.006).rgb * 1.15;
-      surf = mix(surf, surf * 0.86, hol * 0.4);
+      /* Jungle's successful ground is a material-state field, not one colour
+       * noise multiplier. Give the basin the same hierarchy: a broad value
+       * field, a 20–30 m deposit field and damp organic pockets correlated
+       * with concavity. This is what makes the texture belong to the landform
+       * instead of looking wrapped around it. */
+      vec3 macro = texture2D(tMacro, vWPos.xz * 0.0055).rgb;
+      vec3 mid = texture2D(tMacro, vWPos.xz * 0.041 + 0.37).rgb;
+      float broadLight = sstep(0.38,0.76,macro.y*.62+macro.z*.38);
+      surf *= macro.x * 1.12 * mix(.92,1.10,broadLight);
+      float deposit = sstep(0.42, 0.78, mid.y) * (1.0 - grv) * (1.0 - rok);
+      gDamp = sstep(0.52, 0.86, mid.z) * (0.32 + hol * 0.68)
+            * (1.0 - grv) * (1.0 - rok);
+      /* Living spring mat under the sward. The scan already supplies the
+       * physical green; these broad state fields tie it to damp hollows and
+       * glacial deposits without recolouring it into dead tussock. */
+      float living = (1.0 - grv) * (1.0 - rok);
+      /* Broad spring turf states. The scan supplies the centimetres; these
+       * twenty-to-hundred-metre fields stop every hill becoming one sampled
+       * green mean. Damp swales stay cool and deep, exposed crowns are warmer
+       * and brighter, and neither state changes the physical blade scale. */
+      float turfState = sstep(0.30, 0.74, macro.y * .56 + mid.x * .44);
+      vec3 turfTint = mix(vec3(.78, .96, .70), vec3(1.10, 1.12, .76), turfState);
+      surf *= mix(vec3(1.0), turfTint, living * .34);
+      surf = mix(surf, surf * vec3(0.74, 1.05, 0.68), deposit * 0.32);
+      surf = mix(surf, uMossTint * (0.46 + macro.z * 0.62), gDamp * 0.40);
+      surf = mix(surf, surf * vec3(0.88, 1.08, 0.76), living * 0.12);
+      surf = mix(surf, surf * 0.74, hol * 0.34);
+      /* Freshly sorted dry strandline stone is lighter than both wet shingle
+       * and the darker soil-bearing track. The path tops out at grv≈.64, so a
+       * high gravel threshold isolates the beach without duplicating shoreX()
+       * inside GLSL. This creates a dry grey berm behind the wet charcoal lip. */
+      float strandDry = sstep(.68, .96, grv) * (1.0 - wet);
+      surf = mix(surf, surf * 1.62 + vec3(.030,.033,.035), strandDry * .68);
+      /* Crushed track gravel occupies a deliberately lower splat interval than
+       * wave-sorted beach stone. Give that middle interval its own dry state so
+       * the route reads as grey aggregate rather than a black painted ribbon;
+       * the narrow upper gate keeps this correction off the strandline. */
+      float treadDry = sstep(.48, .58, grv) * (1.0 - sstep(.65, .69, grv)) * (1.0 - wet);
+      surf = mix(surf, surf * 1.27 + vec3(.012,.013,.012), treadDry * .56);
       /* Wet shingle. Water on stone does two things and both matter: it drops
        * the albedo hard and it drops the roughness harder. Darkening alone
-       * gives a beach that looks stained rather than wet. */
-      surf = mix(surf, surf * 0.42 + uWetTint * 0.10, wet * 0.85);
+       * gives a beach that looks stained rather than wet. On dark greywacke
+       * the residual *0.58 was too mild once lit, so the wet-margin station
+       * still read as dry cobble meeting cyan water. */
+      /* Keep the wet lip dark but not black: a missing-looking polygon is not
+       * a useful moisture cue, especially beside a saturated turquoise body. */
+      surf = mix(surf, surf * 0.54 + uWetTint * 0.10, wet);
+
+      gGrvO = tap2(tGrvO, grvUv);
+      gMatO = tap2(tMatO, tuv);
+      gRokO = tap2(tRokO, tuv * 0.7);
+      gAO = mix(mix(gMatO.r, gGrvO.r, grv), gRokO.r, rok);
+      /* AO belongs primarily in indirect light. Multiplying scanned albedo by
+       * the raw packed channel a second time made every gravel hollow nearly
+       * black and turned a photoscan back into a high-contrast printed pattern.
+       * Keep only a restrained contact modulation here; the lighting path below
+       * still applies the full cavity signal to reflected light. */
+      surf *= mix(0.88, 1.0, pow(clamp(gAO, 0.0, 1.0), 0.75));
 
       diffuseColor.rgb *= surf;
       gSurf = surf;
@@ -153,21 +310,40 @@ export function makeBasinMaterial(renderer) {
     sh.fragmentShader = sh.fragmentShader.replace(
       '#include <roughnessmap_fragment>',
       `
-      float rGrv = tap2(tGrvO, tuv).g;
-      float rMat = tap2(tMatO, tuv).g;
-      float rRok = tap2(tRokO, tuv * 0.7).g;
+      /* Grass004's scan contains very dark roughness values from moist blade
+       * fragments. Used raw across a terrain those fragments become kilometre
+       * scale glossy patches and sun-facing hills turn white like plastic.
+       * Preserve map variation inside physically plausible outdoor floors;
+       * only the authored wet shoreline is allowed to become truly smooth. */
+      float rGrv = 0.78 + gGrvO.g * 0.20;
+      float rMat = 0.72 + gMatO.g * 0.24;
+      float rRok = 0.68 + gRokO.g * 0.28;
       float roughnessFactor = roughness * mix(mix(rMat, rGrv, grv), rRok, rok);
-      roughnessFactor = mix(roughnessFactor, 0.18, wet * 0.8);
+      roughnessFactor = mix(roughnessFactor, roughnessFactor * 0.90, gDamp * 0.65);
+      roughnessFactor = mix(roughnessFactor, 0.14, wet);
       `
+    );
+
+    sh.fragmentShader = sh.fragmentShader.replace(
+      '#include <aomap_fragment>',
+      `float surfaceAO = pow(clamp(gAO, 0.0, 1.0), 1.25);
+       reflectedLight.indirectSpecular *= surfaceAO;
+       reflectedLight.directSpecular *= mix(0.58, 1.0, surfaceAO);
+       /* Wet stone picks up a hard sheen. On already-dark greywacke the albedo
+        * drop alone is a mute stain; the sheen is what sells "just washed"
+        * against the dry cobble behind the camera in the wet-margin station. */
+       reflectedLight.directSpecular += diffuseColor.rgb * wet * 0.55;
+       reflectedLight.indirectSpecular += vec3(0.18, 0.22, 0.24) * wet * 0.35;`
     );
 
     sh.fragmentShader = sh.fragmentShader.replace(
       '#include <normal_fragment_maps>',
       `
-      vec3 nGrv = tap2(tGrvN, tuv) * 2.0 - 1.0;
+      vec3 nGrv = tap2(tGrvN, grvUv) * 2.0 - 1.0;
       vec3 nMat = tap2(tMatN, tuv) * 2.0 - 1.0;
       vec3 nRok = tap2(tRokN, tuv * 0.7) * 2.0 - 1.0;
       vec3 mapN = normalize(mix(mix(nMat, nGrv, grv), nRok, rok));
+      mapN = normalize(mix(mapN, vec3(0.0, 0.0, 1.0), farDetail * 0.92));
       // Wet stone reads smooth: the water fills the microrelief.
       mapN = mix(mapN, vec3(0.0, 0.0, 1.0), wet * 0.5);
       mapN.xy *= normalScale;

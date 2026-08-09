@@ -301,11 +301,13 @@ class Game {
       trail: this.trail,
       terrain: this.terrain,
       veg: this.veg,
+      fauna: this.level.fauna,
       collision: this.collision,
       ambience: this.ambience,
       mapWater: this.level.mapWater,
       content: this.levelModule.content,
       levelId: this.levelModule.meta.id,
+      onSceneExit: (button) => exitToPicker(this.session.state, button),
     });
     scene.add(this.session.glyphs.root);
     // Added to the same exhaustive list as every other opaque surface: a
@@ -684,6 +686,7 @@ class Game {
   dispose() {
     cancelAnimationFrame(this._raf);
     this.ambience?.dispose();
+    this.level?.dispose?.();
     this.walker.dispose();
     this.body.dispose();
     this.atmos?.dispose();
@@ -731,18 +734,53 @@ function attachDevWarps(game) {
  * through the same door, and a boot path that a probe cannot drive is a boot
  * path that stops being tested. `#level=jungle` is what the tools use.
  */
-function pickLevel() {
+export function pickLevel() {
   const m = /(?:^|[#&])level=([a-z0-9-]+)/i.exec(location.hash);
-  return LEVELS[m?.[1]] ?? jungle;
+  return m ? (LEVELS[m[1]] ?? jungle) : null;
 }
 
-async function boot() {
-  const levelModule = pickLevel();
-  const hud = new Hud(levelModule.content);
+function shouldShowPicker() {
+  return !location.hash || location.hash === '#';
+}
+
+async function selectLevel(id) {
+  if (!LEVELS[id]) return;
+  history.replaceState(null, '', `#level=${id}`);
+  document.getElementById('levelPicker')?.remove();
+  await boot(LEVELS[id]);
+}
+
+/* A complete document rebuild is intentional: WebGL resources, pointer-lock
+ * listeners, AudioContext state and procedural-world state all have one clear
+ * owner and one teardown boundary instead of pretending a Game can hot-swap. */
+export async function exitToPicker(state, button) {
+  if (button?.disabled) return;
+  if (button) button.disabled = true;
+  await state.flush();
+  location.hash = '';
+  location.reload();
+}
+
+async function boot(chosen = undefined) {
+  const levelModule = chosen ?? pickLevel();
+  if (!levelModule && shouldShowPicker()) {
+    const picker = document.getElementById('levelPicker');
+    picker.hidden = false;
+    picker.addEventListener('click', (e) => {
+      const button = e.target.closest('button[data-level]');
+      if (button) void selectLevel(button.dataset.level);
+    });
+    window.__selectLevel = selectLevel;
+    return;
+  }
+  const actualLevel = levelModule ?? jungle;
+  document.getElementById('levelPicker')?.remove();
+  document.title = `${actualLevel.meta.title} — Field Notes`;
+  const hud = new Hud(actualLevel.content);
   if (platform.online) hud.useHostLoading();
   platform.loading.begin();
 
-  const game = new Game(document.getElementById('view'), levelModule);
+  const game = new Game(document.getElementById('view'), actualLevel);
   game.hud = hud;
   window.THREE = THREE;
 
@@ -764,8 +802,22 @@ async function boot() {
    * for a frame and then jumping. */
   await game.session.restore();
 
-  // The harness drives __game directly, so it has to appear only once the
-  // world behind it is real.
+  /* Prime every simulation-owned uniform and perform the complete scene and
+   * composite passes before either automation or the host can observe ready.
+   * This is synchronous GPU work by design: a timer/RAF would make “ready” a
+   * race and can still expose the loading canvas. */
+  game.step(0);
+  game.renderOnce();
+  const firstFrame = game.info();
+  if (!(firstFrame.calls > 1 && firstFrame.triangles > 0)) {
+    const err = new Error(`First world frame was empty (calls=${firstFrame.calls}, triangles=${firstFrame.triangles})`);
+    hud.bootProgress(1, '首帧渲染失败');
+    platform.analytics.track('game.runtime.error', { where: 'first-frame' });
+    throw err;
+  }
+
+  // The harness may drive __game immediately, so exposure itself is the
+  // contract that a non-empty world frame has already completed.
   window.__game = game;
   attachDevWarps(game);
 

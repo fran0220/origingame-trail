@@ -32,6 +32,8 @@ uniform float uTurbidity;    // haze. A humid rainforest morning is 4-8.
 uniform float uExposure;
 uniform vec3 uGroundColor;   // canopy bounce, seen below the horizon
 uniform vec3 uHazeColor;     // the shaded air the low sky is seen through
+uniform float uCloudiness;   // zero keeps enclosed levels on a clear dome
+uniform float uCloudScale;
 
 const float PI = 3.141592653589793;
 
@@ -49,6 +51,18 @@ float rayleighPhase(float c){ return (3.0 / (16.0 * PI)) * (1.0 + c * c); }
 float miePhase(float c, float g){
   float g2 = g * g;
   return (1.0 - g2) / (4.0 * PI * pow(1.0 + g2 - 2.0 * g * c, 1.5));
+}
+
+float skyHash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float skyNoise(vec2 p){
+  vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(skyHash(i),skyHash(i+vec2(1,0)),f.x),
+             mix(skyHash(i+vec2(0,1)),skyHash(i+vec2(1,1)),f.x),f.y);
+}
+float skyFbm(vec2 p){
+  float s=0.0,a=.55;
+  for(int i=0;i<5;i++){s+=skyNoise(p)*a;p=p*2.03+vec2(7.1,11.7);a*=.5;}
+  return s;
 }
 
 // Distance from a point to the top of the atmosphere along a ray.
@@ -140,6 +154,25 @@ void main(){
   float sunAmt = sstep(0.9997, 0.99995, c);
   col += vec3(1.0, 0.94, 0.84) * sunAmt * 120.0;
 
+  /* Open alpine weather belongs in the lighting dome, not on a decorative
+   * billboard. Projecting a broad five-octave field through the hemisphere
+   * gives cloud banks with kilometre-scale masses and ragged edges; rendering
+   * the same function into the PMREM means their cool shadow and pale reflected
+   * bands reach the lake and glossy leaves automatically. Enclosed levels set
+   * cloudiness to zero and retain their established clear-sky lighting. */
+  if(uCloudiness > 0.001){
+    vec2 cp=dir.xz/max(.16,dir.y+.32)*uCloudScale;
+    float broad=skyFbm(cp*.38+vec2(2.7,-4.1));
+    float detail=skyFbm(cp*1.12+vec2(-7.4,3.2));
+    float density=sstep(.60,.74,broad*.72+detail*.28+uCloudiness*.08);
+    density*=sstep(.055,.20,dir.y)*(1.0-sstep(.91,1.0,dir.y));
+    float sunSide=max(0.0,dot(normalize(vec3(dir.x,.28,dir.z)),normalize(vec3(sun.x,.28,sun.z))));
+    vec3 cloudShade=vec3(.42,.49,.57);
+    vec3 cloudLight=vec3(1.30,1.28,1.23)*(1.0+.20*sunSide);
+    vec3 cloud=mix(cloudShade,cloudLight,clamp(.30+broad*.52+sunSide*.24,0.0,1.0));
+    col=mix(col,cloud,density*uCloudiness*.86);
+  }
+
   /* Merge the low sky into the haze.
    *
    * The dome is never seen from open ground here — it is seen from under a
@@ -192,6 +225,8 @@ export class Sky {
        * fogged thicket meets the dome behind it there must be no seam, and a
        * mismatch there is visible as a horizon line even at low contrast. */
       uHazeColor: { value: new THREE.Color(this.air.haze) },
+      uCloudiness: { value: this.air.clouds ?? 0 },
+      uCloudScale: { value: this.air.cloudScale ?? 1 },
     };
     this.material = new THREE.ShaderMaterial({
       vertexShader: VERT, fragmentShader: FRAG,
@@ -207,7 +242,12 @@ export class Sky {
     this.mesh.name = 'sky';
 
     this._pmrem = new THREE.PMREMGenerator(renderer);
-    this._pmrem.compileEquirectangularShader();
+    /* bake() always feeds PMREMGenerator a CubeCamera target. Precompiling the
+     * unrelated equirectangular conversion left the cubemap converter to be
+     * compiled inside the first bake and intermittently produced an invalid
+     * first world frame on a cold SwiftShader context. Warm the shader that is
+     * actually consumed instead. */
+    this._pmrem.compileCubemapShader();
     this._envRT = null;
   }
 

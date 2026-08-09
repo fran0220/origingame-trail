@@ -57,15 +57,23 @@ export class Hud {
       pause: $('#pause'),
       qTiers: $('#qTiers'),
       qNote: $('#qNote'),
+      pauseLevels: $('#pauseLevels'),
       finale: $('#finale'),
       finTitle: $('#finTitle'),
       finRows: $('#finRows'),
       finLb: $('#finLb'),
     };
-    this.bookTab = 'glyph';
+    this.bookTab = content.GLYPHS.length ? 'glyph' : 'photo';
     this.bookOpen = false;
     this._hintTimer = null;
     this._onBookTab = null;
+
+    this.el.counters.glyph.style.display = content.GLYPHS.length ? '' : 'none';
+    for (const b of document.querySelectorAll('#book .tabs button')) {
+      const empty = b.dataset.tab === 'glyph' ? !content.GLYPHS.length : !content.SUBJECTS.length;
+      b.style.display = empty ? 'none' : '';
+      b.classList.toggle('on', b.dataset.tab === this.bookTab);
+    }
 
     for (const b of document.querySelectorAll('#book .tabs button')) {
       b.addEventListener('click', () => {
@@ -286,8 +294,11 @@ export class Hud {
     const { GLYPHS, SUBJECTS } = this.content;
     const glyphs = state.glyphs.size, photos = state.photos.size;
     const total = GLYPHS.length + SUBJECTS.length;
-    this.el.bookSub.textContent =
-      `铭文 ${glyphs}/${GLYPHS.length} · 图鉴 ${photos}/${SUBJECTS.length} · 行程 ${formatTime(state.elapsedMs)}`;
+    this.el.bookSub.textContent = [
+      GLYPHS.length ? `铭文 ${glyphs}/${GLYPHS.length}` : null,
+      SUBJECTS.length ? `图鉴 ${photos}/${SUBJECTS.length}` : null,
+      `行程 ${formatTime(state.elapsedMs)}`,
+    ].filter(Boolean).join(' · ');
     this.el.bookRec.textContent = `${glyphs + photos}/${total}`;
     const qs = [...state.photos.values()];
     this.el.bookQual.textContent = qs.length
@@ -329,6 +340,11 @@ export class Hud {
       e.stopPropagation();
       onPick(b.dataset.tier);
     });
+    return this;
+  }
+
+  bindSceneExit(onExit) {
+    this.el.pauseLevels?.addEventListener('click', (e) => { e.stopPropagation(); onExit(e.currentTarget); });
     return this;
   }
 
@@ -385,7 +401,7 @@ export class Hud {
 
   onFinaleAction(onBook, onBack) {
     $('#finBook').addEventListener('click', onBook);
-    $('#finBack').addEventListener('click', onBack);
+    $('#finBack').addEventListener('click', (e) => onBack(e.currentTarget));
   }
 }
 

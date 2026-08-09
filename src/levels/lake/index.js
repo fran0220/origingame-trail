@@ -25,8 +25,17 @@
 import { Trail } from '../../world/path.js';
 import { ROUTE } from './route.js';
 import { Basin, LAKE_Y, shoreX } from './basin.js';
-import { makeBasinMaterial } from './ground.js';
+import { loadBasinGroundAssets, makeBasinMaterial } from './ground.js';
 import { content } from './content.js';
+import { LakeDistance } from './distance.js';
+import { LakeWater, drawLakeWater } from './water.js';
+import { LakeRoad } from './road.js';
+import { LakeFlora } from './flora.js';
+import { LakeMeadow } from './meadow.js';
+import { LakeHabitat } from './habitat.js';
+import { LakeProps } from './props.js';
+import { LakeFauna } from './fauna.js';
+import { LakeAmbience } from './audio.js';
 
 export const meta = {
   id: 'lake',
@@ -41,22 +50,21 @@ export const mood = {
    * see render/distance.js — so this frustum never has to resolve a leaf at
    * 0.08 m and a summit at 45 km in the same depth buffer. */
   camera: { fov: 55, near: 0.10, far: 50_000 },
-  /* Late morning, north-north-west. In the southern hemisphere the sun is in
-   * the northern sky, so this puts it up the lake and slightly across it —
-   * which is what keeps the range modelled rather than flattened into a
-   * silhouette, and what makes the water read as bright rather than black. */
-  sun: { elevation: 47, azimuth: 22 },
+  /* Clear spring morning. A lower cross-light gives every meadow hummock and
+   * mountain spur a readable side while keeping snow and lake highlights out
+   * of the tone curve's shoulder. */
+  sun: { elevation: 34, azimuth: 26 },
   /* An order of magnitude thinner than the jungle's 0.038, and warm-neutral
    * rather than green. This is only the near-field haze; the aerial
    * perspective that carries the mountains is computed from the atmosphere
    * rather than faked with a fog colour. */
-  fog: { color: 0xa8b6c4, density: 0.0016 },
+  fog: { color: 0xb7cddd, density: 0.00135 },
   /* Sky term: real, deep, high-altitude blue — the thing a forest can never
    * have. Ground term: pale tawny, bouncing off dry tussock and grey shingle,
    * and much brighter than a forest floor's because there is far more light
    * arriving to bounce. */
-  hemi: { sky: 0x7ea6d8, ground: 0x9a8e73, intensity: 0.85 },
-  environmentIntensity: 1.0,
+  hemi: { sky: 0x83b4db, ground: 0x526d38, intensity: 0.64 },
+  environmentIntensity: 0.86,
   /* Two stops under the jungle's, and in the same direction a photographer
    * would move the dial walking out of forest into a glacial basin at noon.
    * Dry tussock, pale shingle and a snowfield in frame make this one of the
@@ -64,7 +72,7 @@ export const mood = {
    * first cut of this level at a median luminance of 0.89 with no black
    * anywhere in the histogram, which is not a bright landscape, it is a
    * blown one. */
-  exposure: 0.42,
+  exposure: 0.50,
   /* Mackenzie air: dry, thin, and among the clearest in the inhabited world —
    * which is why an observatory sits on the hill above this lake.
    *
@@ -86,12 +94,17 @@ export const mood = {
    * the basin floor instead of the forest's green, which had been leaving a
    * green band along the skyline of a treeless landscape. */
   air: {
-    turbidity: 2.2,
-    ground: 0x8d9098,
-    haze: 0xaeb9c4,
-    beta: [0.10, 0.17, 0.42],
-    sunScale: 5.2,
-    sunMax: 4.4,
+    turbidity: 2.0,
+    ground: 0x71835f,
+    haze: 0xb7cddd,
+    beta: [0.09, 0.15, 0.38],
+    sunScale: 7.0,
+    sunMax: 6.2,
+    /* Broken high-country cloud banks supply photographic scale in the empty
+     * half of an open frame and, because the sky is also the environment map,
+     * give the lake broad reflected value changes without a second camera. */
+    clouds: 0.28,
+    cloudScale: 2.0,
   },
   /* Nothing in this basin is under anything. That switches off both halves of
    * the canopy light model — the sunfleck mask, which would otherwise print
@@ -117,35 +130,119 @@ class LakeLevel {
      * zero everywhere. Saying so explicitly beats shipping a canopy function
      * that happens to evaluate to nothing. */
     this.roof = () => 0;
-    this.mapWater = null;
+    this.mapWater = drawLakeWater;
   }
 
   async _build() {
-    const { renderer, scene, step } = this.ctx;
+    const { renderer, scene, step, tier } = this.ctx;
 
     this.trail = new Trail(ROUTE);
 
     await step(0.16, '刻蚀冰川盆地');
     this.terrain = new Basin(this.trail);
-    this.terrainMat = makeBasinMaterial(renderer);
+    const groundAssets = await loadBasinGroundAssets(renderer);
+    this.terrainMat = makeBasinMaterial(renderer, groundAssets);
+    /* This ground is broad, not flat. Moraine lips, fan channels and terrace
+     * risers must shadow one another under the same sun as the vegetation;
+     * disabling terrain casting removed the largest directional-light cue in
+     * every frame and made the basin look like an ambient-lit model. */
     scene.add(this.terrain.build(this.terrainMat));
+
+    /* The seal goes down before anything is scattered, because everything that
+     * is scattered has to know it is there. */
+    await step(0.34, '铺筑八号国道');
+    this.road = new LakeRoad(this.terrain, this.trail, tier); scene.add(this.road.root);
+
+    await step(0.38, '铺展冰川湖水');
+    this.water = new LakeWater(this.terrain, tier, renderer, scene); scene.add(this.water.root);
+    await step(0.46, '铺展春日草甸');
+    this.meadow = await LakeMeadow.create(this.terrain, tier); scene.add(this.meadow.root);
+    await step(0.51, '建立湖岸生境');
+    /* Photoscanned middle-storey communities carry the visible mass between
+     * the PBR floor and the named native specimens. Habitat owns broadleaf
+     * scrub, fern swales and real stone; flora below owns species identity. */
+    this.habitat = await LakeHabitat.create(this.terrain, tier); scene.add(this.habitat.root);
+    await step(0.58, '种植高地植物');
+    /* The scanned PBR meadow closes the continuous floor. Native flora keeps
+     * authored hero silhouettes and notable points without laying a uniform
+     * card carpet over it: R21's bent cards became a mint crop, while R22's
+     * upright revision became a field of black V-shaped marks. */
+    this.veg = new LakeFlora(this.terrain, tier, renderer, { groundCover: false }); this.notable = this.veg.notable; scene.add(this.veg.root);
+    await step(0.64, '铺陈岸线器物');
+    /* Driftwood, erratics, lichen slabs, thatch mats, fan rills — the non-plant
+     * assets that stop a vegetated terrace looking like plant stamps on pebble. */
+    this.props = new LakeProps(this.terrain, tier); scene.add(this.props.root);
+    this.fauna = new LakeFauna(this.trail, this.terrain, tier); scene.add(this.fauna.root);
+    await step(0.72, '抬升南阿尔卑斯');
+    this.distance = new LakeDistance(); this.distance.setTier(tier); scene.add(this.distance.root);
   }
 
-  materials() { return [this.terrainMat]; }
+  materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.meadow.materials, ...this.habitat.materials, ...this.veg.materials, ...this.props.materials, ...this.fauna.materials, ...this.distance.materials]; }
 
-  makeAmbience() { return null; }
+  makeAmbience({ camera, walker }) { return new LakeAmbience({ camera, walker }); }
 
-  update() {}
+  attachAtmosphere(atmos) {
+    // Open, dry alpine air: retain only a light bright veil, never jungle mist.
+    atmos.volumeMat.uniforms.uMistAmbient.value.set(0xb7cddd);
+    atmos.volumeMat.uniforms.uMist.value.set(0.0013, 0.12, 0.10, 280);
+    atmos.volumeMat.uniforms.uBand.value.set(18, 12, 0.015, 0.1);
+    atmos.volumeMat.uniforms.uScatter.value.set(0.10, 0.42);
+    /* The jungle's depth-derived AO is tuned for leaves resting on litter and
+     * stems crowding one another. Across an open, shallow-angle heightfield its
+     * sub-pixel sample rings lock to the 60 cm terrain grid and become a dark
+     * screen-door pattern over the entire shore. There are no such crevices
+     * here: plant contact is carried by real shadows, and the broad landform
+     * already has normals and direct light. Keep the shared pass intact for
+     * Jungle and make this level's deliberately open air an AO-free case. */
+    /* Keep a very broad, weak landform term only. The tight screen-space ring
+     * quantises against the kilometre water mesh's depth precision and prints
+     * its triangle lattice over the entire lake; fixed-view ablations proved
+     * that term, not the wave shader, caused the moiré. Lake plants use real
+     * directional shadows and are sunk through the organic mat at their base,
+     * so disabling this unsuitable contact estimator does not leave them
+     * floating. */
+    atmos.aoStrength = 0.045;
+    atmos.contactStrength = 0;
+  }
 
-  cullAround() {}
+  update(dt, host) {
+    this.water.update(dt, host.camera, host.sky.sunDir, host);
+    this.fauna.update(dt);
+    this.veg.update(this.water.time);
+    this.meadow.update(this.water.time);
+    this.habitat.update(this.water.time);
+    this.veg.cullAround(host.camera.position.x, host.camera.position.z);
+    this.meadow.cullAround(host.camera.position.x, host.camera.position.z);
+    this.habitat.cullAround(host.camera.position.x, host.camera.position.z);
+    this.props?.cullAround(host.camera.position.x, host.camera.position.z);
+    this.terrainMat.userData.uniforms.uTime.value = this.water.time;
+  }
 
-  envExclude() { return []; }
+  cullAround(x, z) { this.meadow?.cullAround(x, z); this.habitat?.cullAround(x, z); this.veg?.cullAround(x, z); this.props?.cullAround(x, z); this.fauna?.cullAround?.(x, z); }
 
-  setTier() {}
+  /* Water must not reflect itself, but the Southern Alps are the dominant
+   * object in Lake Pukaki's real reflection. The old exclusion removed them
+   * from the PMREM and forced the lake shader to invent a flat sky colour. */
+  envExclude() { return [this.water?.root, this.fauna?.root].filter(Boolean); }
+
+  setTier(tier) { this.water?.setTier(tier); this.meadow?.setTier(tier); this.habitat?.setTier(tier); this.veg?.setTier(tier); this.props?.setTier(tier); this.fauna?.setTier(tier); this.distance?.setTier(tier); }
 
   setViewportHeight() {}
 
-  stats() { return {}; }
+  stats() { return { water:this.water?.stats(), meadow:this.meadow?.stats(), habitat:this.habitat?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
+
+  dispose() {
+    this.road?.dispose();
+    this.water?.dispose();
+    this.meadow?.dispose();
+    this.habitat?.dispose();
+    this.veg?.dispose();
+    this.props?.dispose();
+    this.fauna?.dispose();
+    this.distance?.dispose();
+    new Set(this.terrainMat?.userData.groundTextures || []).forEach((texture) => texture.dispose());
+    this.terrainMat?.dispose();
+  }
 }
 
 export { LAKE_Y, shoreX };

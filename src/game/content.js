@@ -92,7 +92,22 @@ export const GLYPHS = [
     text: '水从这里走，我们从来不知道它去哪。\n扔下去的东西，再没有浮起来过。',
   },
   {
-    id: 'abandon', t: 0.93, at: atPoint(-8.2, -365.0),
+    /* Moved two metres south and one east off (-8.2, -365.0).
+     *
+     * A tablet's dressed face is aimed at the nearest point on the trail
+     * rather than authored, so where it stands decides where it looks and
+     * therefore where a reader has to stand to read it. Until Trail.indexAt()
+     * landed, "nearest point" was computed in arc length and then looked up as
+     * a sample index, which pointed this tablet's face about twenty metres up
+     * the route from the place it was supposed to address. Correcting that
+     * swung it round to face the pool squarely — and revealed that the ground
+     * 1.6 m in front of it, where a reader would have to be, is 2.9 m below
+     * its base and under water.
+     *
+     * So the placement was always wrong and the old bug was hiding it. This
+     * spot is still west of the pool and still off the trail at 7 m, which is
+     * what the hint promises, but the reader stands on level ground. */
+    id: 'abandon', t: 0.93, at: atPoint(-7.0, -374.0),
     title: '弃殿',
     hint: '潭西的石阶下',
     text: '不是一夜之间。\n是一年比一年少几个人，\n直到最后一个数水者把刻刀放下。',

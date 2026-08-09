@@ -46,7 +46,7 @@ export class Session {
     this.trail = deps.trail;
 
     const world = {
-      trail: deps.trail, terrain: deps.terrain, veg: deps.veg,
+      trail: deps.trail, terrain: deps.terrain, veg: deps.veg, fauna: deps.fauna,
       mapWater: deps.mapWater ?? null,
     };
     this.content = deps.content;
@@ -83,8 +83,9 @@ export class Session {
     this.hud.onBookTab(() => this.hud.renderBook(this.state));
     this.hud.onFinaleAction(
       () => { this.hud.hideFinale(); this.hud.openBook(this.state); },
-      () => { this.hud.hideFinale(); this._lock(); },
+      (button) => deps.onSceneExit(button),
     );
+    this.hud.bindSceneExit((button) => deps.onSceneExit(button));
 
     /* One last write on the way out. `pagehide` rather than `unload`, because
      * a bfcache restore fires it and `unload` is not guaranteed to run at all
@@ -150,6 +151,7 @@ export class Session {
   }
 
   begin() {
+    this.refreshCounters();
     this._syncChapter(true);
     if (this.state.restored) {
       this.hud.toast({
@@ -185,6 +187,7 @@ export class Session {
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === this.canvas;
       this.paused = !locked && !this.hud.bookOpen && !this.hud.finaleOpen;
+      this.game.setPaused(this.paused || this.hud.bookOpen || this.hud.finaleOpen);
       this.hud.setPaused(this.paused);
       if (!locked && this.photo.raised) this._toggleCamera();
     });
@@ -370,7 +373,7 @@ export class Session {
     this.hud.showFinale({
       title: wasFinished ? '记录已更新' : title,
       rows: [
-        ['铭文拓片', `${this.state.glyphs.size} / ${this.content.GLYPHS.length}`],
+        ...(this.content.GLYPHS.length ? [['铭文拓片', `${this.state.glyphs.size} / ${this.content.GLYPHS.length}`]] : []),
         ['物种图鉴', `${this.state.photos.size} / ${this.content.SUBJECTS.length}`],
         ['平均构图', `${Math.round(avg * 100)}%`],
         ['行程用时', formatTime(this.state.elapsedMs)],

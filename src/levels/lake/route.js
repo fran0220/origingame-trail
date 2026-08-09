@@ -1,4 +1,14 @@
-/* A walk up the eastern shore of a glacial lake.
+/* State Highway 8 up the eastern shore of a glacial lake — the racing line.
+
+ * This route was authored as a walk and is now driven, and almost everything
+ * about it survived that change, which is worth saying because it was not
+ * obvious in advance. A lakeshore alignment is a lakeshore alignment: it goes
+ * where the water and the alluvial fans let it go, and that constraint
+ * produces long sighted straights joined by open sweepers, which is also what
+ * a fast road is. The one thing that had to change was the width — see
+ * widthAt() below — and the one thing that had to be added was a grade the
+ * suspension can live with, which basin.js now surveys rather than authoring.
+ *
  *
  * The geography is Pukaki's, and the reason for choosing that end of the
  * Mackenzie rather than Tekapo's is the sightline: Pukaki is a long finger of
@@ -20,6 +30,7 @@
  * flattening into a silhouette.
  */
 import { smoothstep } from '../../world/noise.js';
+import { ROAD_HALF } from './basin.js';
 
 /* Hand-placed, and much straighter than the jungle's. A lakeshore path has
  * nowhere to hide: the whole basin is visible from everywhere in it, so bends
@@ -28,9 +39,15 @@ import { smoothstep } from '../../world/noise.js';
  * follow the shape the water and the fans left — out onto each shingle spit,
  * back in behind each fan. */
 const CONTROL = [
-  [46, 60], [44, 20], [40, -30], [30, -84], [22, -140],
-  [18, -196], [26, -248], [38, -300], [34, -352], [22, -404],
-  [12, -452], [6, -500], [2, -548], [0, -590], [-2, -624],
+  /* Explicitly follow the authored shoreX() curve. The previous x values
+   * drifted from 75 m inland at the start to 161 m around z=-352 despite the
+   * route being described as a shore walk; the lake was consequently a thin
+   * strip in every principal view. These controls hold 15–60 m of dry setback,
+   * with the two fan crossings moving inland and the delta returning to the
+   * water. Basin truth still owns the exact contour. */
+  [29, 60], [29, 20], [11, -30], [-17, -84], [-41, -140],
+  [-74, -196], [-81, -248], [-49, -300], [-72, -352], [-101, -404],
+  [-103, -452], [-79, -500], [-51, -548], [-21, -590], [-3, -624],
 ];
 
 /** Where the walk ends, at the head of the lake. */
@@ -40,17 +57,21 @@ export const ROUTE = {
   control: CONTROL,
   samples: 1100,
 
-  /* Wider than a forest trail and for a different reason. Nothing here is
-   * worn through undergrowth — this is a braided-gravel and tussock basin, and
-   * the "path" is where feet and wheels have crushed a lane through matagouri
-   * and shingle. It reads as a track, not a tread. */
-  widthAt(t) {
-    let w = 1.30;
-    w += smoothstep(0.20, 0.45, t) * 0.9;           // out onto open shingle
-    w -= smoothstep(0.50, 0.66, t) * 0.7;           // pinched crossing the fan
-    w += smoothstep(0.88, 1.00, t) * 2.4;           // the delta flat, trackless
-    return w;
-  },
+  /* Half-width of the *tread*, which for this level means the sealed lane
+   * surface, and which is now a constant.
+   *
+   * It used to taper — narrower crossing the fan, wider on the delta — because
+   * it described a footpath, and a footpath is as wide as the feet that made
+   * it. A state highway is the opposite kind of object: it is a constant
+   * cross-section held through everything the terrain does, and the places
+   * where it would have been expensive to hold it are exactly where a real
+   * road shows its engineering instead, in a cutting or on an embankment. The
+   * carve in basin.js does that; this number stays put.
+   *
+   * Everything that consumes trail width — plant exclusion, prop scatter,
+   * collision — therefore now gets the seal edge, and the shoulder and batter
+   * come from the ROAD_* constants beside the carve. */
+  widthAt() { return ROAD_HALF; },
 
   /* Open from the first metre. This is the inversion the whole level runs on:
    * the jungle's `clearing` ramps 0 to 1 because a forest encloses you until

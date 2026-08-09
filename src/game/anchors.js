@@ -18,7 +18,13 @@ const _tan = new THREE.Vector3();
  * @returns {THREE.Vector3}      ground-level world position
  */
 export function resolveAnchor(at, world) {
-  const { trail, terrain, veg } = world;
+  const { trail, terrain, veg, fauna } = world;
+
+  if (at.kind === 'fauna') {
+    const entity = fauna?.notable?.[at.species];
+    if (!entity) throw new Error(`unknown fauna species: ${at.species}`);
+    return entity.position;
+  }
 
   if (at.kind === 'point') {
     const y = at.y != null ? at.y : terrain.height(at.x, at.z);
