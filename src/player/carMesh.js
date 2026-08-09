@@ -989,12 +989,19 @@ export class CarMesh {
        */
       lampClear: keep(new THREE.MeshStandardMaterial({
         name: 'car-lamp-clear',
-        color: new THREE.Color(0x9aa4ad),
-        roughness: 0.10,
+        /* Paler and lifted, because the housings that were added to give the
+         * lamps structure also put them in their own shadow: correct, and at
+         * four metres it left two dark rectangles with pale dots in them. A
+         * real headlamp lens is a mirror pointing at the sky — most of what
+         * you see in it is a reflection, not its own colour — so the answer is
+         * envMap and a paler base rather than a brighter emissive, which would
+         * make it glow in daylight. */
+        color: new THREE.Color(0xc3ccd4),
+        roughness: 0.07,
         metalness: 0.1,
         emissive: new THREE.Color(0xfff2d8),
-        emissiveIntensity: 0.16,
-        envMapIntensity: 1.8,
+        emissiveIntensity: 0.22,
+        envMapIntensity: 2.8,
       })),
 
       lampRed: keep(new THREE.MeshStandardMaterial({
@@ -1565,6 +1572,21 @@ export class CarMesh {
       trim.add(place(roundedBox(0.026, 0.020, 0.52, 0.010, 1),
         s * 0.30, 1.025, 2.180, -0.55, s * 0.10));
     }
+
+    /* A crease across the tailgate.
+     *
+     * The tail is a nearly flat stamped panel a metre and a half across with
+     * only the lamps and the plate recess on it, and from directly behind that
+     * is the weakest view the car has — a large empty field of paint. Every
+     * hatchback breaks it the same way, with a horizontal step where the
+     * tailgate skin is folded above the plate: it catches one hard highlight
+     * along its top edge and puts everything below it in shadow, which is two
+     * tones for the price of one 40 mm shelf.
+     *
+     * Body colour rather than trim, because it is a fold in the panel and not
+     * a separate moulding — the shadow under it is what reads, not a dark
+     * stripe. */
+    box(paint, 1.02, 0.045, 0.075, 0.018, b, 0, 0.735, -0.762, 0.20);
 
     /* Exhaust tip, offset to the near side as a transverse-engined hatchback's
      * always is — a centred tailpipe on a front-wheel-drive car is a detail
