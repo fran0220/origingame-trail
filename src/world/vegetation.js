@@ -760,9 +760,30 @@ export class Vegetation {
      * with a normal map — which is why the same fix worked there and is why
      * the precedent misled.
      *
-     * Anything that fixes this has to be about coverage: more samples per
-     * pixel, or alpha that converges to its own mean as the footprint grows,
-     * the way the road's chip does. */
+     * AND THEN BOTH HALVES OF THAT SUGGESTION WERE TRIED AND BOTH ARE DEAD.
+     *
+     * MORE SAMPLES PER PIXEL: the scene target is already MSAA 4 (see
+     * render/atmosphere.js). Raising it to 8 changed the spike count from 1003
+     * to 1003 — because GL MAX_SAMPLES on this hardware is 4, so the request
+     * is silently clamped and the experiment was a no-op. Read the cap back
+     * before believing any result from changing it.
+     *
+     * But even an honest 8 would have done nothing, and this is the part worth
+     * carrying away: MSAA ANTIALIASES TRIANGLE EDGES, AND AN ALPHA-TESTED LEAF
+     * SILHOUETTE IS NOT ONE. The card's rectangle gets resolved; the leaf
+     * shape cut out of it by the alpha test does not, because the test kills
+     * whole fragments before coverage is ever considered. Every leaf edge in
+     * this level is therefore completely unantialiased no matter what the
+     * sample count says, which is exactly why neither specular AA nor more
+     * samples moves the number by one pixel.
+     *
+     * The mechanism that WOULD fix it is alpha-to-coverage, and the comment
+     * further up records why it cannot be used here. So this is a real,
+     * understood limit of a hard alpha test in a scene that is two thirds
+     * foliage, not an oversight — and it now has four dead ends recorded
+     * against it. Anything further has to change the alpha signal itself: a
+     * coverage-preserving mip chain so the minified alpha stops being noisy,
+     * which is the one door the derivative rescale failed at. */
 
     /* Shadow casters need the wind too. Without this the leaf is displaced in
      * the colour pass but not in the depth pass, so every plant is lit through
