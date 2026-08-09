@@ -1,0 +1,16 @@
+{
+ "stageM": 2030,
+ "timeS": 54.9,
+ "finished": true,
+ "meanKmh": 130,
+ "topKmh": 178.4,
+ "meanLatG": 0.613,
+ "maxLatG": 3.65,
+ "maxSlipDeg": 11,
+ "pctOffRoad": 20.9,
+ "pctAtLimit": 0.2,
+ "steerRevPerKm": 40.9,
+ "meanSteerDeg": 12.62,
+ "spinFrames": 0,
+ "lostIt": 0
+}

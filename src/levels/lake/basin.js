@@ -59,6 +59,17 @@ export const STEP = 0.9;
 /** How far the valley runs, so shapes authored along it can be written in a
  *  fraction of its length rather than in absolute metres that go stale. */
 export const VALLEY = BOUNDS.z0 - BOUNDS.z1;
+
+/* How much bigger this basin is than the one every scatter count in the level
+ * was tuned against.
+ *
+ * Every population figure in flora.js, habitat.js, props.js and fauna.js is an
+ * absolute count, not a density, and they were all chosen for a 470 x 730 m
+ * bay. Dropping the same counts into a valley three times the area thins
+ * everything by three, on top of a ground cover that was already reported as
+ * far too sparse for the Mackenzie. Multiplying by this keeps a count that was
+ * right per square metre right per square metre. */
+export const AREA_SCALE = ((BOUNDS.x1 - BOUNDS.x0) * VALLEY) / (470 * 730);
 const CHUNK = 48;
 
 /** Lake surface. Everything in this level is measured from it. */

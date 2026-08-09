@@ -39,6 +39,7 @@
 import * as THREE from 'three';
 import { clamp, lerp, smoothstep, Noise2D } from '../world/noise.js';
 import { WHEELBASE, TRACK, WHEEL_R } from './carMesh.js';
+import { BOUNDS } from '../levels/lake/basin.js';
 
 /* ── the car ───────────────────────────────────────────────────────────────
  * A front-wheel-drive turbocharged hatchback of about 1.3 tonnes, which is
@@ -49,7 +50,12 @@ const MASS = 1310;                 // kg
 const CG_HEIGHT = 0.52;            // m above ground — low, this is a hatchback
 /* Front/rear weight split. Nose-heavy, as a transverse-engined FWD car is,
  * and this single number is most of why the car understeers at the limit. */
-const WEIGHT_FRONT = 0.61;
+/* Front/rear weight split. Still nose-heavy, as a transverse-engined FWD car
+ * is, but less so than the 0.61 this started at. That figure plus a
+ * front-biased roll couple gave a car that needed 9.7 degrees of average
+ * steering to follow its own road and spent a third of the stage off the seal
+ * — the telemetry name for "it will not turn". */
+const WEIGHT_FRONT = 0.56;
 const A = WHEELBASE * (1 - WEIGHT_FRONT);   // CG to front axle
 const B = WHEELBASE * WEIGHT_FRONT;         // CG to rear axle
 /* Yaw inertia. For a passenger car this is close to m * (0.30 * L)^2 with L
@@ -59,7 +65,10 @@ const IZZ = MASS * (0.32 * WHEELBASE) ** 2;
 
 /* Cornering stiffness per axle, in newtons per radian of slip, at the static
  * load. The rear is stiffer than the front — again, understeer by design. */
-const CORNER_FRONT = 88_000;
+/* Front cornering stiffness, up from 88 kN/rad. This is the number that
+ * decides how much lock a corner costs, and the old one made the driver
+ * saturate the available steering on every bend. */
+const CORNER_FRONT = 126_000;
 const CORNER_REAR = 104_000;
 /* Slip angle at which a tyre reaches peak lateral force. Around seven degrees
  * for a road tyre; past it the force falls away rather than holding, which is
@@ -69,10 +78,14 @@ const PEAK_SLIP = 0.122;
 const GRAVITY = 9.81;
 /* Peak longitudinal and lateral friction on dry chipseal. Chipseal is coarse
  * and grips well — better than smooth hot-mix — so this is at the high end. */
-const MU_ROAD = 1.08;
+/* Peak friction on dry chipseal. 1.08 is honest for a road tyre and this is a
+ * racing game on a closed stage: 1.30 is a modern performance tyre on a coarse
+ * seal, it is still well under a slick, and it is the difference between a
+ * corner you commit to and one you survive. */
+const MU_ROAD = 1.30;
 /* Loose gravel shoulder. A third less grip and, more importantly, it arrives
  * with far less warning. */
-const MU_GRAVEL = 0.62;
+const MU_GRAVEL = 0.74;
 /* Tussock and shingle. You are no longer racing; you are trying to get back. */
 const MU_OFF = 0.44;
 
@@ -103,8 +116,8 @@ const MAX_STEER = 0.52;            // rad at the roadwheel, ~30 degrees
  * speed. Both are the *player's* limits rather than the car's: without them a
  * keyboard applies a step input, and a step input to full lock at 50 m/s is
  * not a car, it is a spin. */
-const STEER_RATE = 3.4;
-const STEER_RETURN = 5.2;
+const STEER_RATE = 4.6;
+const STEER_RETURN = 6.4;
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -350,7 +363,7 @@ export class Driver {
      * real driver does with their hands and it is the single largest thing
      * separating a drivable keyboard car from an undrivable one. */
     const v = Math.abs(this.vx);
-    const authority = lerp(1.0, 0.20, smoothstep(6, 46, v));
+    const authority = lerp(1.0, 0.38, smoothstep(8, 55, v));
     const target = wantSteer * MAX_STEER * authority;
 
     if (wantSteer === 0) {
@@ -454,7 +467,12 @@ export class Driver {
     const transfer = clamp(Math.abs(ay) * MASS * CG_HEIGHT / (TRACK * W), 0, 0.95);
     /* A front-biased roll couple is exactly how a manufacturer dials in safe
      * understeer, and it is why this car will push its nose before it snaps. */
-    const lossF = transfer * 0.62, lossR = transfer * 0.38;
+    /* Almost even, where it was 0.62/0.38 front-biased. A manufacturer dials in
+    * safe understeer that way and it is the right instinct for a road car; on a
+    * stage it means the front gives up first in every corner and the car simply
+    * runs wide. Slightly rear-biased now, so the back moves first and the car
+    * rotates instead of ploughing. */
+    const lossF = transfer * 0.46, lossR = transfer * 0.54;
 
     /* ── slip angles ────────────────────────────────────────────────────── */
     const vx = this.vx, vy = this.vy, r = this.yawRate;
@@ -527,7 +545,11 @@ export class Driver {
     /* Yaw damping. Real cars have it from tyre relaxation and from the
      * aligning torque of the rear axle; without a little of it here the yaw
      * oscillates at the model's own natural frequency. */
-    this.yawRate *= Math.exp(-1.6 * dt);
+    /* Up from 1.6. The trace showed 39 steering reversals per kilometre — the
+     * hands never stopped, which is the signature of a yaw mode that rings
+     * rather than settles. Real cars damp this through tyre relaxation and the
+     * rear axle's aligning torque, both of which this model lumps into here. */
+    this.yawRate *= Math.exp(-2.9 * dt);
 
     this._ax = ax; this._ay = ay_;
 
@@ -547,6 +569,43 @@ export class Driver {
     const wz = this.vx * c2 - this.vy * s2;
     this.pos.x += wx * dt;
     this.pos.z += wz * dt;
+
+    /* The edge of the world, made of something.
+     *
+     * The terrain is a finite rectangle and the road runs down the middle of
+     * it, so leaving the seal and continuing puts the car off the end of the
+     * heightfield — where height() clamps to the border row and the car
+     * skates along a flat lip with nothing drawn beyond it. Reported as "there
+     * is a boundary right there", and on the old 470 m basin it was: the road
+     * passed within 10 m of it.
+     *
+     * There is no fence in the Mackenzie and there should not be one here, so
+     * this is a berm rather than a wall: a soft push-back that starts 24 m
+     * inside the border and ramps up, which turns the last of the basin into
+     * ground that leans against you instead of a plane you fall off. Applied
+     * to the velocity in the world frame, so it costs speed rather than
+     * teleporting the car — being shoved back by scenery is a driving event,
+     * being snapped back is a bug. */
+    const margin = 24;
+    const push = (over) => 1 - Math.exp(-over / 7);
+    let bx = 0, bz = 0;
+    if (this.pos.x < BOUNDS.x0 + margin) bx = push(BOUNDS.x0 + margin - this.pos.x);
+    else if (this.pos.x > BOUNDS.x1 - margin) bx = -push(this.pos.x - (BOUNDS.x1 - margin));
+    if (this.pos.z > BOUNDS.z0 - margin) bz = -push(this.pos.z - (BOUNDS.z0 - margin));
+    else if (this.pos.z < BOUNDS.z1 + margin) bz = push(BOUNDS.z1 + margin - this.pos.z);
+    if (bx || bz) {
+      const shove = 26 * dt;
+      this.pos.x += bx * shove;
+      this.pos.z += bz * shove;
+      /* Scrub the component of velocity heading further out, so the car stops
+       * against the berm instead of grinding along it at full speed. */
+      const outward = -(bx * wx + bz * wz);
+      if (outward > 0) {
+        const k = Math.min(1, outward * dt * 0.9);
+        this.vx *= 1 - k * 0.8;
+        this.vy *= 1 - k * 0.8;
+      }
+    }
     this.vel.set(wx, 0, wz);
     this.speed = Math.hypot(wx, wz);
 

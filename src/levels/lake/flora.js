@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BOUNDS, shoreX, ROAD_SHOULDER } from './basin.js';
+import { BOUNDS, shoreX, ROAD_SHOULDER, AREA_SCALE } from './basin.js';
 import { bakeImage } from '../../gfx/bake.js';
 
 /* Three crossed cards render each sub-metre sward crown. The baked texture is
@@ -189,20 +189,38 @@ function habitatParents(h,rng){
  * to a uniform scatter. Fixed per-habitat seeds make a terrace island contain
  * several tussocks, forbs and shrubs together while preserving calm gaps. */
 const HABITAT_PARENT_SEED={shore:0x6c101,wetland:0x6c102,fan:0x6c103,terrace:0x6c104,leeward:0x6c105};
+/* Where the vegetation mass sits, and it is not on the waterline.
+ *
+ * Raising every population together put a continuous hedge of flax, toetoe and
+ * sedge along the whole 2 km of shore — lush, green, and the wrong end of the
+ * country. A Mackenzie lakeshore is bare graded shingle with almost nothing on
+ * it, because it is scoured by wave and by lake-level change; the vegetation
+ * mass is up on the terrace behind it and it is dry tussock. Flax and toetoe
+ * are real here but they belong in damp gullies and fan seepages, in clumps,
+ * not as a border planting.
+ *
+ * So the wetland and shore species come down hard and the terrace tussocks go
+ * up to carry what they were carrying. Matagouri goes up with them: a
+ * grey-brown thorn scattered over tawny grass is the single most recognisable
+ * thing in this landscape after the tussock itself. */
 const POPULATION={
- 'silver-tussock':1100,'snow-tussock':900,'red-tussock':480,'hard-tussock':620,'blue-tussock':540,
- matagouri:560,manuka:420,kanuka:360,hebe:520,'hebe-odora':380,
- flax:460,toetoe:400,'raoulia-cushion':700,'raoulia-eximia':420,
- coprosma:440,'coprosma-propinqua':360,ozothamnus:320,dracophyllum:280,
- sedge:1000,'jointed-rush':480,carex:520,
- speargrass:660,acus:360,celmisia:860,gentian:420,ourisia:360,anisotome:300,epineum:280,
- 'mount-cook-buttercup':520,'south-island-daisy':460,'russell-lupin':240,
+ 'silver-tussock':1900,'snow-tussock':1600,'red-tussock':700,'hard-tussock':1150,'blue-tussock':950,
+ matagouri:980,manuka:300,kanuka:250,hebe:430,'hebe-odora':330,
+ flax:210,toetoe:190,'raoulia-cushion':760,'raoulia-eximia':450,
+ coprosma:380,'coprosma-propinqua':320,ozothamnus:420,dracophyllum:300,
+ sedge:400,'jointed-rush':200,carex:250,
+ speargrass:700,acus:400,celmisia:820,gentian:400,ourisia:300,anisotome:320,epineum:300,
+ 'mount-cook-buttercup':480,'south-island-daisy':430,'russell-lupin':300,
 };
 /* Native identity and vegetation mass are separate jobs. Scanned habitat now
  * carries the latter; asking thirty-one bespoke procedural species to carry it
  * as well covered every calm gap with bright low-poly silhouettes. Keep enough
  * of each species to make the biome genuinely diverse, and a larger searchable
  * population for the five notebook subjects, without using them as filler. */
+/* The five the notebook asks for. They get a higher share so a player sent to
+ * photograph one can find it; flax and toetoe are in that list and are also the
+ * two that most easily become a hedge, so their populations above are set low
+ * enough that a generous share still reads as occasional clumps. */
 const NOTEBOOK_SPECIES=new Set(['silver-tussock','matagouri','flax','toetoe','raoulia-cushion']);
 
 /* A toetoe flowerhead is a translucent mass of thousands of filaments. Those
@@ -460,7 +478,7 @@ function plantGeometry(id,kind,variant,hex){
 
 export class LakeFlora{
  constructor(terrain,tier='high',renderer=null,options={}){this.root=new THREE.Group();this.root.name='lake-native-flora';this.materials=[];this.textures=[];this.species=SPECIES.map(s=>s[0]);this.notable=Object.create(null);this.meshes=[];const dummy=new THREE.Object3D();this.plumeTexture=renderer?bakeImage(renderer,PLUME_FRAG,{size:512,colorSpace:THREE.SRGBColorSpace,coverageMips:.30}):null;if(this.plumeTexture)this.textures.push(this.plumeTexture);if(renderer&&options.groundCover!==false)buildGroundCover(this,terrain,renderer,dummy);
-  SPECIES.forEach(([id,habitat,color,kind],si)=>{const rng=random(0x51a7+si*7919),pts=[],q={},parents=[],target=Math.max(18,Math.round(POPULATION[id]*(NOTEBOOK_SPECIES.has(id)?.34:.06)));
+  SPECIES.forEach(([id,habitat,color,kind],si)=>{const rng=random(0x51a7+si*7919),pts=[],q={},parents=[],target=Math.max(24,Math.round(POPULATION[id]*(NOTEBOOK_SPECIES.has(id)?.62:.20)*AREA_SCALE));
    /* Two orders of clustering, not one. Sixteen parents with a 6..16 m spread
     * had to hold up to 520 plants, so each was a tight blob of thirty and the
     * basin came out as a scatter of discrete islands with empty ground between
