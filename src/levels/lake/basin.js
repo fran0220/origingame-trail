@@ -54,6 +54,28 @@ import { Noise2D, clamp, smoothstep, lerp } from '../../world/noise.js';
  * The road surface itself does not depend on this at all: road.js builds its
  * own ribbon at 2 m stations, so the seal keeps its resolution whatever the
  * terrain does. */
+/* MEASURED SIGHTLINE, and the rule that follows from it.
+ *
+ * Casting an eye ray from walker height at ten stations toward a 4 m target,
+ * stepping inland in 10 m increments until terrain breaks the line:
+ *
+ *   inland side blocked at   40, 40, 40, 50, 60, 60, 70, 80, 90, 90 m
+ *   lake side                unblocked to 400 m at every station — it is water
+ *
+ * So THERE IS NO PADDOCK IN VIEW. The road runs in a trough between the
+ * shoreline and a rising bank, and past about 90 m inland the bank is in the
+ * way at EVERY station, the well-dressed ones as much as the bare ones.
+ *
+ * This killed a centre-pivot irrigator: 200 m of steel truss that has to stand
+ * on flat open ground, which does not exist here in view. Three placements
+ * measured 0, 1 and 1 stations at 2% of frame against a stated bar of 4, and
+ * the only ones that showed at all were standing in the road.
+ *
+ * THE RULE: lake content belongs in the 0-90 m roadside corridor. Anything
+ * beyond that is either behind the bank or in the water, and no amount of size
+ * buys its way out — the pivot was the largest object ever built for this
+ * level and it was the least visible.
+ */
 export const BOUNDS = { x0: -300, x1: 210, z0: 70, z1: -1990 };
 export const STEP = 0.9;
 /** How far the valley runs, so shapes authored along it can be written in a
