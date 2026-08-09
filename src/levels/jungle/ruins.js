@@ -1537,6 +1537,12 @@ export class Ruins {
       g.computeBoundingSphere();
 
       const m = new THREE.Mesh(g, this.material);
+      /* Named, like the vegetation was. These 23 meshes are the level's
+       * landmark and every instrument that walks the scene reported them as
+       * "(unnamed)", which makes a seating or damage report a list of
+       * anonymous rows that cannot be told apart. A cell index is enough:
+       * they are spatial buckets, so the number IS the useful identity. */
+      m.name = `ruins:cell:${this.cells.length}`;
       m.castShadow = true;
       m.receiveShadow = true;
       m.matrixAutoUpdate = false;
