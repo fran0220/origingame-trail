@@ -33,6 +33,7 @@ import { drawWater } from './mapwater.js';
 import { JungleLife } from './life.js';
 import { JungleDeadwood } from './deadwood.js';
 import { JungleVines } from './vines.js';
+import { JungleBirds } from './birds.js';
 import { Ambience } from '../../audio/engine.js';
 import { content } from '../../game/content.js';
 
@@ -154,6 +155,10 @@ class JungleLevel {
     this.vines = new JungleVines(this.terrain, this.trail, tier);
     scene.add(this.vines.root);
 
+    await step(0.86, '放飞林鸟');
+    this.birds = new JungleBirds(this.terrain, this.trail, tier);
+    scene.add(this.birds.root);
+
     await step(0.88, '放出飞虫');
     this.life = new JungleLife(this.terrain, this.trail, tier);
     scene.add(this.life.root);
@@ -163,7 +168,7 @@ class JungleLevel {
   materials() {
     return [this.terrainMat, this.veg.leafMat, this.veg.woodMat,
             this.ruins.material, ...this.water.materials,
-            ...this.deadwood.materials, ...this.vines.materials];
+            ...this.deadwood.materials, ...this.vines.materials, ...this.birds.materials];
   }
 
   /**
@@ -203,6 +208,7 @@ class JungleLevel {
     // stay in phase with the surface that is supposed to be casting them.
     this.terrainMat.userData.uniforms.uTime.value = this.water.time;
     this.life?.update(dt, host.camera, host.renderer?.domElement?.height);
+    this.birds?.update(dt, host.camera);
   }
 
   cullAround(x, z) {
