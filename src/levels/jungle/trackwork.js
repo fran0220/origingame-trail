@@ -28,6 +28,9 @@ function random(seed) {
 }
 
 const WET_ON = 0.45;
+/* Deck half-width. Shared by the builder and by covers(), so the geometry and
+ * the audio cannot disagree about where the deck is. */
+const HALF_W_PUBLIC = 0.52;
 
 export class JungleTrackwork {
   constructor(terrain, trail, tier = 'high') {
@@ -82,7 +85,7 @@ export class JungleTrackwork {
 
     const TIMBER = [0.135, 0.118, 0.092];
     const DECK_H = 0.20;
-    const HALF_W = 0.52;
+    const HALF_W = HALF_W_PUBLIC;
 
     for (const [i0, i1] of spans) {
       /* A boardwalk starts BEFORE the mud and ends after it. One that begins
@@ -147,7 +150,36 @@ export class JungleTrackwork {
     mesh.receiveShadow = true;
     this.root.add(mesh);
 
+    /* Kept so the footstep audio can ask. Stored as arc-length ranges rather
+     * than as geometry, because the question "is the walker on the deck" is
+     * about the trail parameter, and re-deriving it from the planks would be a
+     * second implementation of the placement rule — which is how the gearbox
+     * ended up existing twice. */
+    this._spans = spans.map(([i0, i1]) => [
+      Math.max(2, i0 * SAMPLE - 3.5), Math.min(L - 2, i1 * SAMPLE + 3.5),
+    ]).filter(([a, c]) => c - a >= 6);
+    this._trail = trail;
+    this._L = L;
+    this._q = {};
+
     this.counts = { runs, planks, piles, triangles: idx.length / 3, spans: spans.length };
+  }
+
+  /**
+   * Is this point on the deck?
+   *
+   * Half-width plus a little, because a boot on the very edge of a plank is
+   * still on the plank. Used by the footstep audio; the boardwalk is built
+   * exactly where the wetness field peaks, so without this the driest surface
+   * in the level plays the wettest sound in the bank.
+   */
+  covers(x, z) {
+    if (!this._spans || !this._spans.length) return false;
+    const q = this._trail.nearest(x, z, this._q);
+    if (q.dist > HALF_W_PUBLIC + 0.12) return false;
+    const m = q.t * this._L;
+    for (const [a, c] of this._spans) if (m >= a && m <= c) return true;
+    return false;
   }
 
   update() {}

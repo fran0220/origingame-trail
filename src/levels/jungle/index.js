@@ -231,6 +231,8 @@ class JungleLevel {
      * azimuth and a distance; this maps it onto an animal that is actually
      * there, when one is close enough for the difference to be noticeable. */
     this.ambience.setBirdSource((p) => this.birds?.nearestSinger(p) ?? null);
+    /* Footsteps on the boardwalk are timber, not mud — see trackwork.js. */
+    this.ambience.setDeckTest((p) => this.trackwork?.covers(p.x, p.z) ?? false);
     return this.ambience;
   }
 

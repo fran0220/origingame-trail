@@ -17,8 +17,8 @@
  * footstep and landing hooks, the bake — this file arranges for itself.
  */
 import { makeRng, makeGesture, clamp } from './dsp.js';
-import { bankJobs, stepKey, landKey, DEFAULT_SEED } from './bank.js';
-import { STEP_VARIANTS, LAND_VARIANTS } from './steps.js';
+import { bankJobs, stepKey, landKey, boardKey, DEFAULT_SEED } from './bank.js';
+import { STEP_VARIANTS, LAND_VARIANTS, BOARD_VARIANTS } from './steps.js';
 import {
   levelGain, FALLS_BASE, FALLS_LIP, brookOffset, brookGain, insectTrailGain,
   airCutoff,
@@ -354,6 +354,14 @@ export class Ambience {
    */
   setBirdSource(fn) { this._birdSource = fn; }
 
+  /**
+   * Supply a test for "is this point on a hard deck".
+   *
+   * Optional, like the bird source: a level with no boardwalk never sets it
+   * and the footstep path is unchanged.
+   */
+  setDeckTest(fn) { this._deckTest = fn; }
+
   setWaterfallPosition(base, lip = null) {
     this.fallsBase = { x: base.x, y: base.y, z: base.z };
     if (lip) this.fallsLip = { x: lip.x, y: lip.y, z: lip.z };
@@ -560,7 +568,12 @@ export class Ambience {
     if (!this.ready) return;
     const ctx = this.ctx;
     const src = ctx.createBufferSource();
-    src.buffer = this.bank[stepKey(this._wetnessAt(pos), (this._rng() * STEP_VARIANTS) | 0)];
+    /* Timber before wetness. The boardwalk stands over the wettest ground in
+     * the level, so asking the wetness field first would give the driest
+     * surface here the squelchiest sound in the bank. */
+    src.buffer = this._deckTest && this._deckTest(pos)
+      ? this.bank[boardKey((this._rng() * BOARD_VARIANTS) | 0)]
+      : this.bank[stepKey(this._wetnessAt(pos), (this._rng() * STEP_VARIANTS) | 0)];
     src.playbackRate.value = 0.94 + this._rng() * 0.12;
     const g = ctx.createGain();
     /* Heavier at speed: kinetic energy, not just cadence, is what a jog adds.

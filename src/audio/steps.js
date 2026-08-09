@@ -23,6 +23,7 @@ export const STEP_VARIANTS = 6;
  * consecutive: repetition is audible in a sound you hear twice a second and
  * inaudible in one you hear every twenty. */
 export const LAND_VARIANTS = 3;
+export const BOARD_VARIANTS = 5;
 
 /**
  * One footfall, ~0.30 s. `wetness` 0..1 crossfades the components and also
@@ -99,6 +100,82 @@ export function renderFootstep(sr, seed, wetness) {
   lpWet.process(out);
   biquad('highpass', sr, 26, 0.707).process(out);
   return normalize(out);
+}
+
+/**
+ * A footfall on boardwalk timber, ~0.26 s.
+ *
+ * This exists because the boardwalk broke the footstep logic in a way that
+ * only reading the code exposes. Steps are chosen by the wetness field, and
+ * the boardwalk is built EXACTLY where that field is highest — so walking on
+ * dry planks a foot above the mud played the wettest, squelchiest step in the
+ * bank. The sound was not merely generic, it was precisely wrong.
+ *
+ * WHAT TIMBER DOES THAT SOIL DOES NOT, and it is not "sounds harder":
+ *
+ *   IT RINGS. A plank on bearers is a plate with two supported edges, and it
+ *   has real modes in the low hundreds of hertz that ring on for a tenth of a
+ *   second. Litter has none: it is a broadband crunch that stops dead.
+ *
+ *   IT IS HOLLOW. There is a void under the deck, so the low end is boosted
+ *   and there is a second, slightly later thump as the bearer answers.
+ *
+ *   IT HAS NO CRACKLE. No twigs, no leaf shear, no grit. Removing those is as
+ *   much of the identity as adding the ring.
+ */
+export function renderBoardStep(sr, seed) {
+  const rng = makeRng(seed);
+  const seconds = 0.26;
+  const n = Math.round(seconds * sr);
+  const out = new Float32Array(n);
+
+  /* The strike: a short filtered click as the boot lands. Brighter than soil
+   * because there is nothing soft to absorb it. */
+  const strikeN = Math.round(0.0035 * sr);
+  let lp = 0;
+  for (let i = 0; i < strikeN; i++) {
+    lp += ((rng() * 2 - 1) - lp) * 0.62;
+    out[i] += lp * (1 - i / strikeN) * 0.55;
+  }
+
+  /* Two plate modes plus a lower hollow one for the void beneath. Inharmonic,
+   * because a plank is not a tube. */
+  const base = 150 + rng() * 70;
+  const modes = [[1.00, 0.55, 0.085], [1.87, 0.30, 0.055],
+                 [3.11, 0.14, 0.035], [0.52, 0.42, 0.120]];
+  for (const [mult, gain, decay] of modes) {
+    const f = base * mult;
+    const w = 2 * Math.PI * f / sr;
+    const r = Math.exp(-1 / (decay * sr));
+    const a1 = 2 * r * Math.cos(w), a2 = -r * r;
+    let y1 = 0, y2 = 0;
+    for (let i = 0; i < n; i++) {
+      const drive = i < strikeN ? (rng() * 2 - 1) : 0;
+      const y = drive + a1 * y1 + a2 * y2;
+      y2 = y1; y1 = y;
+      out[i] += y * gain * 0.05;
+    }
+  }
+
+  /* The bearer answering, ~12 ms later and duller — the deck passes the load
+   * down and the second thump is what makes it read as a structure rather
+   * than as a solid floor. */
+  const off = Math.round(0.012 * sr);
+  const bw = 2 * Math.PI * (base * 0.42) / sr;
+  const br = Math.exp(-1 / (0.09 * sr));
+  const ba1 = 2 * br * Math.cos(bw), ba2 = -br * br;
+  let z1 = 0, z2 = 0;
+  for (let i = 0; i + off < n; i++) {
+    const drive = i < strikeN ? (rng() * 2 - 1) : 0;
+    const y = drive + ba1 * z1 + ba2 * z2;
+    z2 = z1; z1 = y;
+    out[i + off] += y * 0.030;
+  }
+
+  let peak = 0;
+  for (let i = 0; i < n; i++) { const a = Math.abs(out[i]); if (a > peak) peak = a; }
+  if (peak > 0) { const k = 0.72 / peak; for (let i = 0; i < n; i++) out[i] *= k; }
+  return out;
 }
 
 /**

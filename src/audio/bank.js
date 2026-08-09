@@ -15,7 +15,8 @@ import { renderCicadaBed, renderCricketBed, renderKatydid, renderCricketChirp, C
 import { renderBirdCall, SPECIES } from './birds.js';
 import { renderRumble, renderCascade, renderSpray, renderBabble } from './water.js';
 import { renderRustle, renderWash, RUSTLE_LOOPS } from './wind.js';
-import { renderFootstep, renderLanding, WET_LEVELS, STEP_VARIANTS, LAND_VARIANTS } from './steps.js';
+import { renderFootstep, renderLanding, renderBoardStep,
+         WET_LEVELS, STEP_VARIANTS, LAND_VARIANTS, BOARD_VARIANTS } from './steps.js';
 
 export const DEFAULT_SEED = 7311;
 
@@ -64,6 +65,12 @@ export function bankJobs(sr, seed = DEFAULT_SEED) {
     }
   });
 
+  /* Boardwalk. One set, no wetness axis: the point of a boardwalk is that the
+   * ground under it is wet and the deck is not. */
+  for (let v = 0; v < BOARD_VARIANTS; v++) {
+    jobs.push(() => ({ key: `board:${v}`, buf: renderBoardStep(sr, seed + 500 + v) }));
+  }
+
   return jobs;
 }
 
@@ -93,6 +100,8 @@ function wetIndex(wetness) {
   });
   return wi;
 }
+
+export const boardKey = (v) => `board:${v}`;
 
 export function stepKey(wetness, variant) {
   return `step:${wetIndex(wetness)}:${variant % STEP_VARIANTS}`;
