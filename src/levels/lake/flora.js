@@ -452,7 +452,13 @@ function buildRoadsideTurf(owner, terrain, tier, dummy) {
    * the point at which the ground stops showing between clumps at a driver's
    * eye height. */
   const PER_M2 = tier === 'low' ? 0.45 : tier === 'medium' ? 0.8 : 1.3;
-  const INNER = ROAD_SHOULDER + 1.0, OUTER = 26;
+  /* Out to 60 m, not 26. A corridor that stops has a visible edge: the ground
+   * went from grassland to swept dirt at a fixed distance from the road, which
+   * is a line no landscape has. The band is wider than the eye can resolve
+   * individual tufts at, and the placement is weighted hard toward the verge —
+   * u^2 rather than u^1.45 — so the near-field density is unchanged and the
+   * far half is a thinning that reads as ground rather than as an end. */
+  const INNER = ROAD_SHOULDER + 1.0, OUTER = 60;
   const rng = random(0x7ee5a1);
 
   const mat = new THREE.MeshStandardMaterial({
@@ -489,7 +495,11 @@ function buildRoadsideTurf(owner, terrain, tier, dummy) {
   const L = trail.length;
   const CHUNK_M = 90;
   const chunks = Math.ceil(L / CHUNK_M);
-  const perMetre = PER_M2 * (OUTER - INNER) * 2;
+  /* Sized on an effective 30 m band rather than the full 53, because the
+   * squared distribution puts most of the population inside that anyway and
+   * costing it on the full width would double the instance count to fill
+   * ground nobody looks at closely. */
+  const perMetre = PER_M2 * 30 * 2;
 
   for (let c = 0; c < chunks; c++) {
     const lists = [[], [], []];
@@ -506,7 +516,7 @@ function buildRoadsideTurf(owner, terrain, tier, dummy) {
         /* Denser near the road and thinning outward, which is both what a
          * roadside verge does — it is watered by runoff — and where the
          * triangles are worth spending. */
-        const o = (INNER + Math.pow(rng(), 1.45) * (OUTER - INNER)) * side;
+        const o = (INNER + Math.pow(rng(), 2.0) * (OUTER - INNER)) * side;
         const sx = P.x + nx * o, sz = P.z + nz * o;
         /* One stool in three is an old one: nearly twice the size of its
          * neighbours. That spread is most of what separates grassland from

@@ -46,8 +46,14 @@ export const SUBJECTS = [
   fauna('southern-grass-skink','southern-grass-skink','南方草石龙子','湖首草丛脚边有短距离穿行的小蜥蜴。','南岛干燥草地的原生石龙子，以日照暖身。',.3,[.7,9]),
   fauna('dragonfly','dragonfly','原生蜻蜓','冲积扇湿草上方寻找悬停的蓝绿色小影。','近岸湿地的空中猎手，透明双翼不断修正位置。',.3,[.8,10]),
 
-  {id:'aoraki',title:'奥拉基／库克山',group:'山岳',hint:'沿湖向北，把最远雪峰放入取景框。',text:'奥拉基从南阿尔卑斯主脊升起，是湖面视线的终点。',at:{kind:'point',x:-597,y:1450,z:-9200},radius:520,idealFill:.25,range:[7000,10000],up:0},
-  {id:'alps-layers',title:'南阿尔卑斯层峦',group:'山岳',hint:'从路线望向湖首，寻找蓝灰色重叠山脊。',text:'空气透视把三层山体依距离洗向天空色。',at:{kind:'point',x:650,y:430,z:-4300},radius:470,idealFill:.36,range:[3300,5000],up:0},
+  /* The two mountain subjects are 1330 m further up-valley than they were.
+     They are aimed at the distant ranges, and distance.js translates that whole
+     backdrop by BACKDROP_Z so the road cannot drive into it — an anchor left
+     behind points a viewfinder at empty sky beside the peak it names. Their
+     range windows open with them, because the valley they are seen from is
+     also longer now. */
+  {id:'aoraki',title:'奥拉基／库克山',group:'山岳',hint:'沿湖向北，把最远雪峰放入取景框。',text:'奥拉基从南阿尔卑斯主脊升起，是湖面视线的终点。',at:{kind:'point',x:-597,y:1450,z:-10530},radius:520,idealFill:.25,range:[7000,11500],up:0},
+  {id:'alps-layers',title:'南阿尔卑斯层峦',group:'山岳',hint:'从路线望向湖首，寻找蓝灰色重叠山脊。',text:'空气透视把三层山体依距离洗向天空色。',at:{kind:'point',x:650,y:430,z:-5630},radius:470,idealFill:.36,range:[3300,6400],up:0},
   {id:'glacial-turquoise',title:'冰川蓝',group:'湖色',hint:'在开阔岸段俯看不透明的蓝绿湖面。',text:'悬浮的冰川岩粉散射短波光，形成特卡波独有的蓝。',at:{kind:'point',x:shoreX(-405)-22,y:.1,z:-405},radius:12,idealFill:.35,range:[12,130],up:0},
   {id:'shingle-wet-edge',title:'砾石湿线',group:'地貌',hint:'下到第一段水边，拍摄浪缘深色砾带。',text:'波浪反复淘洗并按粒径分选灰岩砾石。',at:{kind:'point',x:shoreX(-150)+1.5,z:-150},radius:4,range:[5,30],up:.15},
   {id:'lateral-moraine',title:'侧碛台地',group:'地貌',hint:'起点附近回望脚下笔直的高台。',text:'旧冰缘堆下的冰碛形成高于现湖岸的长凳状台地。',at:{kind:'trail',t:.08,off:8},radius:7,range:[8,45],up:2},

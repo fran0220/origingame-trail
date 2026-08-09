@@ -310,7 +310,26 @@ export class LakeFauna {
     this.materials.push(flight);
     const rng = random(0xfa12a);
 
-    DEFINITIONS.forEach((def, speciesIndex) => {
+    /* Each species is placed as one colony at one point on the route, which
+     * was right for 760 m of shore and leaves a 2 km valley with eighteen
+     * pockets of life and long dead stretches between them. The route is
+     * divided into as many kilometres as it has, and every species appears
+     * once in each — same colony, same habitat rule, moved along. The `t` in
+     * the table becomes a position *within* a kilometre rather than along the
+     * whole stage, which is also what stops all eighteen bunching at the same
+     * place when the road is lengthened again. */
+    const COLONIES = Math.max(1, Math.round(trail.length / 1000));
+    const SPREAD = DEFINITIONS.flatMap((def) => (
+      Array.from({ length: COLONIES }, (_, c) => ({
+        ...def,
+        t: (c + def.t) / COLONIES,
+        /* Later colonies are a touch smaller, so the first one a player meets
+         * is still the set piece. */
+        count: Math.max(2, Math.round(def.count * (c === 0 ? 1 : 0.7))),
+      }))
+    ));
+
+    SPREAD.forEach((def, speciesIndex) => {
       const main = faunaMaterial(def.main, `${def.species}:main`);
       const trim = faunaMaterial(def.accent, `${def.species}:trim`, .84);
       this.materials.push(main, trim);

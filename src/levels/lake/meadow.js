@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import { GLTFLoader } from '../../../vendor/loaders/GLTFLoader.js';
-import { BOUNDS, shoreX } from './basin.js';
+import { BOUNDS, shoreX, AREA_SCALE } from './basin.js';
 
 const FLOWER_URL = new URL(
   '../../../media/lake-assets/flowers/flower_heliophila_1k.gltf',
@@ -252,7 +252,13 @@ export class LakeMeadow {
       0xffffff, 0xffeb88, 0xdab9ff, 0xb8d2ff, 0xffbed6,
     ].map((hex) => new THREE.Color(hex));
     const flowerLists = Array.from({ length: chunks }, () => []);
-    for (let tries = 0; tries < 5000 && flowerLists.reduce((n, list) => n + list.length, 0) < 72; tries++) {
+    /* Seventy-two flower islands were a scatter across a bay. Across a valley
+     * three times the size they are 69 per square kilometre — which is to say,
+     * none. Scaled, and then raised again: these are the only strong colour on
+     * the terrace and the drive is now long enough to want more than one of
+     * them per twenty seconds. */
+    const N_FLOWERS = Math.round(72 * AREA_SCALE * 1.6);
+    for (let tries = 0; tries < N_FLOWERS * 80 && flowerLists.reduce((n, list) => n + list.length, 0) < N_FLOWERS; tries++) {
       const z = THREE.MathUtils.lerp(BOUNDS.z0 - 5, BOUNDS.z1 + 5, rng());
       const d = 14 + Math.pow(rng(), .8) * 104;
       const x = shoreX(z) + d;

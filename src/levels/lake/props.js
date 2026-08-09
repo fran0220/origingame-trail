@@ -10,7 +10,7 @@
  * lands only where swash could leave it and a fan rill only on the fans.
  */
 import * as THREE from 'three';
-import { BOUNDS, shoreX } from './basin.js';
+import { BOUNDS, shoreX, AREA_SCALE } from './basin.js';
 
 function random(seed) {
   return () => {
@@ -280,7 +280,8 @@ export class LakeProps {
 
     /* ── lichen slabs on terrace and fan edges ───────────────────────────── */
     const slabs = [];
-    for (let tries = 0; tries < 6000 && slabs.length < 90; tries++) {
+    const N_SLABS = Math.round(90 * AREA_SCALE);
+    for (let tries = 0; tries < N_SLABS * 90 && slabs.length < N_SLABS; tries++) {
       const z = THREE.MathUtils.lerp(BOUNDS.z0, BOUNDS.z1, rng());
       const d = 8 + Math.pow(rng(), 0.9) * 95;
       const x = shoreX(z) + d;
@@ -361,7 +362,9 @@ export class LakeProps {
 
     /* ── erratics (ice-left boulders, larger than shore cobbles) ─────────── */
     const erratics = [];
-    for (let tries = 0; tries < 6000 && erratics.length < 80; tries++) {
+    /* Erratics scale with the ground the ice covered — see AREA_SCALE. */
+    const N_ERR = Math.round(80 * AREA_SCALE);
+    for (let tries = 0; tries < N_ERR * 90 && erratics.length < N_ERR; tries++) {
       const z = THREE.MathUtils.lerp(BOUNDS.z0, BOUNDS.z1, rng());
       /* Prefer till belt and fan lobes. */
       const onFan = Math.max(
@@ -413,7 +416,8 @@ export class LakeProps {
 
     /* ── rare standing snags (inland only; never the wet margin) ──────────── */
     const snags = [];
-    for (let tries = 0; tries < 2400 && snags.length < 12; tries++) {
+    const N_SNAG = Math.round(12 * AREA_SCALE);
+    for (let tries = 0; tries < N_SNAG * 220 && snags.length < N_SNAG; tries++) {
       const z = THREE.MathUtils.lerp(BOUNDS.z0 - 10, BOUNDS.z1 + 10, rng());
       const d = 32 + rng() * 90;
       const x = shoreX(z) + d;
