@@ -136,29 +136,65 @@ function makeRng(seed) {
  * long-travel springs, not a tall one.
  */
 const STATIONS = [
-  /* tail, and its closing station 60 mm behind it */
-  { z: -0.780, yB: 0.415, yT: 0.98, wB: 0.42, wMax: 0.58, wTop: 0.44, vBelt: 0.55, n: 2.6 },
-  { z: -0.720, yB: 0.355, yT: 1.16, wB: 0.62, wMax: 0.80, wTop: 0.68, vBelt: 0.55, n: 3.0 },
-  { z: -0.600, yB: 0.255, yT: 1.31, wB: 0.72, wMax: 0.855, wTop: 0.74, vBelt: 0.55, n: 3.2 },
+  /* Tail, and the exponent is the whole story back here.
+   *
+   * These three used to close from 0.855 to 0.58 of half-width over 180 mm at
+   * an exponent falling 3.2 -> 2.6, which is a dome in plan and in section at
+   * the same time: the car ended in a rounded blue nose-cone with the tail
+   * lamps stuck on its curve. A hatchback does not end like that. It ends in a
+   * stamped tailgate — a nearly flat panel, nearly full width, with a tight
+   * rolled edge all round it — and a superellipse says exactly that with a
+   * HIGH exponent, not a low one. So the width and the exponent are both held
+   * up to 45 mm from the end and all of the closing happens in the cap. */
+  { z: -0.780, yB: 0.415, yT: 0.96, wB: 0.40, wMax: 0.52, wTop: 0.40, vBelt: 0.55, n: 2.8 },
+  { z: -0.735, yB: 0.355, yT: 1.22, wB: 0.70, wMax: 0.845, wTop: 0.755, vBelt: 0.55, n: 4.4 },
+  { z: -0.600, yB: 0.255, yT: 1.32, wB: 0.74, wMax: 0.862, wTop: 0.760, vBelt: 0.55, n: 3.9 },
   /* rear quarter over the rear arch */
-  { z: -0.340, yB: 0.175, yT: 1.40, wB: 0.76, wMax: 0.865, wTop: 0.72, vBelt: 0.52, n: 3.4 },
-  { z: -0.050, yB: 0.155, yT: 1.455, wB: 0.78, wMax: 0.865, wTop: 0.68, vBelt: 0.50, n: 3.4 },
+  { z: -0.340, yB: 0.175, yT: 1.40, wB: 0.76, wMax: 0.865, wTop: 0.73, vBelt: 0.52, n: 3.7 },
+  { z: -0.050, yB: 0.155, yT: 1.455, wB: 0.78, wMax: 0.865, wTop: 0.69, vBelt: 0.50, n: 3.7 },
   /* roof: very slightly crowned, because a dead flat roof has no highlight on
-   * it at all and reads as a lid */
-  { z: 0.420, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.865, wTop: 0.66, vBelt: 0.50, n: 3.4 },
-  { z: 1.000, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.860, wTop: 0.65, vBelt: 0.50, n: 3.4 },
-  { z: 1.620, yB: 0.155, yT: 1.452, wB: 0.78, wMax: 0.860, wTop: 0.63, vBelt: 0.50, n: 3.4 },
+   * it at all and reads as a lid.
+   *
+   * The cabin exponent is up from 3.4 to 3.7 for the same reason as the tail:
+   * a door skin is a flat panel with a rolled shoulder, and a section that
+   * rounds continuously from sill to roof is a bar of soap. 3.7 puts about
+   * 50 mm of radius on the shoulder and leaves the rest of the flank straight,
+   * which is what carries a long unbroken highlight down the side of a car. */
+  { z: 0.420, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.865, wTop: 0.67, vBelt: 0.50, n: 3.7 },
+  { z: 1.000, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.860, wTop: 0.66, vBelt: 0.50, n: 3.7 },
+  { z: 1.620, yB: 0.155, yT: 1.452, wB: 0.78, wMax: 0.860, wTop: 0.64, vBelt: 0.50, n: 3.7 },
   /* windscreen: 0.435 m of rise over 0.68 m of run is 57 degrees from the
    * vertical, which is where modern screens sit — steep enough to be obviously
    * raked, shallow enough that the wipers still have somewhere to park */
-  { z: 1.980, yB: 0.165, yT: 1.260, wB: 0.78, wMax: 0.860, wTop: 0.68, vBelt: 0.52, n: 3.3 },
-  { z: 2.300, yB: 0.175, yT: 1.020, wB: 0.78, wMax: 0.860, wTop: 0.76, vBelt: 0.55, n: 3.2 },
+  { z: 1.980, yB: 0.165, yT: 1.260, wB: 0.78, wMax: 0.860, wTop: 0.69, vBelt: 0.52, n: 3.6 },
+  { z: 2.300, yB: 0.175, yT: 1.020, wB: 0.78, wMax: 0.860, wTop: 0.77, vBelt: 0.55, n: 3.7 },
   /* the doubled station: 80 mm apart with a 30 mm height step, which is how a
    * Catmull-Rom is told that the cowl is a crease and not a curve */
-  { z: 2.380, yB: 0.175, yT: 0.990, wB: 0.78, wMax: 0.860, wTop: 0.78, vBelt: 0.55, n: 3.2 },
-  /* bonnet, falling away over the front axle at 2.62 */
-  { z: 2.720, yB: 0.195, yT: 0.955, wB: 0.77, wMax: 0.855, wTop: 0.80, vBelt: 0.55, n: 3.2 },
-  { z: 3.060, yB: 0.215, yT: 0.920, wB: 0.75, wMax: 0.840, wTop: 0.78, vBelt: 0.55, n: 3.1 },
+  { z: 2.380, yB: 0.175, yT: 0.990, wB: 0.78, wMax: 0.860, wTop: 0.79, vBelt: 0.55, n: 3.9 },
+  /* Bonnet, falling away over the front axle at 2.62. The exponent is highest
+   * here of anywhere on the car: a bonnet is the flattest panel on a vehicle
+   * and the one whose highlight the eye uses to judge whether the whole shape
+   * is straight. At 3.2 it was a pillow. */
+  { z: 2.720, yB: 0.195, yT: 0.955, wB: 0.77, wMax: 0.855, wTop: 0.81, vBelt: 0.55, n: 4.0 },
+  { z: 3.060, yB: 0.215, yT: 0.925, wB: 0.75, wMax: 0.845, wTop: 0.80, vBelt: 0.55, n: 3.9 },
+  /* The nose keeps a LOW exponent, and this is the one place the tail's
+   * correction does not transfer.
+   *
+   * Holding the width and raising the exponent turns the tail into a flat
+   * stamped panel because all of its closing then happens in the 45 mm cap.
+   * Applied to the nose the same numbers made it worse, not better: a higher
+   * exponent is a *fuller* section, and a fuller section on a front end that
+   * still has to close over 70 mm of overhang is a bigger dome, not a flatter
+   * face. The front came back as a featureless blue pod with the lamps buried
+   * inside it.
+   *
+   * The asymmetry is real rather than a tuning accident. A tailgate is a panel
+   * standing across the end of the car; a nose is a surface that has to fall
+   * from the bonnet to the bumper while narrowing, and that is a rounded form
+   * on every hatchback ever made. What gives a front end its structure is not
+   * the section exponent, it is the grille aperture, the lamp units and the
+   * lower intake — all of which are bolt-ons in _addBodywork() and all of
+   * which were being swallowed by the fuller section. */
   { z: 3.280, yB: 0.255, yT: 0.850, wB: 0.70, wMax: 0.790, wTop: 0.70, vBelt: 0.55, n: 3.0 },
   { z: 3.400, yB: 0.335, yT: 0.740, wB: 0.50, wMax: 0.600, wTop: 0.50, vBelt: 0.55, n: 2.6 },
 ];
