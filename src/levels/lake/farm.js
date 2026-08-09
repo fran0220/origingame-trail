@@ -74,18 +74,21 @@ function sheepGeometry(variant, rng) {
 /* A long low gable in corrugated iron. Corrugation is faked with alternating
  * vertex shade down the roof rather than modelled, because at any distance
  * this is seen from, what reads is the stripe and not the section. */
-function shedGeometry(len, wide, wall, ridge, iron, rng) {
+function shedGeometry(len, wide, wall, ridge, iron, rng, plinth = 0) {
   const pos = [], col = [], idx = [];
   const push = (x, y, z, c) => { const n = pos.length / 3; pos.push(x, y, z); col.push(...c); return n; };
   const quad = (a, b, c, d) => idx.push(a, b, c, a, c, d);
   const hw = wide / 2, hl = len / 2;
   const timber = [0.115, 0.098, 0.078];
   /* Walls. */
+  /* The walls start below the floor by the plinth depth, so the downhill side
+   * shows a foundation instead of a gap. */
+  const base = -plinth;
   const w = [
-    [[-hw, 0, -hl], [hw, 0, -hl], [hw, wall, -hl], [-hw, wall, -hl]],
-    [[hw, 0, hl], [-hw, 0, hl], [-hw, wall, hl], [hw, wall, hl]],
-    [[-hw, 0, hl], [-hw, 0, -hl], [-hw, wall, -hl], [-hw, wall, hl]],
-    [[hw, 0, -hl], [hw, 0, hl], [hw, wall, hl], [hw, wall, -hl]],
+    [[-hw, base, -hl], [hw, base, -hl], [hw, wall, -hl], [-hw, wall, -hl]],
+    [[hw, base, hl], [-hw, base, hl], [-hw, wall, hl], [hw, wall, hl]],
+    [[-hw, base, hl], [-hw, base, -hl], [-hw, wall, -hl], [-hw, wall, hl]],
+    [[hw, base, -hl], [hw, base, hl], [hw, wall, hl], [hw, wall, -hl]],
   ];
   for (const f of w) {
     const shade = 0.80 + rng() * 0.30;
@@ -219,19 +222,63 @@ export class LakeFarm {
     let sheds = 0;
     const nSheds = Math.max(2, Math.round(VALLEY / 620));
     for (let s = 0; s < nSheds; s++) {
-      const z0 = BOUNDS.z0 - ((s + 0.5) / nSheds) * VALLEY + (rng() - 0.5) * 160;
-      const x0 = shoreX(z0) + ROAD_SHOULDER + 34 + rng() * 90;
-      const y = ok(x0, z0, ROAD_SHOULDER + 26);
-      if (y === null) continue;
       const len = 11 + rng() * 16, wide = 6.5 + rng() * 4;
       const wall = 2.5 + rng() * 1.2;
+
+      /* SEARCH FOR A LEVEL SITE. Rejecting on the first proposal built zero
+       * sheds, because on this terrain a randomly chosen 27 m footprint
+       * almost never lands on ground flat enough to build on. Farmers do not
+       * accept the first spot either — the woolshed goes on the flattest
+       * ground within reach of the track, and looking for it is the whole
+       * decision. */
+      let site = null;
+      for (let attempt = 0; attempt < 26 && !site; attempt++) {
+        const z0 = BOUNDS.z0 - ((s + 0.5) / nSheds) * VALLEY + (rng() - 0.5) * 260;
+        const x0 = shoreX(z0) + ROAD_SHOULDER + 30 + rng() * 110;
+        if (ok(x0, z0, ROAD_SHOULDER + 26) === null) continue;
+        const yaw = rng() * 6.283;
+        const ca = Math.cos(yaw), sa = Math.sin(yaw);
+        let hiY = -Infinity, loY = Infinity;
+        for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+          const px = x0 + (dx * len / 2) * ca - (dz * wide / 2) * sa;
+          const pz = z0 + (dx * len / 2) * sa + (dz * wide / 2) * ca;
+          const h = terrain.height(px, pz);
+          if (h > hiY) hiY = h;
+          if (h < loY) loY = h;
+        }
+        if (hiY - loY > 1.5) continue;
+        site = { x0, z0, yaw, hiY, loY };
+      }
+      if (!site) continue;
+      const { x0, z0, yaw, hiY, loY } = site;
+
+      /* LEVEL THE BUILDING ON ITS OWN FOOTPRINT.
+       *
+       * A shed was placed at ONE sampled ground height, and the site test
+       * measured slope over a 1.2 m span while the building is up to 27 m
+       * long. On a gradient of 0.3 — well inside the test's tolerance — the
+       * two ends of that shed differ by eight metres, so the uphill half was
+       * underground and only the ridge showed. Photographed from inside the
+       * paddock it looked like a tent pitched in the grass, and from the road
+       * it was the flat red mass I spent two rounds mistaking for a container.
+       *
+       * The same point-for-an-extended-object error as the scree fans, the
+       * fallen logs and the wayside apron. A building is not a point and it is
+       * not a disc either: it has a FOOTPRINT, and the only question worth
+       * asking is what the ground does across all of it.
+       *
+       * A real farm shed sits on a cut-and-fill platform with a concrete
+       * plinth showing on the downhill side, so that is what this does: floor
+       * at the highest corner, walls carried down to the lowest. */
+      const plinth = Math.max(0.12, hiY - loY);
+
       const geo = shedGeometry(len, wide, wall, wall + 1.5 + rng() * 1.0,
-                               IRONS[(rng() * IRONS.length) | 0], rng);
+                               IRONS[(rng() * IRONS.length) | 0], rng, plinth);
       this.geometries.push(geo);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = `farm:shed:${s}`;
-      mesh.position.set(x0, y - 0.1, z0);
-      mesh.rotation.y = rng() * 6.283;
+      mesh.position.set(x0, hiY + 0.02, z0);
+      mesh.rotation.y = yaw;
       mesh.castShadow = true; mesh.receiveShadow = true;
       this.root.add(mesh);
       this.meshes.push(mesh);
