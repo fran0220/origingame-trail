@@ -1712,8 +1712,16 @@ export class Vegetation {
         cols.push(col);
       }
 
-      const mk = (parent, g, mat, depth) => {
+      /* Named, because an unnamed mesh is invisible to every instrument that
+       * walks the scene. tools/seating.mjs reports 493 layers in the lake and
+       * could classify all but one of them; in the jungle almost every layer
+       * came back "(unnamed)" and the report was unreadable — a list of
+       * anonymous rows that could not be told apart, let alone exempted. A
+       * name costs nothing and is the difference between a tool that finds
+       * bugs and a tool that produces noise. */
+      const mk = (parent, g, mat, depth, part) => {
         const im = new THREE.InstancedMesh(g, mat, b.items.length);
+        im.name = `veg:${name}:${part}`;
         b.items.forEach((it, i) => im.setMatrixAt(i, it.m));
         im.instanceMatrix.needsUpdate = true;
         im.castShadow = cast;
@@ -1725,11 +1733,11 @@ export class Vegetation {
         return im;
       };
 
-      if (geo.hi.leaf) mk(hiG, geo.hi.leaf, this.leafMat, this.leafDepth);
-      if (geo.hi.wood) mk(hiG, geo.hi.wood, this.woodMat, this.woodDepth);
+      if (geo.hi.leaf) mk(hiG, geo.hi.leaf, this.leafMat, this.leafDepth, 'leaf');
+      if (geo.hi.wood) mk(hiG, geo.hi.wood, this.woodMat, this.woodDepth, 'wood');
       if (loG) {
-        if (geo.lo.leaf) mk(loG, geo.lo.leaf, this.leafMat, this.leafDepth);
-        if (geo.lo.wood) mk(loG, geo.lo.wood, this.woodMat, this.woodDepth);
+        if (geo.lo.leaf) mk(loG, geo.lo.leaf, this.leafMat, this.leafDepth, 'leaf-lo');
+        if (geo.lo.wood) mk(loG, geo.lo.wood, this.woodMat, this.woodDepth, 'wood-lo');
         loG.visible = false;
       }
 
