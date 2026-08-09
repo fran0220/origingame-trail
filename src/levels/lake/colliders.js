@@ -208,6 +208,23 @@ export function registerLakeColliders(collision, level, terrain) {
     }
   });
 
+  /* ── bales ────────────────────────────────────────────────────────────
+   *
+   * Flagged by tools/solidity.mjs on the first run after they were added,
+   * which is the whole reason that audit exists — the previous four
+   * structures each went several days before anyone noticed. A round bale is
+   * 1.2 m across and weighs about 400 kg wet; it is not scree and it is not a
+   * marker post, and a car meeting one stops. */
+  level.harvest?.root.traverse((o) => {
+    if (!o.isInstancedMesh || !/harvest:bales/.test(o.name || '')) return;
+    for (let i = 0; i < o.count; i++) {
+      o.getMatrixAt(i, M); M.decompose(V, Q, S);
+      collision.addCircle({ x: V.x, z: V.z, radius: 0.60 * S.x,
+                            minY: V.y - 0.9, maxY: V.y + 0.8, kind: 'bale' });
+      counts.bales = (counts.bales || 0) + 1;
+    }
+  });
+
   /* ── the biggest boulders only ────────────────────────────────────────── */
   level.rock?.root.traverse((o) => {
     if (!o.isInstancedMesh || !/outcrop/.test(o.name || '')) return;
