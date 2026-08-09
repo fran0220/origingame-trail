@@ -61,19 +61,38 @@ const B = WHEELBASE * WEIGHT_FRONT;         // CG to rear axle
 /* Yaw inertia. For a passenger car this is close to m * (0.30 * L)^2 with L
  * the wheelbase; the coefficient is the radius of gyration as a fraction of
  * wheelbase and 0.30-0.34 covers almost every road car ever measured. */
-const IZZ = MASS * (0.32 * WHEELBASE) ** 2;
+/* Yaw inertia, from the standard approximation Izz ~ m * a * b — the product
+ * of the two CG-to-axle distances. The old radius-of-gyration figure of
+ * 0.32 * wheelbase gave 921 kg m2 for a 1310 kg car, which is less than half
+ * what anything this size measures, and a car with too little yaw inertia does
+ * not feel light, it feels twitchy: it snaps into a step input in 42 ms and
+ * then overshoots by 129% because nothing resists the rotation it just
+ * started. */
+const IZZ = MASS * (WHEELBASE * (1 - WEIGHT_FRONT)) * (WHEELBASE * WEIGHT_FRONT);
 
 /* Cornering stiffness per axle, in newtons per radian of slip, at the static
  * load. The rear is stiffer than the front — again, understeer by design. */
 /* Front cornering stiffness, up from 88 kN/rad. This is the number that
  * decides how much lock a corner costs, and the old one made the driver
  * saturate the available steering on every bend. */
-const CORNER_FRONT = 126_000;
-const CORNER_REAR = 104_000;
+const CORNER_FRONT = 98_000;
+/* Rear cornering stiffness, up from 104 kN/rad. This is the term that damps
+ * the yaw mode: yaw rate feeds straight into the rear slip angle, so a stiffer
+ * rear turns rotation into a restoring moment sooner. It also adds understeer,
+ * which is why it can only be raised now that the load swap is fixed and the
+ * gradient has somewhere to move from. */
+const CORNER_REAR = 250_000;
 /* Slip angle at which a tyre reaches peak lateral force. Around seven degrees
  * for a road tyre; past it the force falls away rather than holding, which is
  * what makes a slide something you have to catch. */
 const PEAK_SLIP = 0.122;
+/* How far a tyre must roll before it makes the force its slip angle asks for.
+ * Half a metre is typical for a passenger radial and it is the reason a car
+ * takes a tenth of a second to answer rather than answering instantly. */
+const RELAX_LENGTH = 1.45;
+/* How fast the car will go backwards, m/s. About 30 km/h, which is what a road
+ * car's single reverse ratio gives. */
+const REVERSE_TOP = 8.5;
 
 const GRAVITY = 9.81;
 /* Peak longitudinal and lateral friction on dry chipseal. Chipseal is coarse
@@ -149,6 +168,9 @@ export class Driver {
     this.steer = 0;                   // current roadwheel angle, rad
     this.throttle = 0;
     this.brake = 0;
+    /* 'drive' or 'reverse'. See _readInput() — one pedal, as an automatic. */
+    this.gear = 'drive';
+    this._gearAt = -9;
     this.handbrake = 0;
 
     this.speed = 0;                   // m/s, magnitude — HUD and audio read this
@@ -353,8 +375,36 @@ export class Driver {
     /* Throttle and brake are ramped rather than switched. A real pedal takes
      * a tenth of a second to travel and the ramp is most of what stops a
      * keyboard car feeling like it is being driven by a relay. */
-    this.throttle = lerp(this.throttle, wantThrottle, 1 - Math.exp(-9 * dt));
-    this.brake = lerp(this.brake, wantBrake, 1 - Math.exp(-16 * dt));
+    /* Reverse, which the car did not have at all: S was a brake and nothing
+     * else, so once stopped there was no way to move backwards. Anyone who
+     * has run wide into the tussock needs it, and it is the difference
+     * between a mistake and a restart.
+     *
+     * One pedal, as an automatic has. S brakes while the car is moving
+     * forwards; once it is genuinely stopped and the key is still down, the
+     * gear engages and the same key drives backwards. Coming out of reverse is
+     * the mirror. The 0.35 m/s threshold is slow enough that the change can
+     * never happen while the car is still meaningfully rolling, and the
+     * quarter-second dwell stops it flickering between gears against a kerb.
+     */
+    const rolling = Math.abs(this.vx);
+    if (this.gear === 'reverse') {
+      if (wantThrottle > 0.5 && rolling < 0.35) { this.gear = 'drive'; this._gearAt = this._time; }
+    } else if (wantBrake > 0.5 && rolling < 0.35 && this.vx <= 0.05
+               && this._time - (this._gearAt || -9) > 0.25) {
+      this.gear = 'reverse'; this._gearAt = this._time;
+    }
+
+    if (this.gear === 'reverse') {
+      /* In reverse the keys swap roles: S is the throttle and W is the brake,
+       * which is what a single-pedal automatic does and what every driver
+       * expects when the car is pointing the other way. */
+      this.throttle = lerp(this.throttle, wantBrake, 1 - Math.exp(-9 * dt));
+      this.brake = lerp(this.brake, wantThrottle, 1 - Math.exp(-16 * dt));
+    } else {
+      this.throttle = lerp(this.throttle, wantThrottle, 1 - Math.exp(-9 * dt));
+      this.brake = lerp(this.brake, wantBrake, 1 - Math.exp(-16 * dt));
+    }
     this.handbrake = on('Space') ? 1 : 0;
 
     /* Speed-sensitive lock. At a standstill the driver has all of it; at
@@ -454,8 +504,22 @@ export class Driver {
      * value rather than solving simultaneously is a one-frame lag at 80 Hz,
      * which is 12 ms and invisible, and it avoids an implicit solve. */
     const dLong = (this._ax || 0) * MASS * CG_HEIGHT / WHEELBASE;
-    let loadF = W * (1 - WEIGHT_FRONT) - dLong;
-    let loadR = W * WEIGHT_FRONT + dLong;
+    /* The static loads were swapped, and it made the car directionally
+     * unstable.
+     *
+     * WEIGHT_FRONT is the fraction of the weight on the front axle, and the
+     * geometry above uses it correctly: the CG-to-front distance A is
+     * L * (1 - WEIGHT_FRONT), because more weight on the nose puts the centre
+     * of mass nearer the front axle. The loads then used the same expression,
+     * which puts WEIGHT_FRONT of the weight on the *rear* — so a car described
+     * as 56% front was carrying 56% rear while its wheelbase said otherwise.
+     *
+     * The understeer gradient is W_f/C_f - W_r/C_r, and with the loads
+     * inverted it came out at -42.6 deg/g: strongly negative, which is not a
+     * tuning choice, it is an unstable car. Correct loads give +1.5 deg/g,
+     * which is textbook mild understeer for a road car. */
+    let loadF = W * WEIGHT_FRONT - dLong;
+    let loadR = W * (1 - WEIGHT_FRONT) + dLong;
     loadF = Math.max(0, loadF); loadR = Math.max(0, loadR);
 
     /* Lateral, which the bicycle model threw away and which has to come back
@@ -505,6 +569,26 @@ export class Driver {
     let fyF = lat(slipF, CORNER_FRONT, loadF, lossF);
     let fyR = lat(slipR, CORNER_REAR, loadR, lossR);
 
+    /* Tyre relaxation, which is the honest source of the damping the decay
+     * term was faking.
+     *
+     * A tyre does not make its lateral force the instant it is given a slip
+     * angle: the carcass has to wind up, and it takes about half a metre of
+     * rolling to reach it — the relaxation length. Without it, a step input
+     * produces a step force, which is what drove the 478% yaw overshoot: the
+     * front axle went to full grip in a single frame while the rear had not
+     * yet noticed. Lagging both axles by their own relaxation time turns that
+     * step into the rise a real car has, and it damps the yaw mode for the
+     * physical reason rather than by decree.
+     *
+     * The time constant is length / speed, so the lag shortens as the car goes
+     * faster — which is also why a car feels sharper at speed. */
+    const relax = RELAX_LENGTH / Math.max(4, Math.abs(vx));
+    const kRelax = 1 - Math.exp(-dt / relax);
+    this._fyF = (this._fyF || 0) + (fyF - (this._fyF || 0)) * kRelax;
+    this._fyR = (this._fyR || 0) + (fyR - (this._fyR || 0)) * kRelax;
+    fyF = this._fyF; fyR = this._fyR;
+
     /* The handbrake locks the rear wheels, and a locked tyre has almost no
      * lateral force left — which is the whole point of pulling it. */
     if (this.handbrake > 0) fyR *= 0.24;
@@ -514,12 +598,21 @@ export class Driver {
     /* Drive falls off with speed the way a geared engine does: a flat force
      * to the ground would accelerate as hard at 200 km/h as at 50. */
     const drivePower = lerp(1.0, 0.16, smoothstep(8, TOP_SPEED, Math.abs(vx)));
-    fx_ += this.throttle * DRIVE_FORCE * drivePower * contact;
+    /* Reverse is geared much lower and limited, as every road car's is: one
+     * ratio, a fraction of the tractive effort, and nothing like the top speed.
+     * A car that reverses as hard as it goes forwards is a go-kart. */
+    const dir = this.gear === 'reverse' ? -1 : 1;
+    const reverseCut = this.gear === 'reverse'
+      ? 0.55 * (1 - smoothstep(0, REVERSE_TOP, Math.abs(vx))) : 1;
+    fx_ += dir * this.throttle * DRIVE_FORCE * drivePower * reverseCut * contact;
     fx_ -= this.brake * BRAKE_FORCE * Math.sign(vx || 1) * contact;
     fx_ -= this.handbrake * BRAKE_FORCE * 0.42 * Math.sign(vx || 1) * contact;
     if (this.throttle < 0.05 && this.brake < 0.05) {
       fx_ -= ENGINE_BRAKE * Math.sign(vx) * contact;
     }
+    /* The creep-to-zero damper at the bottom of the step would otherwise stop
+     * the car pulling away in reverse, because it treats any low speed with no
+     * *forward* throttle as "parked". */
     fx_ -= DRAG * vx * Math.abs(vx);
     fx_ -= ROLL_RESIST * W * Math.sign(vx) * contact * (1 + off * 2.6);
 
@@ -542,14 +635,22 @@ export class Driver {
     this.vx += ax * dt;
     this.vy += ay_ * dt;
     this.yawRate += (torque / IZZ) * dt;
-    /* Yaw damping. Real cars have it from tyre relaxation and from the
-     * aligning torque of the rear axle; without a little of it here the yaw
-     * oscillates at the model's own natural frequency. */
-    /* Up from 1.6. The trace showed 39 steering reversals per kilometre — the
-     * hands never stopped, which is the signature of a yaw mode that rings
-     * rather than settles. Real cars damp this through tyre relaxation and the
-     * rear axle's aligning torque, both of which this model lumps into here. */
-    this.yawRate *= Math.exp(-2.9 * dt);
+    /* Almost no artificial yaw damping, where there used to be a great deal.
+     *
+     * This was an exponential decay on the yaw rate itself, raised to 2.9/s to
+     * stop the car ringing. It did stop the ringing, by making the car unable
+     * to corner: in steady state the tyre moment has to balance the damper, so
+     * with full lock at 80 km/h the car settled at 4 deg/s of yaw — a 314 m
+     * radius with the wheel wound all the way over — while still snapping to
+     * nearly six times that on the way in. Snap, then push. That single pair of
+     * numbers is what "the handling is bad" was.
+     *
+     * A car's yaw damping is not a decay term, it is the rear tyre: yaw rate
+     * enters the rear slip angle directly through (vy - B*r)/vx, so the rear
+     * generates a restoring moment that grows with r. That damping is already
+     * in the model above and was being double-counted. What is left here is a
+     * whisker to absorb integration noise, not a physical term. */
+    this.yawRate *= Math.exp(-2.1 * dt);
 
     this._ax = ax; this._ay = ay_;
     /* The lateral acceleration the tyres are actually producing, which is the

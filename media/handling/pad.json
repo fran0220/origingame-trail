@@ -1,0 +1,36 @@
+{
+ "step80": {
+  "atKmh": 80,
+  "delayMs": 8,
+  "riseMs": 42,
+  "overshootPct": 129,
+  "settleMs": 1617,
+  "steadyYawDegS": 12
+ },
+ "step120": {
+  "atKmh": 120,
+  "delayMs": 8,
+  "riseMs": 25,
+  "overshootPct": 163,
+  "settleMs": 1150,
+  "steadyYawDegS": 11.2
+ },
+ "understeer": {
+  "gradientDegPerG": -42.6,
+  "maxLatG": 0.76
+ },
+ "accel": {
+  "zeroTo100S": 5.42,
+  "topKmh": 160
+ },
+ "braking": {
+  "hundredToZeroM": 38.4
+ },
+ "liftOff": {
+  "yawRiseOnLiftPct": 25
+ },
+ "reverse": {
+  "movedBackwardsM": 0,
+  "kmh": 0.2
+ }
+}
