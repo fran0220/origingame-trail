@@ -15,12 +15,25 @@ const OUT = process.argv[2] || 'dist';
 
 /* An allowlist, not an ignore list. A new directory at the repository root
  * should have to be named before it can end up in a player's download. */
-const SHIP = ['index.html', 'src', 'vendor'];
+/* `media/lake-assets` is here because Lake Tekapo genuinely cannot run
+ * without it: the basin's ground is a scanned PBR set, and the habitat and
+ * meadow layers are glTF plants loaded at boot from that directory. Everything
+ * else under media/ — galleries, cover art, capture output — is documentation
+ * of the project rather than part of the game, so the allowlist names the one
+ * subdirectory instead of the parent.
+ *
+ * Leaving it out did not fail the build. It shipped a level that 404s every
+ * texture and every plant it asks for, which is the exact failure mode an
+ * allowlist is supposed to prevent and did not, because the list had only ever
+ * been checked against a level whose assets are all procedural. */
+const SHIP = ['index.html', 'src', 'vendor', 'media/lake-assets'];
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 
 for (const entry of SHIP) {
+  /* Nested entries need their parent to exist first. */
+  mkdirSync(join(OUT, entry, '..'), { recursive: true });
   cpSync(entry, join(OUT, entry), { recursive: true });
 }
 

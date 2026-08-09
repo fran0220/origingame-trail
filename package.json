@@ -22,7 +22,8 @@
     "gallery": "node tools/gallery.mjs",
     "shots": "node tools/shots.mjs",
     "cover": "node tools/cover.mjs",
-    "test:brook": "node tools/brook-edge.mjs"
+    "test:brook": "node tools/brook-edge.mjs",
+    "deploy:check": "node tools/pack.mjs && node tools/deploy-check.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.0"
