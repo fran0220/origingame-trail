@@ -67,3 +67,50 @@
 - Overdriving being ten seconds slower is the assertion worth keeping, because it is the
   signature of a tyre that saturates. Pinning the stage time to a constant would fail on
   every tune and prove nothing.
+
+## When a scene looks bare, suspect the fade before adding geometry
+
+- The Lake near field read as a photograph of grass painted on a smooth surface, and the
+  obvious response — put a card grass layer over it — was tried three times and refuted
+  three times. The detail was already authored; the shader was throwing it away.
+- `farDetail` faded the ground's scanned taps on *camera distance*. On a basin seen at a
+  shallow angle from a car, distance is a poor proxy for footprint: a hillside 40 m across
+  the valley resolves far more than the verge 25 m ahead down the road. Most of the frame
+  was losing texture it could still show.
+- Same correction as the road's chipseal, for the same reason: fade on `fwidth()` of world
+  position, geometric mean of the two derivatives, with distance kept only as a far
+  backstop. No geometry added, and the reason for wanting the grass layer disappeared.
+- Generalisation: before adding a system to fix an appearance, check whether an existing
+  system is suppressing what you are about to duplicate.
+
+## A refutation is only useful if it names the right variable
+
+- Card ground cover had been rejected twice for becoming "wires or a crop at landscape
+  scale". Both are failures of *distance*, so restricting it to 34 m should have worked —
+  and it did fix both named failures, and still did not read as cover.
+- The real limit was never distance: a two-triangle card at 0.3 m cannot be a tussock sward
+  at any density that also looks like one. Dense enough to close the ground it is a crop;
+  sparse enough not to be, it is speckle — and speckle the same value as the ground is
+  indistinguishable from the stones already on it.
+- Record the variable the refutation actually constrains, or the next attempt will "fix"
+  the stated reason and rediscover the real one.
+
+## Symmetric-looking geometry fixes are not always symmetric
+
+- Raising a superellipse section exponent turned the car's tail into a stamped tailgate,
+  because holding near-full width at a high exponent puts all the closing into a 45 mm cap.
+- The identical change applied to the nose made it worse. A higher exponent is a *fuller*
+  section, and a fuller section on a front end that must still fall from bonnet to bumper
+  while narrowing is a bigger dome, which swallowed the lamps and grille.
+- A tailgate is a panel standing across the end of the car; a nose is a surface closing over
+  an overhang. Check whether the two ends of a thing are actually the same problem before
+  applying one answer to both, and record the asymmetry where the numbers live.
+
+## Albedo authored for one state, applied to all of them
+
+- Shore cobbles carried 0.06-0.13 linear and erratics 0.14-0.26 — the values of *wet* stone
+  in shade — applied to every stone whether the swash reached it or not. Under a 0.50
+  exposure that is not "dark rock", it is a hole, and the beach read as litter on sand.
+- The wet band at the waterline was correct the whole time and simply had nothing to be
+  darker than. Fixing the dry state made the already-working wet state visible.
+- When a material looks wrong, check which of its states the constant was measured in.
