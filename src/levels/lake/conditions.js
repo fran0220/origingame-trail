@@ -1,3 +1,4 @@
+import { pickCondition, applyCondition } from '../../world/conditions.js';
 /* Conditions: the same stage under a different sky.
  *
  * This road is driven in under two minutes and a player who comes back does
@@ -38,7 +39,7 @@ export const CONDITIONS = [
     sun: { elevation: 34, azimuth: 26 },
     hemi: { sky: 0x83b4db, ground: 0x526d38, intensity: 0.64 },
     fog: { color: 0xb7cddd, density: 0.00135 },
-    clouds: 0.72, cloudScale: 1.35,
+    air: { clouds: 0.72, cloudScale: 1.35 },
     environmentIntensity: 0.86,
     exposureScale: 1.00,
   },
@@ -53,7 +54,7 @@ export const CONDITIONS = [
     sun: { elevation: 68, azimuth: 8 },
     hemi: { sky: 0x9ec6e8, ground: 0x5f7a41, intensity: 0.72 },
     fog: { color: 0xc6dbe8, density: 0.00105 },
-    clouds: 0.42, cloudScale: 1.15,
+    air: { clouds: 0.42, cloudScale: 1.15 },
     environmentIntensity: 0.95,
     exposureScale: 0.88,
   },
@@ -68,7 +69,7 @@ export const CONDITIONS = [
     sun: { elevation: 9, azimuth: 292 },
     hemi: { sky: 0x7d9fc4, ground: 0x6b5230, intensity: 0.58 },
     fog: { color: 0xe0b98f, density: 0.00190 },
-    clouds: 0.62, cloudScale: 1.45,
+    air: { clouds: 0.62, cloudScale: 1.45 },
     environmentIntensity: 0.78,
     exposureScale: 1.22,
   },
@@ -84,46 +85,15 @@ export const CONDITIONS = [
     sun: { elevation: 27, azimuth: 315 },
     hemi: { sky: 0x9aa6ad, ground: 0x6a6a55, intensity: 0.86 },
     fog: { color: 0xc8c6bd, density: 0.00320 },
-    clouds: 0.96, cloudScale: 1.70,
+    air: { clouds: 0.96, cloudScale: 1.70 },
     environmentIntensity: 0.62,
     exposureScale: 1.10,
   },
 ];
 
-/**
- * Choose a condition.
- *
- * `?cond=golden` pins one, which the capture tools need — an instrument whose
- * subject changes between runs is not an instrument. Otherwise it rotates by
- * day, so a player who comes back tomorrow gets a different stage but one who
- * restarts to compare a lap against their last does not have the light change
- * underneath them mid-session.
- */
-export function pickCondition(hashOrSearch = '') {
-  const m = /(?:^|[?&#])cond=([a-z]+)/i.exec(hashOrSearch);
-  if (m) {
-    const hit = CONDITIONS.find((c) => c.id === m[1].toLowerCase());
-    if (hit) return hit;
-  }
-  const day = Math.floor(Date.now() / 86_400_000);
-  return CONDITIONS[day % CONDITIONS.length];
-}
 
-/** Fold a condition into a level's mood block. */
-export function applyCondition(mood, cond) {
-  const out = { ...mood };
-  out.sun = { ...cond.sun };
-  out.hemi = { ...cond.hemi };
-  out.fog = { ...cond.fog };
-  out.environmentIntensity = cond.environmentIntensity;
-  /* Cloud cover lives inside mood.air, not at the top level — the sky shader
-   * reads it from there. Writing it to the root would have silently done
-   * nothing, which is the quietest possible bug: every condition would look
-   * subtly wrong and none of them would look broken. */
-  out.air = { ...mood.air, clouds: cond.clouds, cloudScale: cond.cloudScale,
-              haze: cond.fog.color };
-  out.exposure = (mood.exposure ?? 1) * cond.exposureScale;
-  out.conditionId = cond.id;
-  out.conditionLabel = cond.label;
-  return out;
-}
+/* Cloud cover lives inside mood.air — the sky shader reads it from there — so
+ * each entry above overrides `air` rather than the root. Writing it to the
+ * root would have done nothing at all. */
+export function pick(hashOrSearch) { return pickCondition(CONDITIONS, hashOrSearch); }
+export { applyCondition };

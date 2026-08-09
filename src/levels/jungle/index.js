@@ -34,6 +34,7 @@ import { JungleLife } from './life.js';
 import { JungleDeadwood } from './deadwood.js';
 import { JungleVines } from './vines.js';
 import { JungleBirds } from './birds.js';
+import { pick as pickCondition, applyCondition } from './conditions.js';
 import { Ambience } from '../../audio/engine.js';
 import { content } from '../../game/content.js';
 
@@ -59,7 +60,7 @@ export const meta = {
  * brown litter. Feeding real sky blue into these shadows is what makes CG
  * forests look like they were shot on an overcast day in a car park.
  */
-export const mood = {
+const BASE_MOOD = {
   camera: { fov: 58, near: 0.08, far: 900 },
   sun: { elevation: 38, azimuth: 152 },
   fog: { color: 0x323c2c, density: 0.038 },
@@ -88,6 +89,14 @@ export const mood = {
    * dimmer hiding that. */
   environmentIntensity: 1.0,
 };
+
+/* The same forest at a different hour — see conditions.js. Derived at module
+ * load, so every system that reads mood picks it up without knowing conditions
+ * exist. `?cond=<id>` pins one for the capture tools. */
+export const condition = pickCondition(
+  typeof location === 'undefined' ? '' : `${location.search}${location.hash}`);
+export const mood = applyCondition(BASE_MOOD, condition);
+
 
 export { content };
 

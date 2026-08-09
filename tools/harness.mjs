@@ -123,7 +123,12 @@ export async function capture(page, file) {
  */
 export async function run(opts, body) {
   const {
-    width = 1600, height = 900, hash = 'manual',
+    /* `cond=morning` by default so every instrument that does not ask for a
+     * specific hash still gets a FIXED sky. Conditions rotate by day, and an
+     * instrument whose subject changes depending on when it is run is not an
+     * instrument — a gallery diffed against yesterday's baseline would report
+     * every pixel changed and be telling the truth about the wrong thing. */
+    width = 1600, height = 900, hash = 'manual&cond=morning',
     cpu = process.argv.includes('--cpu'),
     timeout = 180_000,
     url: externalUrl = process.env.JUNGLE_URL || null,

@@ -39,7 +39,7 @@ import { LakeRoadside } from './roadside.js';
 import { LakeStructures } from './structures.js';
 import { LakeRock } from './rock.js';
 import { LakeWayside } from './wayside.js';
-import { pickCondition, applyCondition } from './conditions.js';
+import { pick as pickCondition, applyCondition } from './conditions.js';
 import { WheelDust } from '../../player/dust.js';
 import { LakeFauna } from './fauna.js';
 import { LakeAmbience } from './audio.js';
