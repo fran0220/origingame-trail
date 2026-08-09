@@ -26,7 +26,8 @@
     "deploy:check": "node tools/pack.mjs && node tools/deploy-check.mjs",
     "test:seating": "node tools/seating.mjs lake",
     "audit:seating": "node tools/seating.mjs lake && node tools/seating.mjs jungle --report",
-    "test:lap": "node tools/lap-standard.mjs"
+    "test:lap": "node tools/lap-standard.mjs",
+    "audit:solidity": "node tools/solidity.mjs lake && node tools/solidity.mjs jungle"
   },
   "devDependencies": {
     "playwright": "^1.62.0"

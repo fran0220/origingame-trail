@@ -190,6 +190,24 @@ export function registerLakeColliders(collision, level, terrain) {
    * same error as fencing the road with the wire fence: it turns an excursion
    * into an instant stop against something that would really have folded. */
 
+  /* ── standing snags ───────────────────────────────────────────────────
+   *
+   * Found by tools/solidity.mjs, not by me: 37 standing dead trunks on the
+   * lake side with nothing behind them. A snag is a tree — the one thing in
+   * this list nobody would argue about — and it was missed simply because it
+   * lives in props.js with the lichen slabs and the cobbles rather than in
+   * shelter.js with the other trees. Which file an object happens to be
+   * declared in is not a fact about the object. */
+  level.props?.root.traverse((o) => {
+    if (!o.isInstancedMesh || !/standing-snags/.test(o.name || '')) return;
+    for (let i = 0; i < o.count; i++) {
+      o.getMatrixAt(i, M); M.decompose(V, Q, S);
+      collision.addCircle({ x: V.x, z: V.z, radius: 0.22 * Math.max(0.5, S.x),
+                            minY: V.y - 1.0, maxY: V.y + 6 * S.y, kind: 'snag' });
+      counts.snags = (counts.snags || 0) + 1;
+    }
+  });
+
   /* ── the biggest boulders only ────────────────────────────────────────── */
   level.rock?.root.traverse((o) => {
     if (!o.isInstancedMesh || !/outcrop/.test(o.name || '')) return;
