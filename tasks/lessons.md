@@ -114,3 +114,24 @@
 - The wet band at the waterline was correct the whole time and simply had nothing to be
   darker than. Fixing the dry state made the already-working wet state visible.
 - When a material looks wrong, check which of its states the constant was measured in.
+
+## A test that shares the code's frame will agree with the code's bug
+
+- `control-truth.mjs` was written specifically to catch reversed steering. It asserted "D
+  moves the car toward its right", computed the car's right as `(cos yaw, -sin yaw)`, and
+  passed — while D steered left on screen. That expression is the car's *left*: in a
+  right-handed Y-up frame an object facing +Z has its right at −X. The test and the code
+  shared the mirrored convention, so they agreed perfectly with each other and with nothing
+  else.
+- The autopilots hid it a second time and independently: they steered on a heading error
+  with the matching mirrored mapping, so two faults cancelled and the stage was driven
+  cleanly end to end with the controls reversed.
+- The same sign was wrong three times in the glance: first derived (wrong), then "measured"
+  against the driver's own mirrored axis (agreed with the bug), and only settled by
+  projecting to NDC.
+- Rule: for anything the player judges visually — steering, look direction, body roll,
+  which way a thing leans — assert in SCREEN space (project to NDC), with the camera matrix
+  frozen before the input so a follow camera cannot hide the answer. World-space assertions
+  test self-consistency, not correctness, whenever the frame convention is itself suspect.
+- Corollary: when a user reports a reversal that your green test denies, suspect the test's
+  frame before suspecting the user.
