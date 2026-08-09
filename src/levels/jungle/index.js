@@ -76,7 +76,7 @@ const BASE_MOOD = {
   /* Held above one because a rainforest floor is genuinely dark and a frame
    * that reports it honestly is a frame using two thirds of the values it
    * has. This is the level's stop, not the renderer's. */
-  exposure: 1.48,
+  exposure: 1.90,
   air: {
     turbidity: 5.5,
     ground: 0x4d5a41,
