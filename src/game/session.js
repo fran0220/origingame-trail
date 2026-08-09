@@ -274,6 +274,27 @@ export class Session {
     this.pendingShot = shot;
   }
 
+  /**
+   * A stage run finished. Race owns the timing; this owns whether it counts.
+   *
+   * The separation is worth keeping: Race can be restarted, driven badly and
+   * restarted again without ever touching the save, and this is the one place
+   * that decides a run was good enough to keep. A run with accumulated cutting
+   * penalties is still recorded — the penalty is already in the time, which is
+   * the honest way to punish it — but a run that never crossed the start under
+   * power is not a run at all.
+   */
+  onRaceFinish(r) {
+    if (!r || !isFinite(r.total) || r.total <= 0) return;
+    const prev = this.state.best?.total ?? Infinity;
+    if (r.total < prev) {
+      this.state.best = { total: r.total, splits: [...r.splits] };
+      this.state.scheduleSave();
+    }
+    this.state.finished = true;
+    this.state.emit('race-finish', r);
+  }
+
   /** Called by the frame loop immediately after render(), in the same task. */
   afterRender() {
     const shot = this.pendingShot;

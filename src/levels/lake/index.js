@@ -1,4 +1,4 @@
-/* Lake Pukaki's eastern shore, under the Southern Alps.
+/* Lake Tekapo's eastern shore, under the Southern Alps.
  *
  * The second level, and almost everything that makes it hard is the same fact
  * from different directions: it is *open*. The jungle is a corridor thirty
@@ -39,9 +39,13 @@ import { LakeAmbience } from './audio.js';
 
 export const meta = {
   id: 'lake',
-  title: '冰河湖',
-  blurb: '沿冰蚀湖的东岸北行，尽头是南阿尔卑斯与库克山。',
+  title: '特卡波湖 · 八号国道',
+  blurb: '沿冰蚀湖东岸的国道北上，尽头是南阿尔卑斯与库克山。计时赛段。',
 };
+
+/* How this level is played. The host reads it to decide which body, camera and
+ * input to build — see main.js. The jungle omits it and walks. */
+export const locomotion = 'drive';
 
 export const mood = {
   /* Far plane at fifty kilometres rather than the jungle's nine hundred

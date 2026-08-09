@@ -56,6 +56,44 @@
   #chapter, #counters, #hints, #toasts, #reticle, #map, #compass, #quest {
     transition: opacity .25s ease;
   }
+
+  /* ── the driving readout ────────────────────────────────────────────────
+     Bottom right, which is where a right-hand-drive car's instruments are
+     relative to the road, and clear of the map on the other side. Tabular
+     figures throughout: a speed that changes width as it counts through 100
+     jitters, and a clock whose digits move is unreadable at a glance, which
+     is the only way it is ever read. */
+  #race {
+    position: absolute; right: 22px; bottom: 22px;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    font-variant-numeric: tabular-nums; text-align: right;
+    text-shadow: 0 2px 10px rgba(0,0,0,.55);
+    transition: opacity .25s ease; pointer-events: none;
+  }
+  #race.hidden { display: none; }
+  #race .dial { display: flex; align-items: baseline; gap: 6px; }
+  #race .dial b {
+    font-size: 58px; line-height: .92; font-weight: 600; letter-spacing: -1px;
+    color: #fff;
+  }
+  #race .dial .u { font-size: 13px; opacity: .62; letter-spacing: .06em; }
+  #race .clock b { font-size: 25px; font-weight: 500; color: #ffd98a; }
+  #race .meta {
+    display: flex; gap: 10px; font-size: 12px; opacity: .74; letter-spacing: .04em;
+  }
+  #race .best { font-size: 11px; opacity: .5; letter-spacing: .04em; }
+  #race .best b { font-weight: 500; }
+  /* Off-road warning. Amber rather than red: the player has not crashed and
+     has not been disqualified, they are losing time, and the colour should
+     say "look at this" without saying "it is over". */
+  #race .flag {
+    margin-top: 4px; font-size: 11px; letter-spacing: .08em;
+    color: #1a1206; background: #e8a33c; padding: 3px 8px; border-radius: 3px;
+  }
+  #race .flag.hidden { display: none; }
+  /* The stage is the picture. Both of the modes that exist to look at the
+     view take the instruments away with everything else. */
+  #hud.framing #race, #hud.reading #race { opacity: 0; }
   /* The whole overlay, out of the way. A game whose selling point is the view
      has to be able to show the view. */
   #hud.bare > *:not(#book):not(#pause):not(#finale), #hud.bare::before { opacity: 0 !important; }
@@ -497,7 +535,7 @@
     <h1 id="pickTitle">去往一片风景</h1>
     <div class="pick-list">
       <button type="button" data-level="jungle"><strong>Jungle · 雨林小径</strong><small>闭合林冠下，循水声走向遗迹与瀑布</small></button>
-      <button type="button" data-level="lake"><strong>Lake Pukaki · 普卡基湖</strong><small>南岛高地，沿冰川湖岸望向雪山</small></button>
+      <button type="button" data-level="lake"><strong>Lake Tekapo · 特卡波湖</strong><small>八号国道计时赛段，沿冰川湖岸驶向南阿尔卑斯</small></button>
     </div>
   </div>
 </main>
@@ -529,6 +567,24 @@
   <div id="map">
     <canvas id="mapCanvas"></canvas>
     <div class="scale" id="mapScale">40 m</div>
+  </div>
+
+  <!-- The driving readout. Hidden unless the level says it is driven; see
+       Hud.setRace(). Laid out as an instrument binnacle rather than as a
+       scoreboard — the speed is the big number because it is the one a driver
+       reads without looking, and the clock sits under it because it is read
+       between corners, not during them. -->
+  <div id="race" class="hidden">
+    <div class="dial">
+      <b id="rSpeed">0</b><span class="u">km/h</span>
+    </div>
+    <div class="clock"><b id="rTime">0:00.00</b></div>
+    <div class="meta">
+      <span id="rGate">起点</span>
+      <span id="rSplit">0/5</span>
+    </div>
+    <div class="best">最佳 <b id="rBest">--:--.--</b></div>
+    <div id="rFlag" class="flag hidden">路肩 · 计时惩罚</div>
   </div>
 
   <div id="prompt"></div>

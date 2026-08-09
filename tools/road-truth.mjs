@@ -69,5 +69,32 @@ await run({ hash: 'manual&tier=high&level=lake', timeout: 300_000 }, async ({ pa
     };
   });
 
-  console.log(JSON.stringify(r, null, 2));
+  console.log(`  seal on formation   worst ${r.worstSeal.toFixed(3)} m`);
+  console.log(`  batter step         worst ${r.worstStep.toFixed(3)} m / m`);
+  console.log(`  grade               max ${(r.gradeMax * 100).toFixed(1)}%  p99 ${(r.gradeP99 * 100).toFixed(1)}%`);
+  console.log(`  stage               ${r.length} m, ${r.roadStats.tris} tris, ${r.roadStats.posts} posts`);
+
+  const fail = [];
+  /* The seal must lie on the ground the carve made. The tolerance is the
+   * deliberate 45 mm lift plus the terrain grid's own 0.6 m sampling, and it
+   * is tight on purpose: this number was 1.34 m when the trail had two
+   * meanings for `t`, and nothing in a frame said so. */
+  if (Math.abs(r.worstSeal) > 0.12) {
+    fail.push(`seal floats ${r.worstSeal.toFixed(3)} m over its formation at t=${r.worstSealAt.t}`);
+  }
+  /* A batter is a slope, not a cliff. Anything approaching 1:1 just outside
+   * the shoulder is a wall a car would climb rather than an embankment. */
+  if (r.worstStep > 1.1) {
+    fail.push(`batter steps ${r.worstStep.toFixed(2)} m in one metre at t=${r.worstStepAt.t}`);
+  }
+  /* The grade limiter in _buildPathProfile exists to keep this drivable. */
+  if (r.gradeMax > 0.11) {
+    fail.push(`grade reaches ${(r.gradeMax * 100).toFixed(1)}%, past what the limiter allows`);
+  }
+  if (fail.length) {
+    console.error('FAILED');
+    for (const f of fail) console.error(`  ✗ ${f}`);
+    process.exit(1);
+  }
+  console.log('ok — the seal lies on its formation, and the grade is drivable');
 });

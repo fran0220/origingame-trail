@@ -331,15 +331,47 @@ function makeSealMaterial() {
       float lat = vRoad.x;              // metres from the centreline, signed
       float along = vRoad.y;            // metres along the road
       float alat = abs(lat);
-      float fade = sstep(30.0, 190.0, distance(cameraPosition, vRoadPos));
+
+      /* How big a pixel is, in metres of road, right here.
+       *
+       * The first cut faded the chip out on camera *distance*, and that is the
+       * wrong variable — it is a proxy for the thing that actually matters and
+       * it is a bad one on a road. A road is seen almost edge-on: the ground
+       * fifteen metres ahead of a windscreen is at a few degrees of incidence,
+       * so one pixel covers centimetres across the road and a third of a metre
+       * along it. A distance-based fade keeps full-amplitude 11 mm noise in
+       * that pixel and the result is the comb pattern that ran up the middle
+       * of every driving frame: not a texture, an aliasing artefact of one.
+       *
+       * fwidth() answers the question directly, because it is the screen-space
+       * derivative of the world position and therefore the footprint of this
+       * pixel on the ground, and it collapses correctly for both distance and
+       * grazing angle at once. Chip cells are 1/90 m across, so anything past
+       * about half that in a single pixel cannot be resolved and must be
+       * replaced by its mean rather than sampled. This is mipmapping, done by
+       * hand, for a texture that has no mip chain because it is a function. */
+      /* The geometric mean of the two derivatives, not the larger of them.
+       * On a road seen edge-on the footprint is a long thin sliver — a
+       * centimetre across the carriageway and a third of a metre along it —
+       * and taking the major axis throws away detail the minor axis can still
+       * resolve, which is why the first version of this fade left the near
+       * seal completely smooth. The geometric mean is what an anisotropic
+       * filter with a capped sample ratio actually resolves, and it keeps the
+       * chip at the player's feet while still killing the comb up the road. */
+      float px = sqrt(max(fwidth(vRoadPos.x), 1e-5) * max(fwidth(vRoadPos.z), 1e-5));
+      float chipFade = sstep(0.0035, 0.016, px);
+      float fade = max(sstep(30.0, 190.0, distance(cameraPosition, vRoadPos)), chipFade);
 
       /* Chip. 90 cells per metre puts a cell at about 11 mm, which is a
        * grade 3 chip — the common NZ rural size. */
-      float chip = fbm2(vRoadPos.xz * 90.0);
+      /* Faded to its own mean rather than left to alias. fbm2 of value noise
+       * averages to 0.5, so that is what a pixel too small to resolve a chip
+       * must see. */
+      float chip = mix(fbm2(vRoadPos.xz * 90.0), 0.5, chipFade);
       /* Aggregate colour spread. Greywacke chip is not one grey: it runs from
        * near-black wet-looking pieces to pale weathered ones, and that spread
        * is most of what stops a seal reading as flat paint. */
-      float agg = h21(floor(vRoadPos.xz * 90.0));
+      float agg = mix(h21(floor(vRoadPos.xz * 90.0)), 0.5, chipFade);
 
       /* Measured chipseal albedo, and it is much paler than intuition says.
        * "Asphalt is black" is a memory of wet hot-mix at night; a weathered
@@ -384,7 +416,8 @@ function makeSealMaterial() {
        * wave-graded lake cobble and a road shoulder is crushed and rolled,
        * which is a visibly different material — finer, paler, and dusty. */
       vec3 gravel = mix(vec3(0.212, 0.202, 0.180), vec3(0.318, 0.305, 0.276),
-                        fbm2(vRoadPos.xz * 26.0));
+                        mix(fbm2(vRoadPos.xz * 26.0), 0.5,
+                            sstep(0.012, 0.055, px)));
       gravel *= 0.88 + 0.24 * fbm2(vRoadPos.xz * 1.7);
       float onShoulder = sstep(${ROAD_HALF.toFixed(2)}, ${(ROAD_HALF + 0.6).toFixed(2)}, alat);
       vec3 surf = mix(seal, gravel, onShoulder);
@@ -438,7 +471,12 @@ function makeSealMaterial() {
       float roughnessFactor = roughness;
       {
         float alat2 = abs(vRoad.x);
-        float chip2 = fbm2(vRoadPos.xz * 90.0);
+        /* Same footprint fade as the albedo. An unfaded roughness at a grazing
+         * angle is worse than an unfaded albedo, because roughness drives a
+         * specular lobe and the sun is low: the comb pattern arrives as a
+         * glitter rather than as a tint. */
+        float px2 = sqrt(max(fwidth(vRoadPos.x), 1e-5) * max(fwidth(vRoadPos.z), 1e-5));
+        float chip2 = mix(fbm2(vRoadPos.xz * 90.0), 0.5, sstep(0.0035, 0.016, px2));
         float wheel2 = max(1.0 - sstep(0.30, 0.62, abs(vRoad.x + 1.85)),
                            1.0 - sstep(0.30, 0.62, abs(vRoad.x - 1.85)));
         float dash2 = step(fract(vRoad.y / 12.0), 0.25);
@@ -482,7 +520,12 @@ function makeSealMaterial() {
          * normal that survives to where its features are sub-pixel does not
          * average out, it sparkles, and a sparkling road is worse than a flat
          * one. */
-        float amp = 1.0 - sstep(3.0, 34.0, distance(cameraPosition, vRoadPos));
+        /* The normal has to die on the footprint too, and sooner than either
+         * of the others: an unresolved normal does not average to its mean, it
+         * averages to a random direction per pixel, which is exactly what
+         * sparkle is. */
+        float px3 = sqrt(max(fwidth(vRoadPos.x), 1e-5) * max(fwidth(vRoadPos.z), 1e-5));
+        float amp = 1.0 - sstep(0.0025, 0.010, px3);
         float shoulder3 = sstep(4.10, 4.70, abs(vRoad.x));
         amp *= mix(0.34, 0.62, shoulder3);
         float wheel3 = max(1.0 - sstep(0.30, 0.62, abs(vRoad.x + 1.85)),

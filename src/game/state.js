@@ -45,6 +45,16 @@ export class RunState {
      * a restored position is the one thing a player notices immediately. */
     this.where = null;
     this.elapsedMs = 0;
+    /* The best stage time on a driven level, in seconds, with its splits.
+     * Null on a level that is walked and null until the first clean finish.
+     *
+     * It is the only field in this class that is a *record* rather than
+     * progress: everything else here answers "how far has this player got",
+     * and a best time answers "how well". That is why it survives a run being
+     * restarted, which nothing else here does — restarting the stage is the
+     * normal way to play it, and a personal best that a restart erased would
+     * make the stage unimprovable. */
+    this.best = null;
     this.sunStep = 0;
     this.finished = false;
     this.finalScore = 0;
@@ -150,6 +160,13 @@ export class RunState {
       t: Math.round(this.furthestT * 1e4) / 1e4,
       where: this.where,
       elapsedMs: Math.round(this.elapsedMs),
+      /* Hundredths, which is the resolution a stage is timed to and quoted at.
+       * Storing the raw float would spend save budget on digits that no part
+       * of the game can display or distinguish. */
+      best: this.best ? {
+        total: Math.round(this.best.total * 100) / 100,
+        splits: this.best.splits.map((s) => Math.round(s * 100) / 100),
+      } : null,
       sunStep: this.sunStep,
       finished: this.finished,
       score: this.finalScore,
@@ -223,6 +240,15 @@ export class RunState {
     const w = rec.where;
     if (w && Number.isFinite(w.x) && Number.isFinite(w.z) && Number.isFinite(w.yaw)) this.where = w;
     if (Number.isFinite(rec.elapsedMs)) this.elapsedMs = Math.max(0, rec.elapsedMs);
+    /* Validated field by field rather than trusted. A save is data from
+     * outside the program — an older build, a hand-edited local store, a
+     * partial cloud write — and a best time with a NaN in its splits array
+     * renders as "NaN" on the HUD for the rest of the session. */
+    if (rec.best && Number.isFinite(rec.best.total) && rec.best.total > 0) {
+      const splits = Array.isArray(rec.best.splits)
+        ? rec.best.splits.filter(Number.isFinite) : [];
+      this.best = { total: rec.best.total, splits };
+    }
     if (Number.isInteger(rec.sunStep)) this.sunStep = rec.sunStep;
     if (Number.isFinite(rec.score)) this.finalScore = rec.score;
     this.finished = !!rec.finished;

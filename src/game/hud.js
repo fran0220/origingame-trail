@@ -16,6 +16,16 @@ import { MIN_QUALITY } from './photo.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+/* m:ss.hh — the format every stage time has ever been quoted in. Hundredths,
+ * because that is the resolution a rally stage is actually timed to and it is
+ * also the resolution at which two attempts at the same corner differ. */
+const fmtClock = (s) => {
+  if (s == null || !isFinite(s)) return '--:--.--';
+  const m = Math.floor(s / 60);
+  const r = s - m * 60;
+  return `${m}:${r < 10 ? '0' : ''}${r.toFixed(2)}`;
+};
+
 export class Hud {
   /** @param {{GLYPHS:Array, SUBJECTS:Array}} content the level's tables. */
   constructor(content) {
@@ -39,6 +49,13 @@ export class Hud {
       counters: { glyph: $('#cGlyph'), photo: $('#cPhoto') },
       prompt: $('#prompt'),
       toasts: $('#toasts'),
+      race: $('#race'),
+      rSpeed: $('#rSpeed'),
+      rTime: $('#rTime'),
+      rGate: $('#rGate'),
+      rSplit: $('#rSplit'),
+      rBest: $('#rBest'),
+      rFlag: $('#rFlag'),
       hints: $('#hints'),
       finder: $('#finder'),
       lock: $('#finder .lock'),
@@ -213,6 +230,36 @@ export class Hud {
     // The stack is bounded so a burst of records cannot push the oldest toast
     // up behind the viewfinder.
     while (this.el.toasts.children.length > 3) this.el.toasts.firstElementChild.remove();
+  }
+
+  /* --------------------------------------------------------------- racing */
+
+  /**
+   * The driving readout, driven once per frame from Race.
+   *
+   * Every field is written unconditionally rather than diffed. The temptation
+   * is to skip the DOM write when the value has not changed, but the only one
+   * that changes every frame is the speed and it genuinely does — the rest are
+   * three text nodes, and a comparison per field costs more attention in this
+   * file than it saves in the browser.
+   */
+  setRace(r) {
+    const el = this.el;
+    if (!el.race) return;
+    el.race.classList.remove('hidden');
+    el.rSpeed.textContent = String(r.kmh);
+    /* The clock shows 0:00.00 while staged rather than hiding, because a
+     * player looking for it before they set off should find it where it will
+     * be, not have it appear under their eye as they pull away. */
+    el.rTime.textContent = fmtClock(r.time);
+    el.rGate.textContent = r.staged ? '待发' : r.finished ? '完成' : `下一段 ${r.gate}`;
+    el.rSplit.textContent = `${r.done}/${r.total}`;
+    el.rBest.textContent = r.best == null ? '--:--.--' : fmtClock(r.best);
+    el.rFlag.classList.toggle('hidden', !(r.penalty > 0.01 && !r.finished));
+  }
+
+  setRaceVisible(on) {
+    this.el.race?.classList.toggle('hidden', !on);
   }
 
   /* --------------------------------------------------------- viewfinder */

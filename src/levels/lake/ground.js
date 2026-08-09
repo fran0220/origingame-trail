@@ -220,14 +220,70 @@ export function makeBasinMaterial(renderer, meadowAssets = null) {
       vec3 cGrv = tap2(tGrvA, grvUv);
       vec3 cMat = tap2(tMatA, tuv);
       vec3 cRok = tap2(tRokA, tuv * 0.7);
+
+      /* ── the biome ─────────────────────────────────────────────────────
+       * The ground cover is a scan of northern-hemisphere pasture — Grass004 —
+       * and it is the right *structure* and emphatically the wrong *colour*.
+       * Its measured linear mean is (0.127, 0.161, 0.034): green-dominant,
+       * which is what a fertilised temperate sward looks like and is not what
+       * this basin is. Left alone it made every frame read as Irish farmland
+       * with a snowfield behind it, which is a stronger and more immediate
+       * signal than any amount of correct native flora standing on top of it.
+       *
+       * The Mackenzie is short-tussock grassland in a rain shadow: Festuca and
+       * Poa on thin, stony, glacial soil, dormant and straw-coloured for most
+       * of the year, and famous for exactly that tawny-gold ground reading
+       * against turquoise water and grey rock. Its albedo is warm and
+       * red-dominant — near (0.14, 0.105, 0.05) — which is very nearly the
+       * inverse of the scan's channel order.
+       *
+       * So recolour rather than replace. Luminance carries all of the scan's
+       * physical information — blade structure, self-shadowing, soil showing
+       * through — and none of its hue, so keeping luminance and substituting
+       * the chromaticity preserves every measured centimetre while moving the
+       * biome. A flat multiply cannot do this: multiplying a green-dominant
+       * albedo toward tawny requires a gain above one on a channel that is
+       * nearly zero, which amplifies the scan's blue noise into mottling.
+       *
+       * The basin is not uniformly dry, and pretending it is replaces one flat
+       * wrong colour with another. Damp swales, the deposits along the fans
+       * and the ground near the waterline hold green well into summer, so the
+       * two states are mixed on the same broad fields that already drive the
+       * rest of this shader. */
+      {
+        float lum = dot(cMat, vec3(0.2126, 0.7152, 0.0722));
+        /* Chromaticities, each normalised so that dotting it with the
+         * luminance weights gives 1. That normalisation is what makes this a
+         * hue substitution instead of a brightness change: whatever is
+         * selected below, lum * hue has exactly the luminance the scan
+         * measured. */
+        const vec3 TAWNY = vec3(1.462, 0.876, 0.412);   // dormant tussock
+        const vec3 SWARD = vec3(0.735, 1.148, 0.520);   // damp valley-floor green
+        vec3 bioA = texture2D(tMacro, vWPos.xz * 0.0055).rgb;
+        vec3 bioB = texture2D(tMacro, vWPos.xz * 0.041 + 0.37).rgb;
+        /* Dry unless there is a reason to be green. Terraces and crowns dry
+         * out; hollows, the wet margin and the fan deposits do not. */
+        float dry = sstep(0.30, 0.72, bioA.y * 0.54 + bioB.x * 0.46);
+        dry *= 1.0 - sstep(0.30, 0.85, hol);
+        dry = clamp(dry * (1.0 - wet * 0.85), 0.0, 1.0);
+        /* Never fully one or the other. Real grassland at this scale is a
+         * mosaic, and a hard 0/1 field paints continents. */
+        vec3 hue = mix(SWARD, TAWNY, mix(0.22, 0.94, dry));
+        /* Tussock is also *paler* than pasture as well as warmer — dead leaf
+         * reflects more than living leaf — so the luminance is lifted a little
+         * where the ground is driest. */
+        cMat = lum * hue * mix(1.0, 1.16, dry);
+      }
       /* These are the *measured* means of each bake, not chosen colours: a fade
        * to anything else makes the surface change value with camera distance,
        * which is far more visible than the aliasing it is there to prevent. */
-      /* The scanned Grass004 map's measured linear mean. Matching it during
-       * the detail fade keeps distant hills green instead of fading back to
-       * the obsolete grey/tawny procedural average. */
+      /* The mean of the *recoloured* mat, not of the raw scan's (0.127,
+       * 0.161, 0.034). This constant and the biome block above have to be kept
+       * in step: fading to a mean measured before the correction puts a green
+       * band across every hill beyond 150 m while the ground at the player's
+       * feet is tawny, which reads as fog with the wrong colour in it. */
       cGrv = mix(cGrv, vec3(0.081, 0.080, 0.075), farDetail);
-      cMat = mix(cMat, vec3(0.127, 0.161, 0.034), farDetail);
+      cMat = mix(cMat, vec3(0.171, 0.135, 0.070), farDetail);
       cRok = mix(cRok, vec3(0.380, 0.388, 0.377), farDetail);
 
       vec3 surf = mix(cMat, cGrv, grv);
@@ -253,12 +309,21 @@ export function makeBasinMaterial(renderer, meadowAssets = null) {
        * twenty-to-hundred-metre fields stop every hill becoming one sampled
        * green mean. Damp swales stay cool and deep, exposed crowns are warmer
        * and brighter, and neither state changes the physical blade scale. */
+      /* Broad turf states, now expressed within the tussock palette rather
+       * than across it. These were a green pair — (.78,.96,.70) to
+       * (1.10,1.12,.76) — chosen when the ground was pasture, and left in
+       * place they would fight the biome correction above for control of the
+       * hue. What they are for is variation *within* a state: cooler and
+       * greyer where the sward is denser, warmer and brighter on the exposed
+       * crowns the wind has dried. */
       float turfState = sstep(0.30, 0.74, macro.y * .56 + mid.x * .44);
-      vec3 turfTint = mix(vec3(.78, .96, .70), vec3(1.10, 1.12, .76), turfState);
+      vec3 turfTint = mix(vec3(.90, .93, .92), vec3(1.10, 1.03, .84), turfState);
       surf *= mix(vec3(1.0), turfTint, living * .34);
-      surf = mix(surf, surf * vec3(0.74, 1.05, 0.68), deposit * 0.32);
+      /* Glacial deposit: greyer and cooler than the tussock around it, which
+       * is what freshly weathered greywacke silt is, rather than greener. */
+      surf = mix(surf, surf * vec3(0.92, 0.94, 0.98), deposit * 0.32);
       surf = mix(surf, uMossTint * (0.46 + macro.z * 0.62), gDamp * 0.40);
-      surf = mix(surf, surf * vec3(0.88, 1.08, 0.76), living * 0.12);
+      surf = mix(surf, surf * vec3(1.02, 1.00, 0.92), living * 0.12);
       surf = mix(surf, surf * 0.74, hol * 0.34);
       /* Freshly sorted dry strandline stone is lighter than both wet shingle
        * and the darker soil-bearing track. The path tops out at grv≈.64, so a

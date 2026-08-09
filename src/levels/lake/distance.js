@@ -468,7 +468,11 @@ function mountainMaterial(spec, layer) {
         * The first two ranges are rounded, rain-fed foothills; exposed greywacke
         * takes over only with altitude, slope and distance toward Aoraki. */
        vec3 alpineRock = mix(vec3(.13,.14,.16), vec3(.48,.48,.46), coarse);
-       vec3 lowerRock = mix(vec3(.10,.13,.075), vec3(.31,.34,.18), coarse);
+       /* Lower ranges. Greywacke under a thin dry skin of tussock and lichen,
+        * so the warm cast is the grass, not the stone. The previous pair was
+        * green-dominant on both ends, which put a fertilised-pasture hue on
+        * every foothill in the frame. */
+       vec3 lowerRock = mix(vec3(.085,.080,.062), vec3(.30,.27,.19), coarse);
        vec3 rock = mix(lowerRock, alpineRock, smoothstep(1.25,1.85,uLayer));
        rock *= mix(.68, 1.22, coarse * .55 + fine * .45);
        float fractureDepth=mix(.18,.45,smoothstep(.75,1.85,uLayer));
@@ -480,10 +484,26 @@ function mountainMaterial(spec, layer) {
        float meadowSlope=smoothstep(.18,.70,vMNrm.y);
        float meadowHeight=1.0-smoothstep(380.0,1080.0,vMPos.y);
        float meadowMask=clamp(meadowLayer*meadowSlope*mix(.58,1.0,meadowHeight),0.0,1.0);
-       /* Sunlit spring pasture is green, not emissive lime. Keep saturation
-        * in the albedo range that survives the bright open-sky light rig. */
-       vec3 meadow=mix(vec3(.040,.105,.028),vec3(.135,.235,.055),coarse*.62+fine*.38);
+       /* The foreland cover, and it has to be the same biome as the ground the
+        * player is standing on or the level has a colour horizon in it.
+        *
+        * These hills were authored green — (.040,.105,.028) to (.135,.235,.055)
+        * — on the same assumption the ground scan made, that a temperate
+        * mountain valley is pasture. The Mackenzie is a rain shadow: the
+        * ranges on this side of the divide carry dry short tussock over
+        * greywacke and read tawny-olive at distance, going greyer as aerial
+        * perspective takes the saturation out of them.
+        *
+        * Matching the basin's own tussock chromaticity matters more here than
+        * getting either one exactly right in isolation. A viewer cannot judge
+        * the absolute colour of a hill eight kilometres away, and will
+        * instantly see a seam where a tawny foreground meets a green
+        * middle distance. */
+       vec3 meadow=mix(vec3(.052,.046,.024),vec3(.176,.150,.070),coarse*.62+fine*.38);
        meadow*=mix(.82,1.08,coarse);
+       /* Damp gullies and shaded faces keep some green even here — it is what
+        * stops the range reading as a single flat wash of ochre. */
+       meadow=mix(meadow, meadow*vec3(.78,1.06,.72), smoothstep(.55,.95,fine)*.45);
        surf=mix(surf,meadow,meadowMask);
        /* Accumulation follows gullies and protected faces, while exposed ribs
         * stay dark. R18's .34 minimum coverage made every summit face white and

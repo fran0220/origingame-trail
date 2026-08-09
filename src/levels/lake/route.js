@@ -10,11 +10,22 @@
  * suspension can live with, which basin.js now surveys rather than authoring.
  *
  *
- * The geography is Pukaki's, and the reason for choosing that end of the
- * Mackenzie rather than Tekapo's is the sightline: Pukaki is a long finger of
- * water pointing straight at Aoraki, so a path up its shore has the mountain
- * at the end of it the whole way. The level does not have to arrange a reveal;
- * the valley already is one.
+ * The geography is Tekapo's — the eastern lake of the Mackenzie three, the one
+ * State Highway 8 actually runs beside, and the one with a road worth timing.
+ *
+ * This was authored as Pukaki, on a sightline argument: Pukaki is a long
+ * finger of water pointing straight at Aoraki, so a walk up its shore has the
+ * mountain at the end of it the whole way and never has to arrange a reveal.
+ * That argument is correct and it is an argument about *walking*. It stops
+ * deciding anything once the level is driven, because at 100 km/h the subject
+ * at the end of the valley is no longer the thing being revealed — the next
+ * corner is — and what the road wants instead is the shape Tekapo's eastern
+ * shore has: long sighted straights along the terrace with the water below on
+ * one side, joined by open sweepers around the alluvial fans.
+ *
+ * The alignment itself is unchanged, because both lakes are the same landform
+ * — a moraine-dammed glacial trough with fans coming off the eastern wall —
+ * and the control points below were following that, not a survey.
  *
  * Route (looking down -Z, which is the direction of travel and, here, north
  * up the lake toward the divide):

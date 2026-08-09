@@ -48,7 +48,7 @@ export const SUBJECTS = [
 
   {id:'aoraki',title:'奥拉基／库克山',group:'山岳',hint:'沿湖向北，把最远雪峰放入取景框。',text:'奥拉基从南阿尔卑斯主脊升起，是湖面视线的终点。',at:{kind:'point',x:-597,y:1450,z:-9200},radius:520,idealFill:.25,range:[7000,10000],up:0},
   {id:'alps-layers',title:'南阿尔卑斯层峦',group:'山岳',hint:'从路线望向湖首，寻找蓝灰色重叠山脊。',text:'空气透视把三层山体依距离洗向天空色。',at:{kind:'point',x:650,y:430,z:-4300},radius:470,idealFill:.36,range:[3300,5000],up:0},
-  {id:'glacial-turquoise',title:'冰川蓝',group:'湖色',hint:'在开阔岸段俯看不透明的蓝绿湖面。',text:'悬浮的冰川岩粉散射短波光，形成普卡基独有的蓝。',at:{kind:'point',x:shoreX(-405)-22,y:.1,z:-405},radius:12,idealFill:.35,range:[12,130],up:0},
+  {id:'glacial-turquoise',title:'冰川蓝',group:'湖色',hint:'在开阔岸段俯看不透明的蓝绿湖面。',text:'悬浮的冰川岩粉散射短波光，形成特卡波独有的蓝。',at:{kind:'point',x:shoreX(-405)-22,y:.1,z:-405},radius:12,idealFill:.35,range:[12,130],up:0},
   {id:'shingle-wet-edge',title:'砾石湿线',group:'地貌',hint:'下到第一段水边，拍摄浪缘深色砾带。',text:'波浪反复淘洗并按粒径分选灰岩砾石。',at:{kind:'point',x:shoreX(-150)+1.5,z:-150},radius:4,range:[5,30],up:.15},
   {id:'lateral-moraine',title:'侧碛台地',group:'地貌',hint:'起点附近回望脚下笔直的高台。',text:'旧冰缘堆下的冰碛形成高于现湖岸的长凳状台地。',at:{kind:'trail',t:.08,off:8},radius:7,range:[8,45],up:2},
   {id:'alluvial-fan',title:'冲积扇',group:'地貌',hint:'路线中段登上向湖面展开的浅凸砾坡。',text:'侧溪离开陡壁后失速，把沉积物铺成扇面。',at:{kind:'trail',t:.50,off:12},radius:9,range:[10,55],up:2},

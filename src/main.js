@@ -10,6 +10,8 @@ import { Sky } from './render/sky.js';
 import * as jungle from './levels/jungle/index.js';
 import * as lake from './levels/lake/index.js';
 import { Walker } from './player/controller.js';
+import { Driver } from './player/driver.js';
+import { Race } from './game/race.js';
 import { CollisionWorld } from './player/collision.js';
 import {
   PlayerBody,
@@ -241,17 +243,50 @@ class Game {
      * does not actually let them see; what they see now is leaves. */
     scene.environmentIntensity = mood.environmentIntensity;
 
-    await step(0.80, '塑造行者');
-    this.walker = new Walker(this.camera, this.terrain, this.trail,
-                             this.collision).attach(this.canvas);
-    this.body = new PlayerBody(this.renderer, this.walker, { tier: this.tier });
-    scene.add(this.body.root);
+    /* How the player moves through this level, and it is the level's to say.
+     *
+     * Two levels, two verbs. The jungle is a corridor with a roof, and what it
+     * is for is looking closely at things a metre away; the lake is forty
+     * kilometres of open basin with a state highway through it, and what it is
+     * for is covering ground. Those want different bodies, different cameras
+     * and different input, and trying to serve both from one controller
+     * produces a walker that drifts or a car that can strafe.
+     *
+     * So the host asks. Everything downstream of here — the session, the
+     * ambience, the save — is written against the small surface both share:
+     * a position, a heading, a speed, an update and a place-me-here. */
+    this.driving = this.levelModule.locomotion === 'drive';
+
+    if (this.driving) {
+      await step(0.80, '交付赛车');
+      this.walker = new Driver(this.camera, this.terrain, this.trail,
+                               this.collision).attach(this.canvas);
+      /* Imported here rather than at the top of the file, because a walked
+       * level has no use for several thousand triangles of bodywork and no
+       * reason to pay for parsing it. This is the only dynamic import in the
+       * engine and it earns its keep: the module is large, it is needed by
+       * exactly one of the two levels, and the boot sequence is already
+       * asynchronous at this point. */
+      const { CarMesh } = await import('./player/carMesh.js');
+      this.car = new CarMesh(this.renderer, { tier: this.tier });
+      scene.add(this.car.root);
+      /* No PlayerBody. The driver is in the car, and a first-person pair of
+       * arms belonging to a walking rig would be attached to a torso that is
+       * bobbing through a gait cycle at 200 km/h. */
+      this.body = null;
+    } else {
+      await step(0.80, '塑造行者');
+      this.walker = new Walker(this.camera, this.terrain, this.trail,
+                               this.collision).attach(this.canvas);
+      this.body = new PlayerBody(this.renderer, this.walker, { tier: this.tier });
+      scene.add(this.body.root);
+    }
     /* First-person limbs and the complete external body use separate layers.
      * This camera sees only the camera-aligned representation; PlayerBody
      * exposes the complete one to the depth traversal just long enough to cast
      * its shadow. A later third-person camera can swap those representations
      * without rebuilding the character or accepting doubled limbs. */
-    this.camera.layers.enable(BODY_FIRST_PERSON_LAYER);
+    if (!this.driving) this.camera.layers.enable(BODY_FIRST_PERSON_LAYER);
 
     /* Everything above builds surfaces; everything below decides how they are
      * lit. The order is forced — the field has to be sampled from a terrain
@@ -271,7 +306,9 @@ class Game {
      * deliberately exhaustive rather than a traversal: a surface that misses
      * the patch is not subtly wrong, it is a leaf standing in a shaft of light
      * that the shaft does not touch, and that reads instantly. */
-    for (const m of [...this.level.materials(), ...this.body.materials]) {
+    for (const m of [...this.level.materials(),
+                     ...(this.body?.materials ?? []),
+                     ...(this.car?.materials ?? [])]) {
       patchCanopyLight(m, this.canopy);
     }
 
@@ -315,11 +352,65 @@ class Game {
     // that the shaft does not touch.
     patchCanopyLight(this.session.glyphs.material, this.canopy);
 
+    /* The stage is built after the session, because it reads the saved best
+     * time out of it, and it is the last thing built because it is the only
+     * system that consumes a finished world *and* a finished game layer. */
+    if (this.driving) {
+      await step(0.96, '布置计时段');
+      this.race = new Race({
+        driver: this.walker,
+        trail: this.trail,
+        terrain: this.terrain,
+        scene,
+        hud: this.hud,
+        best: this.session.state?.best ?? null,
+      });
+      for (const m of this.race.materials) patchCanopyLight(m, this.canopy);
+      this.race.onFinish = (r) => this.session.onRaceFinish?.(r);
+      this.race.stage();
+    }
+
     this.hud.bindQuality((choice) => this.chooseTier(choice));
     this.onTierChange = (choice, actual) => this.hud.setQuality(choice, actual);
     this.hud.setQuality(this.pinnedTier || 'auto', this.tier);
 
     await step(0.98, '准备就绪');
+  }
+
+  /* Put the car where the physics says it is.
+   *
+   * The split matters: driver.js owns a rigid body and knows nothing about
+   * geometry, and carMesh.js owns geometry and knows nothing about forces.
+   * This is the only place the two meet, and keeping it to a dozen lines is
+   * the evidence that the seam is in the right place.
+   *
+   * The mesh's origin is the centre of the rear axle at ground level while the
+   * body's origin is its centre of mass, so the mesh is pushed back along its
+   * own heading by the CG-to-rear-axle distance. Getting that wrong does not
+   * look like an offset; it looks like the car pivoting about its boot under
+   * steering, which is the tell of a car placed at its centre.
+   */
+  _driveCar(dt) {
+    const d = this.walker;
+    const car = this.car;
+    const s = Math.sin(d.yaw), c = Math.cos(d.yaw);
+    const back = 2.62 * 0.61;          // WHEELBASE * WEIGHT_FRONT — see driver.js
+    car.root.position.set(d.pos.x - s * back, d.pos.y, d.pos.z - c * back);
+    car.root.rotation.set(0, d.yaw, 0);
+    car.setSteer(d.steer);
+    car.setWheelSpin(d.wheelSpin);
+    car.setBodyAttitude(d.bodyPitch, d.bodyRoll);
+    /* In the chase view the car is the subject and must be visible; from the
+     * driver's seat it is a windscreen frame the camera is inside, and drawing
+     * the shell around the near plane fills the frame with the inside of a
+     * roof.
+     *
+     * `hideCar` is a field on the host rather than a write to
+     * `car.root.visible`, because this method rewrites that flag every frame
+     * and an external assignment would survive exactly until the next step.
+     * The fixed-view capture tools set it: every station there places a camera
+     * by hand, which leaves the physics body parked on the lens. */
+    car.root.visible = !this.hideCar && d.camMode !== 'hood';
   }
 
   _configureShadow() {
@@ -445,7 +536,9 @@ class Game {
 
   step(dt) {
     this.walker.update(dt);
-    this.body.update(dt);
+    this.body?.update(dt);
+    if (this.car) this._driveCar(dt);
+    this.race?.update(dt);
     /* Before the camera's matrices are refreshed below, because the session
      * only reads the walker's position and the previous frame's orientation —
      * and after the walker, so a tablet prompt describes where the player has
@@ -475,7 +568,10 @@ class Game {
     this.canopy.uniforms.uViewToWorld.value.copy(this.camera.matrixWorld);
 
     this.atmos.beginScene();
-    this.body.prepareShadowPass();
+    /* Only the walker has two representations to swap between for the depth
+     * pass. A car casts the same shell into the shadow map that the chase
+     * camera already sees, so there is nothing to prepare. */
+    this.body?.prepareShadowPass();
     r.render(this.scene, this.camera);
     /* Snapshotted here because the post passes are render() calls of their
      * own and three resets its counters at the top of each one, so by the time
@@ -679,6 +775,7 @@ class Game {
       programs: i.programs ? i.programs.length : 0,
       ...(this.level?.stats() ?? {}),
       body: this.body ? this.body.stats() : null,
+      race: this.race ? this.race.stats() : null,
       collision: this.collision ? this.collision.stats() : null,
     };
   }
@@ -688,7 +785,9 @@ class Game {
     this.ambience?.dispose();
     this.level?.dispose?.();
     this.walker.dispose();
-    this.body.dispose();
+    this.body?.dispose();
+    this.car?.dispose();
+    this.race?.dispose();
     this.atmos?.dispose();
     this.canopy?.dispose();
     this.renderer.dispose();
