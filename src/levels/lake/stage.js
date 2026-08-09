@@ -188,6 +188,7 @@ export class LakeStage {
     this.geometries.push(...variants);
     const lists = variants.map(() => []);
     let groups = 0, marshals = 0;
+    const flagSites = [];
 
     let last = -999;
     for (let m = 40; m < L - 40; m += 10) {
@@ -230,7 +231,22 @@ export class LakeStage {
         });
         placed++;
       }
-      if (placed) groups++;
+      if (placed) {
+        groups++;
+        /* Two or three per group, on the uphill edge of the crowd so they
+         * stand against the sky rather than against the hillside. */
+        const nf = 2 + ((rng() * 2) | 0);
+        for (let f = 0; f < nf; f++) {
+          const fx = cx + (rng() - 0.5) * 2 * cluster * 1.3;
+          const fz = cz + (rng() - 0.5) * 2 * cluster * 1.3;
+          if (!clearsPoint(trail, fx, fz, ROAD_SHOULDER + 4)) continue;
+          const fy = terrain.height(fx, fz);
+          if (fy < LAKE_Y + 1.0) continue;
+          flagSites.push({ x: fx, y: fy, z: fz,
+                           yaw: Math.atan2(P.x - fx, P.z - fz) + (rng() - 0.5) * 1.2,
+                           s: 0.9 + rng() * 0.35 });
+        }
+      }
 
       /* A marshal on the inside, closer in, in a high-vis vest — the one
        * person whose job is to be seen. */
@@ -282,8 +298,126 @@ export class LakeStage {
       this._meshes.push({ mesh, list, cursor: 0 });
     });
 
+    /* ── flags ────────────────────────────────────────────────────────────
+     *
+     * Kept in this file rather than a new one, because a flag without a crowd
+     * under it is nonsense: they are placed from the same corner list, and
+     * splitting them would mean either duplicating the curvature search or
+     * passing the group positions across a module boundary for no gain.
+     *
+     * They exist because the crowd, correct as it is, sits at 1.7 m on green
+     * grass and never breaks the skyline. A rally corner is marked from a
+     * kilometre away by the flags over it, and a flag is everything a
+     * spectator is not: large, saturated, high, and moving. */
+    const flagMat = new THREE.MeshStandardMaterial({
+      name: 'stage-flags', color: 0xffffff, vertexColors: true,
+      roughness: 0.86, metalness: 0.0, side: THREE.DoubleSide,
+      envMapIntensity: 0.35,
+    });
+    this.materials.push(flagMat);
+    this.flagUniforms = { uFlagTime: { value: 0 } };
+    flagMat.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, this.flagUniforms);
+      sh.vertexShader = 'uniform float uFlagTime;\nattribute float aHoist;\n' +
+        sh.vertexShader.replace('#include <begin_vertex>', [
+          '#include <begin_vertex>',
+          '{',
+          '  /* Amplitude grows with distance from the hoist — a flag is held',
+          '     at one edge and free at the other, and a cloth that waves',
+          '     uniformly reads as a rigid sheet being rocked. */',
+          '  float h = aHoist;',
+          '  float ph = instanceMatrix[3][0] * 0.31 + instanceMatrix[3][2] * 0.27;',
+          '  float w = sin(uFlagTime * 5.1 + h * 7.0 + ph) * 0.55',
+          '          + sin(uFlagTime * 8.3 + h * 12.0 + ph * 1.7) * 0.28;',
+          '  transformed.z += w * h * h * 0.26;',
+          '  transformed.y += w * h * 0.07;',
+          '}',
+        ].join('\n'));
+    };
+    flagMat.customProgramCacheKey = () => 'stage-flag-wind-v1';
+
+    const flagGeo = (() => {
+      const fp = [], fc = [], fi = [], hoist = [];
+      /* WHITE, so the per-instance colour can tint it.
+       *
+       * The first version chose one colour from a palette here — inside the
+       * geometry builder, which runs ONCE — so all 27 flags came out the same,
+       * and the draw happened to pick the pale grey. A shared geometry cannot
+       * carry per-object colour; that is what instanceColor is for, and the
+       * marshals in this same file were already using it. */
+      const c = [1, 1, 1];
+      const POLE = [0.140, 0.135, 0.130];
+      /* Pole. */
+      const pb = fp.length / 3;
+      for (let ring = 0; ring < 2; ring++) {
+        for (let s = 0; s < 5; s++) {
+          const a = (s / 5) * Math.PI * 2;
+          fp.push(Math.cos(a) * 0.026, ring * 3.2, Math.sin(a) * 0.026);
+          fc.push(...POLE); hoist.push(0);
+        }
+      }
+      for (let s = 0; s < 5; s++) {
+        const n = (s + 1) % 5;
+        fi.push(pb + s, pb + 5 + s, pb + n);
+        fi.push(pb + n, pb + 5 + s, pb + 5 + n);
+      }
+      /* Cloth: a grid so the wave has something to bend. */
+      const NX = 7, NY = 4, W = 1.45, H = 0.92, TOP = 3.1;
+      const cb = fp.length / 3;
+      for (let j = 0; j <= NY; j++) {
+        for (let i = 0; i <= NX; i++) {
+          const u = i / NX;
+          fp.push(0.026 + u * W, TOP - (j / NY) * H, 0);
+          const shade = 0.80 + 0.30 * (1 - u);
+          fc.push(c[0] * shade, c[1] * shade, c[2] * shade);
+          hoist.push(u);
+        }
+      }
+      for (let j = 0; j < NY; j++) {
+        for (let i = 0; i < NX; i++) {
+          const a = cb + j * (NX + 1) + i;
+          fi.push(a, a + 1, a + NX + 1);
+          fi.push(a + 1, a + NX + 2, a + NX + 1);
+        }
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(fc, 3));
+      g.setAttribute('aHoist', new THREE.Float32BufferAttribute(hoist, 1));
+      g.setIndex(fi);
+      g.computeVertexNormals();
+      return g;
+    })();
+    this.geometries.push(flagGeo);
+
+    if (flagSites.length) {
+      const fm = new THREE.InstancedMesh(flagGeo, flagMat, flagSites.length);
+      fm.name = 'stage:flags';
+      fm.castShadow = true; fm.receiveShadow = true;
+      /* Team and national colours, one per flag. Saturated on purpose: this
+       * basin is grey shingle, straw and pale sky, and these are meant to be
+       * the loudest thing on the hillside. */
+      const FLAG_COLS = [[0.62, 0.10, 0.09], [0.10, 0.22, 0.58], [0.70, 0.50, 0.05],
+                         [0.72, 0.72, 0.70], [0.07, 0.38, 0.18], [0.52, 0.10, 0.42]];
+      const fc = new THREE.Color();
+      flagSites.forEach((q, i) => {
+        const col = FLAG_COLS[(i * 7 + 3) % FLAG_COLS.length];
+        fc.setRGB(col[0], col[1], col[2]);
+        fm.setColorAt(i, fc);
+        dummy.position.set(q.x, q.y, q.z);
+        dummy.rotation.set(0, q.yaw, 0);
+        dummy.scale.setScalar(q.s);
+        dummy.updateMatrix();
+        fm.setMatrixAt(i, dummy.matrix);
+      });
+      fm.instanceMatrix.needsUpdate = true;
+      if (fm.instanceColor) fm.instanceColor.needsUpdate = true;
+      fm.computeBoundingSphere();
+      this.root.add(fm);
+    }
+
     this.counts = {
-      groups, marshals,
+      groups, marshals, flags: flagSites.length,
       people: lists.reduce((a, l) => a + l.length, 0),
     };
   }
@@ -309,6 +443,7 @@ export class LakeStage {
    * is a fraction of a degree.
    */
   update(dt, car) {
+    if (this.flagUniforms) this.flagUniforms.uFlagTime.value += dt;
     if (!this._meshes) return;
     this._t = (this._t || 0) + dt;
     const T = this._t;
