@@ -30,6 +30,7 @@ import { Water, IMPACT, LIP } from './water.js';
 import { Vegetation, roofDensity } from '../../world/vegetation.js';
 import { standingWater } from './spillway.js';
 import { drawWater } from './mapwater.js';
+import { JungleLife } from './life.js';
 import { Ambience } from '../../audio/engine.js';
 import { content } from '../../game/content.js';
 
@@ -142,6 +143,10 @@ class JungleLevel {
     await step(0.66, '注水');
     this.water = new Water(renderer, this.terrain, this.trail, { tier });
     scene.add(this.water.root);
+
+    await step(0.88, '放出飞虫');
+    this.life = new JungleLife(this.terrain, this.trail, tier);
+    scene.add(this.life.root);
   }
 
   /** Every opaque material this level put in the scene, for the canopy patch. */
@@ -186,6 +191,7 @@ class JungleLevel {
     // Read back rather than advanced separately, so the caustics on the bed
     // stay in phase with the surface that is supposed to be casting them.
     this.terrainMat.userData.uniforms.uTime.value = this.water.time;
+    this.life?.update(dt, host.camera, host.renderer?.domElement?.height);
   }
 
   cullAround(x, z) {
