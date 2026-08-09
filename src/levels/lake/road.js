@@ -204,9 +204,17 @@ export class LakeRoad {
     });
     this.materials.push(postMat, reflWhite, reflYellow);
 
+    /* Named. Unnamed, these three were an anonymous bucket in the solidity
+     * audit — 178 instances of "something" with no collider, which the audit
+     * could neither pass nor explain. They are edge marker posts and their
+     * reflectors: frangible by design, correctly not solid, and now able to
+     * say so. */
     const posts = new THREE.InstancedMesh(postGeo, postMat, n * 2);
+    posts.name = 'road:marker-posts';
     const capsW = new THREE.InstancedMesh(capGeo, reflWhite, n);
+    capsW.name = 'road:marker-reflector-white';
     const capsY = new THREE.InstancedMesh(capGeo, reflYellow, n);
+    capsY.name = 'road:marker-reflector-yellow';
     for (const m of [posts, capsW, capsY]) { m.castShadow = true; m.receiveShadow = false; }
 
     const M = new THREE.Matrix4(), Q = new THREE.Quaternion();

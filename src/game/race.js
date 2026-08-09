@@ -123,6 +123,9 @@ export class Race {
       for (const side of [-1, 1]) {
         const x = P.x + nx * span * side, z = P.z + nz * span * side;
         const pole = new THREE.Mesh(poleGeo, poleMat);
+        /* Named so the solidity audit can classify it. These are the split
+         * marker poles: light, frangible, and correctly not solid. */
+        pole.name = 'race:split-pole';
         pole.position.set(x, this.terrain.height(x, z) - 0.1, z);
         pole.castShadow = true;
         this.root.add(pole);

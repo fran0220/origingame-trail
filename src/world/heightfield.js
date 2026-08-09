@@ -266,6 +266,11 @@ export class Heightfield {
         const g = this._chunkGeometry(i0, j0, iN, jN, stride);
         if (!g) continue;
         const m = new THREE.Mesh(g, material);
+        /* Named by chunk index. Unnamed, 576 of these were an anonymous
+         * bucket in the solidity audit — the largest single unexplained group
+         * in the scene, and the answer was "it is the ground". The audit could
+         * not say that because nothing told it. */
+        m.name = `terrain:chunk:${i0},${j0}`;
         /* Terrain casts as well as receives. Without it the ground has no
          * self-shadowing at all: banks do not darken their own lee side and
          * the trail does not sit in the shade of the slope beside it, which

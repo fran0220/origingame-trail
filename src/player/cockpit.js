@@ -77,7 +77,11 @@ export function buildCockpit(detail = 1) {
     const g = new THREE.BoxGeometry(w, h, d);
     if (rx) g.rotateX(rx); if (ry) g.rotateY(ry); if (rz) g.rotateZ(rz);
     g.translate(x, y, z);
-    parts.push(new THREE.Mesh(g, mat));
+    const mm = new THREE.Mesh(g, mat);
+    /* Named after its material so the solidity audit can classify the whole
+     * interior at once: it is the player's own car and is never solid. */
+    mm.name = `cockpit:${mat.name || 'part'}`;
+    parts.push(mm);
   };
 
   /* ── ONLY THE OPAQUE SURFACES ────────────────────────────────────────────
@@ -161,7 +165,9 @@ export function buildCockpit(detail = 1) {
   wheel.name = 'cockpit-wheel';
   const RIM = 0.165, TUBE = 0.018;
   const rim = new THREE.TorusGeometry(RIM, TUBE, detail > 0 ? 8 : 5, detail > 0 ? 26 : 14);
-  wheel.add(new THREE.Mesh(rim, trimMat));
+  const rimMesh = new THREE.Mesh(rim, trimMat);
+  rimMesh.name = 'cockpit:wheel-rim';
+  wheel.add(rimMesh);
   for (const a of [Math.PI * 0.5, Math.PI * 1.17, Math.PI * 1.83]) {
     const sp = new THREE.BoxGeometry(RIM * 0.92, 0.020, 0.030);
     sp.translate(RIM * 0.46, 0, 0);

@@ -204,6 +204,9 @@ export class LakeRoadside {
       const bm = new THREE.InstancedMesh(boardGeo, signMat, boards.length);
       const pm = new THREE.InstancedMesh(postGeo, postMat, boards.length);
       bm.name = 'roadside:chevrons';
+      /* The post was unnamed while the board it carries was named, so half of
+       * each sign showed up in the audit as anonymous. */
+      pm.name = 'roadside:chevron-posts';
       boards.forEach((b, i) => {
         dummy.position.set(b.x, b.y + 0.85, b.z);
         dummy.rotation.set(0, b.yaw, 0);

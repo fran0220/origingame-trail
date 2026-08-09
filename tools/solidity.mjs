@@ -34,9 +34,11 @@ const SOFT = [
    'an animal body part'],
   [/flora|sward|turf|tussock|grass|veg:|fungi|reclaim/i, 'vegetation you walk through'],
   [/bird|butterfl|life:|fauna|insect|skink|dust|motes/i, 'moves, or is airborne'],
-  [/flag|banner|board|chevron|marker|wire|power/i, 'frangible or overhead by design'],
+  [/flag|banner|board|chevron|marker|reflector|wire|power/i,
+   'frangible or overhead by design'],
   [/sheep|people|stage:|crowd/i, 'animate; the collision world is static'],
   [/road|seal|marking|terrain|ground|litter/i, 'the surface itself'],
+  [/^race:/i, 'split markers, frangible by design'],
   /* Stone scatter is driven and walked over. This is the same judgement
    * colliders.js already records in prose — "scree is driven over", "a
    * collider on every stone would make the roadside a minefield and cost
