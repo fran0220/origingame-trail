@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addSpecularAA } from '../../render/specularAA.js';
 import { BOUNDS, shoreX, ROAD_SHOULDER, AREA_SCALE, LAKE_Y } from './basin.js';
 import { bakeImage } from '../../gfx/bake.js';
 
@@ -685,11 +686,29 @@ function grassPatchGeometry(variant, rng) {
      * the dry crowns. So most blades are now growing and the gold is the
      * minority that keeps it from being a lawn. */
     const green = 1.0 - Math.pow(rng(), 2.2);
-    const lift = 0.82 + rng() * 0.36;
+    /* THE WHITE SPARKLES CAME FROM HERE, and it took three wrong guesses to
+     * find out — specular antialiasing, then environment reflection, then the
+     * sun, none of which moved the count by a single pixel. What finally
+     * identified it was measuring the COLOUR of the offending pixels: mean
+     * (253, 253, 230), a yellow-white, which is not the colour of a sky
+     * reflection or a sun glint. It is this ramp, clipped.
+     *
+     * The dry tip was 0.545 albedo and `lift` multiplied it by up to 1.18, so
+     * the brightest blades reached 0.64. Nothing in a dry landscape is that
+     * reflective — dead grass measures about 0.30 and fresh concrete is 0.35.
+     * Under this level's sun that albedo drives the tone curve past white, and
+     * because a blade is a fraction of a pixel wide the result is a field of
+     * isolated blown pixels rather than a bright surface: exactly the
+     * scattered white points reported.
+     *
+     * Tips are now 0.385 at their driest and the lift ceiling is 1.10, which
+     * keeps the ochre character and the blade-to-blade variation while leaving
+     * headroom under the clip. */
+    const lift = 0.82 + rng() * 0.28;
     const mixc = (dry, wet) => dry.map((v, i) => (v + (wet[i] - v) * green) * lift);
-    const root = mixc([0.115, 0.120, 0.052], [0.052, 0.108, 0.034]);
-    const mid = mixc([0.320, 0.270, 0.108], [0.118, 0.238, 0.070]);
-    const tip = mixc([0.545, 0.470, 0.232], [0.235, 0.400, 0.132]);
+    const root = mixc([0.105, 0.110, 0.048], [0.048, 0.100, 0.032]);
+    const mid = mixc([0.245, 0.208, 0.086], [0.098, 0.196, 0.058]);
+    const tip = mixc([0.385, 0.332, 0.166], [0.186, 0.316, 0.106]);
 
     const SEG = 3;
     let prev = null;
@@ -730,6 +749,22 @@ function buildSward(owner, terrain, tier, dummy) {
   const mat = new THREE.MeshStandardMaterial({
     color: 0xffffff, vertexColors: true, roughness: .98, metalness: 0,
     side: THREE.DoubleSide,
+    /* THE SPARKLES CAME FROM HERE.
+     *
+     * This material was left at the default envMapIntensity of 1.0 while every
+     * other plant in the level sits between 0.24 and 0.42, so the sward was
+     * reflecting the sky between three and four times as hard as the tussock
+     * standing next to it. On a surface made of millions of near-vertical
+     * 8 mm blades that is a field of isolated white pixels: each blade is well
+     * under a pixel across, the normal inside one pixel is a wide
+     * distribution rather than a direction, and any blade whose facet happens
+     * to point at the sun returns the environment's brightest sample while
+     * its neighbours return grass.
+     *
+     * It is not a lighting bug and it is not the sun — it is one material
+     * being three times more mirror-like than its neighbours, on the one
+     * surface in the level least able to afford it. Grass is not a mirror. */
+    envMapIntensity: 0.30,
   });
   /* Faded on the same idea as everything else in this level: a blade is 8 mm
    * wide and stops resolving long before the cull distance, so the mat sinks
@@ -763,6 +798,46 @@ function buildSward(owner, terrain, tier, dummy) {
      * A blade of grass is a thin translucent strip; its two faces are not
      * meaningfully different, and every renderer that draws grass well cheats
      * the normal toward the surface it grows on for exactly this reason. */
+    /* Converge each blade's colour to the sward's mean as it stops resolving.
+     *
+     * A blade is 3-6 mm wide. Past about twenty metres one pixel covers many
+     * blades, so the shader is point-sampling a distribution and drawing
+     * whichever blade happened to land under the sample. Blade colours run
+     * from a dark green root to a bright ochre tip, and when the bright tail
+     * of that distribution wins a pixel the result clips to white while its
+     * neighbours stay grass-coloured — the field of white points reported.
+     *
+     * Lowering the tip albedo helped (117 sparkles to 61) because it moved
+     * the whole distribution down, but it cannot fix this: the problem is the
+     * VARIANCE, not the mean, and dimming the grass until its brightest tail
+     * no longer clips is just making the grass grey.
+     *
+     * fwidth of world position gives this pixel's footprint on the ground
+     * directly, and once that exceeds the blade width the honest value for the
+     * pixel is the average of what it contains. This is the same hand-rolled
+     * mipmapping the chipseal shader does, for the same reason, on a texture
+     * that likewise has no mip chain because it is geometry.
+     */
+    sh.fragmentShader = 'varying vec3 vSwardW;\n' + sh.fragmentShader.replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+       {
+         vec2 fw = vec2(length(vec2(dFdx(vSwardW.x), dFdy(vSwardW.x))),
+                        length(vec2(dFdx(vSwardW.z), dFdy(vSwardW.z))));
+         float foot = max(fw.x, fw.y);
+         /* 6 mm blade: fully resolved under 3 mm of footprint, gone by 40. */
+         float blend = smoothstep(0.003, 0.040, foot);
+         /* The mean of the blade ramp — root through tip, weighted the way
+          * the geometry distributes them. Measured from the same numbers the
+          * patch builder uses, not guessed. */
+         vec3 swardMean = vec3(0.196, 0.198, 0.092);
+         diffuseColor.rgb = mix(diffuseColor.rgb, swardMean, blend);
+       }`);
+    sh.vertexShader = sh.vertexShader.replace(
+      '#include <project_vertex>',
+      'vSwardW = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\n#include <project_vertex>');
+    sh.vertexShader = 'varying vec3 vSwardW;\n' + sh.vertexShader;
+
     sh.fragmentShader = sh.fragmentShader.replace(
       '#include <normal_fragment_begin>',
       `#include <normal_fragment_begin>
@@ -861,7 +936,7 @@ function tuftGeometry(variant, rng) {
     /* Tussock stays the golden note, because that is genuinely what a stool of
      * Festuca or Poa is even in green pasture — but less bleached than before,
      * so it sits in the sward rather than on top of it. */
-    const root = [0.205, 0.192, 0.098], tip = [0.480, 0.430, 0.212];
+    const root = [0.205, 0.192, 0.098], tip = [0.352, 0.315, 0.156];
     let prev = null;
     for (let s = 0; s <= 3; s++) {
       const u = s / 3;
@@ -1196,6 +1271,11 @@ export class LakeFlora{
  /* Materials no longer share one uniform name — the roadside turf has its own
   * wind. Written defensively rather than by branching on the material, because
   * this list is appended to from four different builders. */
+ /* Specular antialiasing on every flora material — see render/specularAA.js.
+  * Applied here, over the whole list, rather than at each of the five places a
+  * material is made: they are built by different helpers and a new species
+  * added later would otherwise sparkle on its own. */
+ applySpecularAA(){this.materials.forEach(m=>addSpecularAA(m,'lake-flora'));return this;}
  update(time){this.materials.forEach(m=>{const u=m.userData.uniforms;if(!u)return;
    if(u.uFloraTime)u.uFloraTime.value=time; if(u.uTurfTime)u.uTurfTime.value=time;});}
  setTier(t){this.tier=t;this.meshes.forEach(m=>m.count=t==='low'?Math.ceil(m.instanceMatrix.count*.55):m.instanceMatrix.count);}

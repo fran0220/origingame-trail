@@ -220,7 +220,7 @@ class LakeLevel {
      *
      * What was actually making the near field look bare is in the ground
      * shader, not missing from it. */
-    this.veg = new LakeFlora(this.terrain, tier, renderer, { groundCover: false }); this.notable = this.veg.notable; scene.add(this.veg.root);
+    this.veg = new LakeFlora(this.terrain, tier, renderer, { groundCover: false }).applySpecularAA(); this.notable = this.veg.notable; scene.add(this.veg.root);
     await step(0.64, '铺陈岸线器物');
     /* Driftwood, erratics, lichen slabs, thatch mats, fan rills — the non-plant
      * assets that stop a vegetated terrace looking like plant stamps on pebble. */
