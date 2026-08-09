@@ -286,9 +286,33 @@ export class Driver {
 
     const wantThrottle = on('KeyW', 'ArrowUp') ? 1 : 0;
     const wantBrake = on('KeyS', 'ArrowDown') ? 1 : 0;
+    /* A steers left, D steers right, and the signs are the opposite way round
+     * from the obvious because this model's lateral axis is not the car's
+     * right — it is the car's left.
+     *
+     * In three.js's right-handed, Y-up frame, an object whose forward is +Z has
+     * its right-hand side at -X. The tyre model here was built with the lateral
+     * axis at +X and every internal quantity named for it — `vy` "to the
+     * right", the slip angles, the yaw torque — so the whole thing is
+     * self-consistent and mirrored. Positive `steer` therefore turns the car
+     * toward +X, which is its left.
+     *
+     * A marker placed two metres along that axis projects to NDC x = -0.37,
+     * i.e. the left of the frame, which is how this was finally settled after
+     * the world-space test in tools/control-truth.mjs passed while the car
+     * still steered the wrong way for the player: that test was asserting
+     * against the same mirrored convention the bug lived in, so it agreed with
+     * it. Screen space is the only frame the player has an opinion about.
+     *
+     * The correction is made here, at the input, rather than by re-deriving the
+     * dynamics: flipping the axis inside the model means simultaneously
+     * flipping the lateral velocity, the two slip angles, the yaw torque, the
+     * body roll and the world-frame conversion, and every one of those is a
+     * chance to introduce a subtler version of this same bug. One sign at the
+     * boundary is a smaller and far more checkable change. */
     let wantSteer = 0;
-    if (on('KeyA', 'ArrowLeft')) wantSteer -= 1;
-    if (on('KeyD', 'ArrowRight')) wantSteer += 1;
+    if (on('KeyA', 'ArrowLeft')) wantSteer += 1;
+    if (on('KeyD', 'ArrowRight')) wantSteer -= 1;
 
     /* Throttle and brake are ramped rather than switched. A real pedal takes
      * a tenth of a second to travel and the ramp is most of what stops a
@@ -583,9 +607,10 @@ export class Driver {
       cam.position.set(ex, this.pos.y + 1.14, ez);
       cam.rotation.set(0, 0, 0);
       /* +PI because a three.js camera looks down its own -Z and the car's nose
-       * is +Z. The glance then adds to that, so mouse right turns the head
-       * right, which is the same sign the chase view uses. */
-      cam.rotateY(this.yaw + this.lookYaw + Math.PI);
+       * is +Z. The glance *subtracts*, for the same reason it does in the chase
+       * view below: increasing yaw about +Y swings this camera's view to the
+       * left. */
+      cam.rotateY(this.yaw - this.lookYaw + Math.PI);
       cam.rotateX(this.bodyPitch * 0.6 + this.lookPitch);
       cam.rotateZ(-this.bodyRoll * 0.8);
       cam.fov = lerp(this._baseFov, this._baseFov + 12,
@@ -649,15 +674,16 @@ export class Driver {
     cam.lookAt(this.camLook);
     /* The glance, turned directly on the camera so it is not filtered away.
      *
-     * The sign is positive, and it is the opposite of the one the same idea
-     * takes in the hood view above — which is worth stating because deriving
-     * it got it backwards and the measurement in tools/control-truth.mjs got
-     * it right. After lookAt() has aimed this camera down the road, its local
-     * +X points at world -X, because mapping local -Z onto the car's forward
-     * and keeping +Y up flips the remaining axis. So the camera's own "right"
-     * is the car's left, and a positive rotation about local +Y is what swings
-     * the view to the driver's right. */
-    if (this.lookYaw) cam.rotateY(this.lookYaw);
+     * Negative, and this sign has now been wrong twice. It was first derived,
+     * which got it backwards; then measured against the driver's own lateral
+     * axis, which agreed with it — but that axis is mirrored (see _readInput),
+     * so the measurement was checking the glance against the same fault it
+     * shared. Measured in NDC against a landmark on the road ahead, a positive
+     * rotation slides that landmark to the right, which means the view turned
+     * left. A three.js camera looks down its local -Z, so a positive rotation
+     * about local +Y swings the view to the left; the player pushed the mouse
+     * right. */
+    if (this.lookYaw) cam.rotateY(-this.lookYaw);
     if (this.lookPitch) cam.rotateX(this.lookPitch);
     /* Roll the frame slightly into the corner. Small — a few degrees — and it
      * is doing the job a camera operator's shoulder does. */

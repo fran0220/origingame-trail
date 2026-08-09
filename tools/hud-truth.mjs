@@ -47,7 +47,7 @@ try {
       let e = want - d.yaw;
       while (e > Math.PI) e -= Math.PI * 2;
       while (e < -Math.PI) e += Math.PI * 2;
-      d.keys.KeyA = e < -0.012; d.keys.KeyD = e > 0.012;
+      d.keys.KeyA = e > 0.012; d.keys.KeyD = e < -0.012;   // see drive-truth.mjs
       d.keys.KeyW = !(Math.abs(e) > 0.055 || d.speed > 26);
       g.step(1 / 60);
     }

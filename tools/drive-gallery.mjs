@@ -46,7 +46,13 @@ await run({ width: W, height: H, hash: 'manual&tier=ultra&level=lake', timeout: 
         let err = want - d.yaw;
         while (err > Math.PI) err -= Math.PI * 2;
         while (err < -Math.PI) err += Math.PI * 2;
-        d.keys.KeyA = err < -0.012; d.keys.KeyD = err > 0.012;
+        /* Increasing yaw rotates the nose from +Z toward +X, which in a
+         * right-handed Y-up frame is the car's LEFT — so a positive heading
+         * error is corrected with A, not D. This mapping was the other way
+         * round while the steering itself was mirrored, and the two faults
+         * cancelled: the autopilot drove the stage perfectly with the controls
+         * reversed, which is exactly why no test caught it. */
+        d.keys.KeyA = err > 0.012; d.keys.KeyD = err < -0.012;
         const hot = Math.abs(err) > 0.055 || d.speed > 26;
         d.keys.KeyW = !hot;
         d.keys.KeyS = Math.abs(err) > 0.13 && d.speed > 17;
