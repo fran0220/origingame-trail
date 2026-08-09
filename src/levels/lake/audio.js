@@ -1,6 +1,7 @@
 /* Procedural alpine soundscape. No context or sample is created until the
  * first gesture; the three beds deliberately use incommensurate durations. */
 import { shoreX } from './basin.js';
+import { CarAudio } from './carAudio.js';
 
 const MASTER = 0.58;
 const smooth = (p, value, now, tau = 0.18) => {
@@ -45,6 +46,12 @@ export class LakeAmbience {
       if (this.ctx.state === 'suspended') await this.ctx.resume?.();
       if (this._disposed) return;
       this._build();
+      /* The car is built on the same unlocked context as the beds, and only
+       * once there is one — a browser will not start audio before a gesture,
+       * so there is nothing to construct until the ambience has been let in. */
+      if (this.walker && this.walker.gear !== undefined) {
+        this.car = new CarAudio(this.ctx, this.master, this.walker);
+      }
       this.ready = true;
     } catch (e) {
       try { await this.ctx?.close?.(); } catch { /* already closed */ }
@@ -88,6 +95,7 @@ export class LakeAmbience {
   update(dt) {
     if (!this.ready || this._disposed) return;
     this._time += dt;
+    this.car?.update(dt);
     const now = this.ctx.currentTime;
     const e = this.camera.matrixWorld?.elements;
     const x = e?.[12] ?? this.camera.position?.x ?? 0, z = e?.[14] ?? this.camera.position?.z ?? 0;
@@ -114,6 +122,8 @@ export class LakeAmbience {
   setPaused(on) { if (this.master && this.ctx) smooth(this.master.gain, on ? 0 : MASTER, this.ctx.currentTime, .12); }
 
   dispose() {
+    this.car?.dispose();
+    this.car = null;
     if (this._disposed) return;
     this._disposed = true; this._detachDoc?.(); this._detachWalker?.();
     for (const s of this._sources) { try { s.stop(); } catch { /* stopped */ } }
