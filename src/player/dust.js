@@ -198,6 +198,31 @@ export class WheelDust {
     this.geometry.getAttribute('aSize').needsUpdate = true;
   }
 
+  /**
+   * A burst at a point — debris off an impact.
+   *
+   * Thrown in a hemisphere rather than trailed behind a wheel, and faster and
+   * shorter-lived than drifting dust, because this material is being knocked
+   * loose rather than lifted. Sharing the wheel-dust particle pool is
+   * deliberate: an impact and a slide never need the full budget at the same
+   * instant, and a second pool would double the memory to solve a problem that
+   * does not occur.
+   */
+  burst(x, y, z, severity = 1) {
+    const n = Math.round(18 + severity * 42);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const up = 0.25 + Math.random() * 0.85;
+      const sp = (2.2 + Math.random() * 6.5) * (0.45 + severity);
+      this._spawn(x + (Math.random() - 0.5) * 0.4,
+                  y + Math.random() * 0.5,
+                  z + (Math.random() - 0.5) * 0.4,
+                  Math.cos(a) * sp, up * sp * 0.7, Math.sin(a) * sp,
+                  0.10 + Math.random() * 0.26,
+                  0.5 + Math.random() * 0.7);
+    }
+  }
+
   /** How many particles are currently alive — the instrument reads this. */
   alive() {
     let n = 0;

@@ -300,6 +300,15 @@ class LakeLevel {
      * is concerned, and running it through the canopy patch would tint it
      * with a forest term that does not exist in this level. */
     this.dust?.update(dt, host.walker, host.renderer?.domElement?.height);
+    /* Debris off a collision. Reads the same per-frame `impact` the crash
+     * audio does — the driver clears it at the top of its own update, so both
+     * see the same number regardless of which of us runs first. */
+    const hit = host.walker?.impact || 0;
+    if (hit > 1.6 && this.dust) {
+      const w = host.walker;
+      this.dust.burst(w.pos.x, w.pos.y + 0.45, w.pos.z,
+                      Math.min(1, (hit - 1.6) / 14));
+    }
     this.veg.update(this.water.time);
     this.veg.cullAround(host.camera.position.x, host.camera.position.z);
     this.props?.cullAround(host.camera.position.x, host.camera.position.z);

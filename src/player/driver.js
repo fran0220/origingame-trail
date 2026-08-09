@@ -487,6 +487,15 @@ export class Driver {
      * Sub-stepping is cheaper than the alternative, which is an implicit
      * integrator. */
     dt = Math.min(dt, 0.1);
+    /* Cleared at the top of the frame, not by whoever reads it.
+     *
+     * `impact` is the peak closing speed of any contact during this frame, and
+     * several systems want it — the crash audio, the debris burst, and
+     * anything added later. If the first consumer cleared it the second would
+     * silently never fire, and which one that was would depend on the order
+     * two unrelated modules happened to be updated in. Clearing it here means
+     * every consumer in the frame sees the same number. */
+    this.impact = 0;
     const steps = Math.min(4, Math.max(1, Math.ceil(dt / 0.0125)));
     const h = dt / steps;
     this._time += dt;

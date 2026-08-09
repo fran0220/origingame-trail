@@ -3,6 +3,7 @@
 import { shoreX } from './basin.js';
 import { CarAudio } from './carAudio.js';
 import { renderFlockBank } from '../../audio/sheep.js';
+import { renderImpactBank } from '../../audio/impact.js';
 
 const MASTER = 0.58;
 const smooth = (p, value, now, tau = 0.18) => {
@@ -24,6 +25,8 @@ export class LakeAmbience {
     this._flocks = [];
     this._bleatBank = null;
     this._bleatBuffers = null;
+    this._impactBuffers = null;
+    this._lastImpactAt = -9;
     this._sources = [];
 
     const prevStep = walker.onStep, prevLand = walker.onLand;
@@ -111,6 +114,16 @@ export class LakeAmbience {
       return b;
     });
 
+    /* Crash bank, rendered once at the device rate for the same reason as the
+     * sheep: synthesising during a collision is exactly the frame that cannot
+     * afford it. */
+    this._impactBank = renderImpactBank(ctx.sampleRate, 5);
+    this._impactBuffers = this._impactBank.map(({ data }) => {
+      const b = ctx.createBuffer(1, data.length, ctx.sampleRate);
+      b.copyToChannel ? b.copyToChannel(data, 0) : b.getChannelData(0).set(data);
+      return b;
+    });
+
     bed('wind', 11.3, 'lowpass', 1050, .16, -.12);
     bed('tussock', 7.7, 'bandpass', 3100, .055, .28);
     bed('shore', 13.9, 'lowpass', 720, .08, -.38);
@@ -131,12 +144,48 @@ export class LakeAmbience {
     const shoreDistance = Math.abs(x - shoreX(z));
     smooth(this.beds.shore.gain.gain, .025 + .18 / (1 + shoreDistance * .12), now, .35);
     if (this._time >= this._nextBird) { this._bird(now); this._nextBird += 19 + ((this._nextBird * 1.618) % 23); }
+    /* Hitting something. The driver publishes the peak closing speed of the
+     * frame; anything over about walking pace is worth a noise. */
+    const hit = this.walker?.impact || 0;
+    if (hit > 1.2 && this._time - this._lastImpactAt > 0.12) {
+      this._impact(now, hit);
+      this._lastImpactAt = this._time;
+    }
     if (this._time >= this._nextBleat) {
       this._bleat(now, x, z);
       /* Irregular. Stock call in bursts with long gaps, and anything close to
        * a fixed interval is heard as a machine within about three repeats. */
       this._nextBleat += 4.5 + ((this._nextBleat * 2.399) % 11);
     }
+  }
+
+  /**
+   * One impact.
+   *
+   * Severity is the closing speed mapped over the range a car survives: a
+   * 2 m/s nudge is a scrape, 18 m/s and up is as bad as the bank goes. The
+   * nearest bank entry is chosen by SHAPE and then detuned — picking one
+   * buffer and scaling its gain would give a quiet crash rather than a light
+   * knock, and those are audibly different things.
+   */
+  _impact(now, closing) {
+    const ctx = this.ctx;
+    if (!ctx.createBufferSource || !this._impactBuffers) return;
+    const sev = Math.max(0, Math.min(1, (closing - 1.2) / 16.5));
+    let best = 0, bd = 9;
+    this._impactBank.forEach((b, i) => {
+      const d = Math.abs(b.severity - sev);
+      if (d < bd) { bd = d; best = i; }
+    });
+    const src = ctx.createBufferSource();
+    src.buffer = this._impactBuffers[best];
+    /* A bigger car part is a lower note; the detune also stops two hits in
+     * quick succession sounding like one sample played twice. */
+    src.playbackRate.value = 0.88 + (1 - sev) * 0.22 + ((this._time * 13) % 0.10);
+    const g = ctx.createGain();
+    g.gain.value = 0.55;
+    src.connect(g); g.connect(this.master);
+    src.start(now);
   }
 
   /**

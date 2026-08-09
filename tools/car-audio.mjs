@@ -53,6 +53,7 @@ await run({ hash: 'manual&tier=high&level=lake', timeout: 600_000 }, async ({ pa
     const a = g.ambience;
     if (!a.car) return { error: 'no CarAudio built' };
 
+    const { drive } = await import('/tools/autodriver.mjs');
     const read = () => ({
       engBody: +a.car.engBody.gain.gain.value.toFixed(4),
       engEdge: +a.car.engEdge.gain.gain.value.toFixed(4),
@@ -63,16 +64,26 @@ await run({ hash: 'manual&tier=high&level=lake', timeout: 600_000 }, async ({ pa
       ...a.car.stats(),
     });
 
-    const { drive } = await import('/tools/autodriver.mjs');
     const out = {};
     /* Stopped. */
     d.placeAt(0.30);
     for (const k in d.keys) d.keys[k] = false;
     for (let i = 0; i < 60; i++) { g.step(1 / 60); a.update(1 / 60); }
     out.idle = read();
-    /* Accelerating hard. */
-    d.keys.KeyW = true;
-    for (let i = 0; i < 60 * 8; i++) { g.step(1 / 60); a.update(1 / 60); }
+    /* Accelerating hard, ON THE ROAD.
+     *
+     * This used to hold the throttle with no steering for eight seconds, which
+     * worked only because the car could drive through scenery: it left the
+     * seal immediately and kept accelerating across the paddock to 126 km/h.
+     * Once collision was implemented it hit a fence four seconds in and the
+     * tool reported a flat-out figure of 21 km/h — a correct measurement of
+     * the wrong thing.
+     *
+     * The autodriver steers, so the car stays on the road and the reading is
+     * again what the tool is for: engine and wind at speed. An instrument that
+     * depended on the world being intangible was always going to break the
+     * moment the world stopped being intangible. */
+    for (let i = 0; i < 60 * 8; i++) { drive(g); g.step(1 / 60); a.update(1 / 60); }
     out.flatOut = read();
     out.flatOutKmh = Math.round(d.speed * 3.6);
     /* On the gravel shoulder. */
