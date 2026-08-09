@@ -40,6 +40,7 @@ import * as THREE from 'three';
 import { clamp, lerp, smoothstep, Noise2D } from '../world/noise.js';
 import { WHEELBASE, TRACK, WHEEL_R } from './carMesh.js';
 import { EYE as COCKPIT_EYE } from './cockpit.js';
+import { gearFor, RPM_RANGE } from '../audio/car.js';
 
 /* The car, as the collision world sees it. Half the track plus a little, which
  * puts the disc inside the bodywork rather than around it: a disc circumscribing
@@ -180,6 +181,22 @@ export class Driver {
     this.brake = 0;
     /* 'drive' or 'reverse'. See _readInput() — one pedal, as an automatic. */
     this.gear = 'drive';
+    /* THE GEARBOX LIVES HERE NOW.
+     *
+     * It used to live inside CarAudio, which was fine while sound was the only
+     * consumer and became wrong the moment anything else wanted to know what
+     * gear the car was in: CarAudio does not exist until the player produces a
+     * gesture to unlock the audio context, so a tachometer reading from it
+     * would sit dead at zero until someone clicked. Worse, a second consumer
+     * running its own copy of gearFor would keep its own hysteresis state and
+     * shift at slightly different moments — two gearboxes in one car.
+     *
+     * The driver owns it, publishes rpm/gearIndex/shifted, and the audio and
+     * the instruments both read the same numbers. */
+    this.gearbox = { gear: 0, wheelRadius: WHEEL_R };
+    this.rpm = RPM_RANGE.idle;
+    this.gearIndex = 0;
+    this.shifted = false;
     this._gearAt = -9;
     this.handbrake = 0;
 
@@ -828,6 +845,13 @@ export class Driver {
     }
     this.vel.set(wx, 0, wz);
     this.speed = Math.hypot(wx, wz);
+    /* One gearbox, stepped once, read by everyone. */
+    const gb = gearFor(this.gearbox, this.speed, this.throttle,
+                       this.gear === 'reverse');
+    this.gearbox.gear = gb.gear;
+    this.rpm = gb.rpm;
+    this.gearIndex = gb.gear;
+    this.shifted = gb.shifted;
 
     /* ── contact with the ground ────────────────────────────────────────── */
     /* The car rides on the average of its four wheels, which is what lets a

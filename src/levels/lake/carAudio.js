@@ -111,8 +111,15 @@ export class CarAudio {
     const throttle = Math.min(1, Math.max(0, d.throttle || 0));
     const reverse = d.gear === 'reverse';
 
-    const g = gearFor(this.gearState, speed, throttle, reverse);
-    this.gearState.gear = g.gear;
+    /* Read the driver's gearbox rather than running a second one.
+     *
+     * This used to call gearFor with its own state object, which meant the car
+     * had two gearboxes: one here and, once the instruments needed to know
+     * what gear it was in, one there. Two copies of a hysteretic state machine
+     * fed the same inputs still diverge, because they latch on different
+     * frames — the tachometer would show fourth while the engine sang third.
+     * driver.js owns it now and both of us read the same numbers. */
+    const g = { gear: d.gearIndex, rpm: d.rpm, shifted: d.shifted };
     /* The engine has inertia: it does not jump to a new speed on a shift, it
      * is dragged there by the clutch over a tenth of a second or so. Without
      * this the note steps and the shift sounds like an edit rather than a
@@ -158,7 +165,10 @@ export class CarAudio {
   }
 
   stats() {
-    return { rpm: Math.round(this.rpm), gear: this.gearState.gear + 1 };
+    /* gearState is vestigial now that driver.js owns the box; reporting it
+     * here made this tool print gear 1 flat out while the engine was audibly
+     * in fourth, because nothing has written to it since. */
+    return { rpm: Math.round(this.rpm), gear: this.driver.gearIndex + 1 };
   }
 
   dispose() {

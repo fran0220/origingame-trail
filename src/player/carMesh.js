@@ -51,6 +51,7 @@
 import * as THREE from 'three';
 import { LIVERY_PARS, LIVERY_BODY } from './livery.js';
 import { buildCockpit, EYE as COCKPIT_EYE } from './cockpit.js';
+import { setInstruments } from './instruments.js';
 
 /* Paint the competition livery on. See livery.js — it is a two-plane
  * projection in object space, so it needs no UV map and survives the body
@@ -1130,6 +1131,7 @@ export class CarMesh {
     const inside = buildCockpit(this._detail.spoke > 1 ? 1 : 0);
     this.cockpit = inside.root;
     this.cockpitWheel = inside.wheel;
+    this.instruments = inside.instruments;
     this.cockpit.visible = false;
     this.root.add(this.cockpit);
 
@@ -2209,6 +2211,11 @@ export class CarMesh {
    *
    * @param {number} angleRad steering angle of the equivalent single wheel
    */
+  /** Point the tacho and light the shift lamps. Called from main's car step. */
+  setInstruments(rpm, limit) {
+    if (this.instruments) setInstruments(this.instruments, rpm, limit);
+  }
+
   setSteer(angleRad) {
     const a = clamp(angleRad, -0.72, 0.72);
     this._steer = a;

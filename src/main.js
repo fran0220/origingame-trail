@@ -425,6 +425,7 @@ class Game {
     car.setSteer(d.steer);
     car.setWheelSpin(d.wheelSpin);
     car.setBodyAttitude(d.bodyPitch, d.bodyRoll);
+    car.setInstruments(d.rpm, 6800);
     /* Visible in both views now. The bonnet camera sits out on the cowl rather
      * than inside the cabin — see _updateCamera() — precisely so that the car
      * can stay drawn and fill the bottom of the frame with its own bonnet and

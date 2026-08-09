@@ -29,6 +29,7 @@
  * is invisible from outside and there is no reason to pay for it.
  */
 import * as THREE from 'three';
+import { buildInstruments } from './instruments.js';
 
 /* The driver sits on the right — this is a New Zealand rally car. */
 /* MEASURED FROM THE CAR, not chosen. The glazing spans y 0.80..1.47 and the
@@ -100,8 +101,32 @@ export function buildCockpit(detail = 1) {
   /* ── the dash ────────────────────────────────────────────────────────── */
   add(trimMat, 1.36, 0.09, 0.44, 0, 1.00, 2.10, -0.20);
   add(trimMat, 1.36, 0.26, 0.03, 0, 0.85, 1.92);
-  /* Binnacle, ahead of the driver's eye. */
+  /* Binnacle, ahead of the driver's eye, with a dial in it. */
   add(trimMat, 0.38, 0.17, 0.24, EYE.x, 1.05, 1.94, -0.28);
+  const inst = buildInstruments(detail);
+  /* Face angled back toward the eye, standing just proud of the binnacle. */
+  /* THROUGH THE WHEEL, NOT BEHIND IT.
+   *
+   * The dial first went at y 1.075, which is below the top of the rim at
+   * 1.15 — so the line of sight from the eye at 1.30 passed straight into the
+   * back of the steering wheel and the tachometer was invisible in every
+   * frame. A real cluster is read through the wheel's upper opening, which
+   * means it has to sit above the rim's top edge from the driver's eye
+   * position, not merely somewhere behind the wheel. */
+  inst.root.position.set(EYE.x, 1.205, 1.875);
+  /* TURNED TO FACE THE DRIVER.
+   *
+   * The dial is built in its own local space with the face at z 0 and the
+   * marks and needle standing proud at +z. Dropped into the cabin unrotated,
+   * that +z points at the NOSE — so the driver sees the back of the face, the
+   * marks and needle are hidden behind it, and the instrument renders as a
+   * plain black disc. It looked like an unlit dial, which sent me looking at
+   * emissive intensity; it was a facing problem.
+   *
+   * Yawed by PI so its front points back down the cabin, and the rake sign
+   * flips with it. */
+  inst.root.rotation.set(0.34, Math.PI, 0);
+  root.add(inst.root);
 
   /* ── A-pillars and header rail: THE FRAME ────────────────────────────────
    * These do more for the shot than everything else here. They run from the
@@ -154,5 +179,6 @@ export function buildCockpit(detail = 1) {
   for (const m of parts) { m.castShadow = false; m.receiveShadow = false; root.add(m); }
   root.traverse((o) => { o.frustumCulled = false; });
 
-  return { root, wheel, materials: [trimMat, alcMat, beltMat] };
+  return { root, wheel, instruments: inst,
+           materials: [trimMat, alcMat, beltMat, ...inst.materials] };
 }
