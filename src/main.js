@@ -425,17 +425,18 @@ class Game {
     car.setSteer(d.steer);
     car.setWheelSpin(d.wheelSpin);
     car.setBodyAttitude(d.bodyPitch, d.bodyRoll);
-    /* In the chase view the car is the subject and must be visible; from the
-     * driver's seat it is a windscreen frame the camera is inside, and drawing
-     * the shell around the near plane fills the frame with the inside of a
-     * roof.
+    /* Visible in both views now. The bonnet camera sits out on the cowl rather
+     * than inside the cabin — see _updateCamera() — precisely so that the car
+     * can stay drawn and fill the bottom of the frame with its own bonnet and
+     * front arches, which is what makes it a bonnet cam rather than a camera
+     * floating where a driver would be.
      *
      * `hideCar` is a field on the host rather than a write to
      * `car.root.visible`, because this method rewrites that flag every frame
      * and an external assignment would survive exactly until the next step.
      * The fixed-view capture tools set it: every station there places a camera
      * by hand, which leaves the physics body parked on the lens. */
-    car.root.visible = !this.hideCar && d.camMode !== 'hood';
+    car.root.visible = !this.hideCar;
   }
 
   _configureShadow() {

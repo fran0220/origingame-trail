@@ -358,7 +358,16 @@ function makeSealMaterial() {
        * seal completely smooth. The geometric mean is what an anisotropic
        * filter with a capped sample ratio actually resolves, and it keeps the
        * chip at the player's feet while still killing the comb up the road. */
-      float px = sqrt(max(fwidth(vRoadPos.x), 1e-5) * max(fwidth(vRoadPos.z), 1e-5));
+      /* Weighted toward the major axis rather than the plain geometric mean.
+       * From a bonnet camera the road is seen at a few degrees of incidence, so
+       * the footprint is an extreme sliver — centimetres across the seal and a
+       * third of a metre along it. An even geometric mean lets the minor axis
+       * keep detail the major axis cannot resolve, and what arrives is the comb
+       * again: streaks running up the road. Real anisotropic filtering caps its
+       * sample ratio for the same reason, and this is that cap. */
+      float pxA = max(fwidth(vRoadPos.x), 1e-5), pxB = max(fwidth(vRoadPos.z), 1e-5);
+      float pxMin = min(pxA, pxB), pxMax = max(pxA, pxB);
+      float px = pow(pxMin, 0.35) * pow(pxMax, 0.65);
       float chipFade = sstep(0.0035, 0.016, px);
       float fade = max(sstep(30.0, 190.0, distance(cameraPosition, vRoadPos)), chipFade);
 
@@ -475,7 +484,8 @@ function makeSealMaterial() {
          * angle is worse than an unfaded albedo, because roughness drives a
          * specular lobe and the sun is low: the comb pattern arrives as a
          * glitter rather than as a tint. */
-        float px2 = sqrt(max(fwidth(vRoadPos.x), 1e-5) * max(fwidth(vRoadPos.z), 1e-5));
+        float a2 = max(fwidth(vRoadPos.x), 1e-5), b2 = max(fwidth(vRoadPos.z), 1e-5);
+        float px2 = pow(min(a2,b2), 0.35) * pow(max(a2,b2), 0.65);
         float chip2 = mix(fbm2(vRoadPos.xz * 90.0), 0.5, sstep(0.0035, 0.016, px2));
         float wheel2 = max(1.0 - sstep(0.30, 0.62, abs(vRoad.x + 1.85)),
                            1.0 - sstep(0.30, 0.62, abs(vRoad.x - 1.85)));
@@ -524,7 +534,8 @@ function makeSealMaterial() {
          * of the others: an unresolved normal does not average to its mean, it
          * averages to a random direction per pixel, which is exactly what
          * sparkle is. */
-        float px3 = sqrt(max(fwidth(vRoadPos.x), 1e-5) * max(fwidth(vRoadPos.z), 1e-5));
+        float a3 = max(fwidth(vRoadPos.x), 1e-5), b3 = max(fwidth(vRoadPos.z), 1e-5);
+        float px3 = pow(min(a3,b3), 0.35) * pow(max(a3,b3), 0.65);
         float amp = 1.0 - sstep(0.0025, 0.010, px3);
         float shoulder3 = sstep(4.10, 4.70, abs(vRoad.x));
         amp *= mix(0.34, 0.62, shoulder3);

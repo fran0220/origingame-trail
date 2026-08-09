@@ -688,17 +688,34 @@ export class Driver {
     const sinY = Math.sin(this.yaw), cosY = Math.cos(this.yaw);
 
     if (this.camMode === 'hood') {
-      /* Driver's eye, right-hand drive because this is New Zealand. */
-      const ex = this.pos.x + sinY * 0.10 + cosY * 0.36;
-      const ez = this.pos.z + cosY * 0.10 - sinY * 0.36;
-      cam.position.set(ex, this.pos.y + 1.14, ez);
+      /* A bonnet camera, not a cockpit one.
+       *
+       * This used to sit at the driver's eye with the car hidden, which is not
+       * a cockpit view — it is a floating camera, and the frames showed
+       * exactly that: no screen frame, no A-pillars, no bonnet, nothing of the
+       * car at all. A true interior view needs interior geometry with inward
+       * facing normals, because the shell is front-sided and simply disappears
+       * when you are inside it.
+       *
+       * So the camera comes out onto the cowl instead, just above and behind
+       * the bonnet's trailing edge, and the car stays drawn. What fills the
+       * bottom of the frame is then the bonnet and the tops of both front
+       * arches — which is what a bonnet cam is, is what most racing games ship
+       * as their "cockpit", and needs no geometry the car does not already
+       * have. It also puts the eye 1.35 m up and 1 m forward of the centre of
+       * mass, so the car rotates about a point behind the camera and corners
+       * read as the road swinging rather than as the world sliding.
+       */
+      const ex = this.pos.x + sinY * 0.42;
+      const ez = this.pos.z + cosY * 0.42;
+      cam.position.set(ex, this.pos.y + 1.28, ez);
       cam.rotation.set(0, 0, 0);
       /* +PI because a three.js camera looks down its own -Z and the car's nose
        * is +Z. The glance *subtracts*, for the same reason it does in the chase
        * view below: increasing yaw about +Y swings this camera's view to the
        * left. */
       cam.rotateY(this.yaw - this.lookYaw + Math.PI);
-      cam.rotateX(this.bodyPitch * 0.6 + this.lookPitch);
+      cam.rotateX(this.bodyPitch * 0.6 + this.lookPitch - 0.045);
       cam.rotateZ(-this.bodyRoll * 0.8);
       cam.fov = lerp(this._baseFov, this._baseFov + 12,
                      smoothstep(0, TOP_SPEED, this.speed));
