@@ -4,20 +4,20 @@
  "p10RadiusM": 185,
  "medianRadiusM": 556,
  "cornersUnder200": 12,
- "timeS": 54.3,
+ "timeS": 55.5,
  "finished": true,
- "meanKmh": 131.9,
+ "meanKmh": 129.1,
  "topKmh": 166.3,
- "meanLatG": 0.282,
+ "meanLatG": 0.286,
  "maxLatG": 1.27,
- "maxSlipDeg": 2.6,
+ "maxSlipDeg": 29.4,
  "pctOffRoad": 0,
- "pctAtLimit": 0.6,
- "laneRmsM": 1.26,
- "laneMaxM": 3.1,
- "yawFlipPerKm": 0,
- "yawJerkPerS": 0.22,
- "meanSteerDeg": 1.82,
+ "pctAtLimit": 1.4,
+ "laneRmsM": 1.37,
+ "laneMaxM": 3.8,
+ "yawFlipPerKm": 1,
+ "yawJerkPerS": 0.33,
+ "meanSteerDeg": 2.24,
  "spinFrames": 0,
  "lostIt": 0,
  "worstBy20th": [
@@ -71,7 +71,7 @@
   },
   {
    "t": 0.6,
-   "laneM": 1.7
+   "laneM": 3.8
   },
   {
    "t": 0.65,
@@ -79,7 +79,7 @@
   },
   {
    "t": 0.7,
-   "laneM": 2.5
+   "laneM": 2.1
   },
   {
    "t": 0.75,
