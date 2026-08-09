@@ -400,6 +400,212 @@ function buildGroundCover(owner,terrain,renderer,dummy){
  * the distance field, because at ninety thousand plants a nearest-point query
  * per plant is most of the boot.
  */
+/* ── the lupins ─────────────────────────────────────────────────────────────
+ *
+ * The one thing every photograph of this lake has in it, and the level did not
+ * have: Russell lupins, in drifts, in purple and magenta and blue and cream.
+ * They are the reason people stop on this road in December, and their absence
+ * is most of why the roadside read as correct-but-plain — the biome was right
+ * and there was no *colour* in it anywhere.
+ *
+ * They are also, botanically, a weed: an introduced garden escape that has
+ * taken the braided riverbeds and displaced the native shore birds' habitat.
+ * That is worth knowing and does not change what the place looks like, which
+ * is what this level is about. They grow exactly where this puts them — the
+ * road margins, the fan outwash and the disturbed shingle, not the dry terrace
+ * where the tussock has closed over.
+ *
+ * The geometry is deliberately tiny. A drift is a hundred plants and there are
+ * eighty drifts, so the spike is three crossed blades of 8 triangles rather
+ * than the 2,400-triangle modelled raceme the hero species uses. At the
+ * distance a drift is read from, what carries it is the colour and the density
+ * of vertical marks, not the individual florets.
+ */
+/* Flowers in full alpine sun, so these are bright. The first set was authored
+ * at the linear values of a *shaded* petal and disappeared into the tussock
+ * under this level's exposure — a lupin drift is the most saturated thing in
+ * the Mackenzie and it has to out-shout dry grass. */
+const LUPIN_COLOURS = [
+  [0.400, 0.150, 0.560],   // deep violet, the commonest
+  [0.330, 0.115, 0.480],
+  [0.560, 0.170, 0.380],   // magenta
+  [0.640, 0.290, 0.450],   // pink
+  [0.200, 0.220, 0.560],   // blue
+  [0.640, 0.560, 0.330],   // cream
+  [0.720, 0.690, 0.620],   // white, rarest and the one that reads at distance
+];
+
+function lupinGeometry(variant, rng) {
+  const p = [], ix = [], col = [];
+  const push = (x, y, z, c) => { const n = p.length / 3; p.push(x, y, z); col.push(...c); return n; };
+  const spikes = 1 + (variant % 2);
+  for (let s = 0; s < spikes; s++) {
+    const flower = LUPIN_COLOURS[(rng() * LUPIN_COLOURS.length) | 0];
+    /* Paler toward the tip: a raceme opens from the bottom, so the top of the
+     * spike is still in bud and always lighter than the flowers below it. */
+    const tip = flower.map((v) => Math.min(1, v * 0.55 + 0.42));
+    /* A lupin raceme is about four to six times as tall as it is wide. The
+     * first cut was 1:10 and read as a row of little surfboards stood on end. */
+    const h = 0.38 + rng() * 0.34;
+    const lean = (rng() - 0.5) * 0.18;
+    const yaw = rng() * 6.283;
+    const ox = Math.cos(yaw) * s * 0.10, oz = Math.sin(yaw) * s * 0.10;
+    /* Three blades at 60 degrees, each a short strip rather than one triangle.
+     *
+     * The first version drew each blade as a single triangle from two base
+     * points to a tip vertex, with the flower colour at the base and the pale
+     * bud colour at the point. Interpolated across a 0.5 m triangle that is a
+     * smooth gradient to white, and a drift of them read as a field of little
+     * white cones — no colour at all, which was the entire purpose.
+     *
+     * A raceme is a column of florets that opens from the bottom, so it is
+     * nearly full width for most of its height and only tapers in the last
+     * fifth, and it is saturated over almost all of that. Four stacked
+     * segments give exactly that profile and keep the flower colour across
+     * three quarters of the spike, for eight triangles instead of one.
+     */
+    for (let b = 0; b < 3; b++) {
+      const a = yaw + b * 1.047;
+      const w0 = 0.058 + rng() * 0.026;
+      const base = h * 0.34;
+      const dx = Math.cos(a), dz = Math.sin(a);
+      const stem = [0.10, 0.13, 0.05];
+      const s0 = push(ox - dx * w0 * 0.22, base, oz - dz * w0 * 0.22, stem);
+      const s1 = push(ox + dx * w0 * 0.22, base, oz + dz * w0 * 0.22, stem);
+      const g0 = push(ox - dx * w0 * 0.22, 0, oz - dz * w0 * 0.22, [0.09, 0.11, 0.05]);
+      const g1 = push(ox + dx * w0 * 0.22, 0, oz + dz * w0 * 0.22, [0.09, 0.11, 0.05]);
+      ix.push(g0, g1, s0, g1, s1, s0);
+
+      const SEG = 4;
+      let prev = null;
+      for (let k = 0; k <= SEG; k++) {
+        const u = k / SEG;
+        const y = base + (h - base) * u;
+        /* Full width to 0.72 of the spike, then in to the bud. */
+        const w = w0 * (u < 0.72 ? 1 - u * 0.18 : (1 - u) / 0.28 * 0.86);
+        const c = u < 0.78 ? flower : tip;
+        const px = ox + lean * (y - base) + dx * w;
+        const pz2 = oz + dz * w;
+        const nx2 = ox + lean * (y - base) - dx * w;
+        const nz2 = oz - dz * w;
+        const vA = push(nx2, y, nz2, c);
+        const vB = push(px, y, pz2, c);
+        if (prev) { ix.push(prev[0], prev[1], vA, prev[1], vB, vA); }
+        prev = [vA, vB];
+      }
+    }
+
+    /* A palmate leaf rosette at the foot, which is the other half of the plant
+     * a lupin is recognised by. */
+    for (let l = 0; l < 3; l++) {
+      const a = yaw + l * 2.094 + 0.4;
+      const r = 0.085 + rng() * 0.045;
+      const lc = [0.115, 0.155, 0.075];
+      const a0 = push(ox, 0.045, oz, lc);
+      const a1 = push(ox + Math.cos(a - 0.42) * r, 0.02, oz + Math.sin(a - 0.42) * r, lc);
+      const a2 = push(ox + Math.cos(a + 0.42) * r, 0.02, oz + Math.sin(a + 0.42) * r, lc);
+      ix.push(a0, a1, a2);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(ix);
+  g.computeVertexNormals();
+  return g;
+}
+
+function buildLupinDrifts(owner, terrain, tier, dummy) {
+  const trail = terrain.trail;
+  const rng = random(0x1a9b17);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, vertexColors: true, roughness: .92, metalness: 0,
+    side: THREE.DoubleSide,
+  });
+  const U = { uTurfTime: { value: 0 }, uTurfFade: { value: new THREE.Vector2(150, 260) } };
+  mat.userData.uniforms = U;
+  mat.customProgramCacheKey = () => 'lake-lupin-v1';
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U);
+    mat.userData.shader = sh;
+    sh.vertexShader = `uniform float uTurfTime; uniform vec2 uTurfFade;\n` + sh.vertexShader
+      .replace('#include <beginnormal_vertex>',
+        '#include <beginnormal_vertex>\nobjectNormal = normalize(mix(objectNormal, vec3(0.0,1.0,0.0), 0.55));')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        float ph = instanceMatrix[3].x * 0.09 + instanceMatrix[3].z * 0.11;
+        float flex = smoothstep(0.06, 0.70, position.y);
+        transformed.x += sin(uTurfTime * 1.15 + ph) * 0.045 * flex;
+        transformed.z += cos(uTurfTime * 0.85 + ph * 1.7) * 0.030 * flex;`);
+  };
+  owner.materials.push(mat);
+
+  const variants = [0, 1, 2, 3].map((v) => lupinGeometry(v, random(0x9c31 + v * 613)));
+  owner.geometries?.push?.(...variants);
+
+  const P = new THREE.Vector3(), T = new THREE.Vector3();
+  const L = trail.length;
+  const DRIFTS = Math.round((L / 1000) * (tier === 'low' ? 16 : tier === 'medium' ? 28 : 44));
+  const CHUNK = 6;
+  let lists = [[], [], [], []];
+  let placed = 0;
+
+  const flush = (tag) => {
+    lists.forEach((list, v) => {
+      if (!list.length) return;
+      const mesh = new THREE.InstancedMesh(variants[v], mat, list.length);
+      mesh.name = `flora:lupin-drift:${tag}:${v}`;
+      list.forEach((q, i) => {
+        dummy.position.set(q.x, q.y - .01, q.z);
+        dummy.rotation.set(0, q.yaw, 0);
+        dummy.scale.setScalar(q.s);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.castShadow = false;
+      mesh.receiveShadow = true;
+      mesh.computeBoundingSphere();
+      owner.root.add(mesh);
+      owner.meshes.push(mesh);
+    });
+    lists = [[], [], [], []];
+  };
+
+  for (let dft = 0; dft < DRIFTS; dft++) {
+    /* Drifts sit along the road margin and out over the fan outwash, on the
+     * side the lake is not — the shore itself is scoured shingle. */
+    const t = (dft + 0.35 + rng() * 0.3) / DRIFTS;
+    trail.pointAt(t, P); trail.tangentAt(t, T);
+    const nx = T.z, nz = -T.x;
+    const side = rng() < 0.62 ? 1 : -1;
+    const centre = (ROAD_SHOULDER + 2 + Math.pow(rng(), 1.3) * 34) * side;
+    /* Tight. 131 plants over a 40 x 50 m patch is not a drift, it is a
+     * sprinkle — and that is what the first version looked like. A lupin
+     * colony spreads from seed fall around where it started, so it is a dense
+     * mass a few metres across with a ragged edge. */
+    const spread = 2.6 + rng() * 4.4;
+    const n = 90 + ((rng() * 130) | 0);
+    for (let i = 0; i < n; i++) {
+      /* Clumped inside the drift too, because a lupin colony spreads from
+       * seed fall and is densest where it started. */
+      const r = Math.pow(rng(), 0.6) * spread;
+      const a = rng() * 6.283;
+      const along = (rng() - 0.5) * spread * 2.6;
+      const x = P.x + nx * (centre + Math.cos(a) * r) + T.x * along;
+      const z = P.z + nz * (centre + Math.cos(a) * r) + T.z * along;
+      const y = terrain.height(x, z);
+      if (y < LAKE_Y + 0.8) continue;
+      const q = trail.nearest(x, z, {});
+      if (q.dist < ROAD_SHOULDER + 1.2) continue;
+      lists[(rng() * 4) | 0].push({ x, y, z, s: .78 + rng() * .62, yaw: rng() * 6.283 });
+      placed++;
+    }
+    if ((dft % CHUNK) === CHUNK - 1) flush(dft);
+  }
+  flush('end');
+  owner.lupins = placed;
+}
+
 function tuftGeometry(variant, rng) {
   const p = [], ix = [], col = [];
   const blades = 11 + variant * 3;
@@ -656,6 +862,7 @@ function plantGeometry(id,kind,variant,hex){
 export class LakeFlora{
  constructor(terrain,tier='high',renderer=null,options={}){this.root=new THREE.Group();this.root.name='lake-native-flora';this.materials=[];this.textures=[];this.species=SPECIES.map(s=>s[0]);this.notable=Object.create(null);this.meshes=[];const dummy=new THREE.Object3D();this.plumeTexture=renderer?bakeImage(renderer,PLUME_FRAG,{size:512,colorSpace:THREE.SRGBColorSpace,coverageMips:.30}):null;if(this.plumeTexture)this.textures.push(this.plumeTexture);if(renderer&&options.groundCover!==false)buildGroundCover(this,terrain,renderer,dummy);
   buildRoadsideTurf(this,terrain,tier,dummy);
+  buildLupinDrifts(this,terrain,tier,dummy);
   SPECIES.forEach(([id,habitat,color,kind],si)=>{const rng=random(0x51a7+si*7919),pts=[],q={},parents=[],target=Math.max(24,Math.round(POPULATION[id]*(NOTEBOOK_SPECIES.has(id)?.62:.20)*AREA_SCALE));
    /* Two orders of clustering, not one. Sixteen parents with a 6..16 m spread
     * had to hold up to 520 plants, so each was a tight blob of thirty and the

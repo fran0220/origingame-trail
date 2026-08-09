@@ -38,51 +38,35 @@ await run({ width: W, height: H, hash: 'manual&tier=ultra&level=lake', timeout: 
     const info = await page.evaluate(async ({ target }) => {
       const g = window.__game, d = g.walker, trail = g.trail, THREE = window.THREE;
       const P = new THREE.Vector3(), T = new THREE.Vector3();
-      /* A driver, not a controller with a hair trigger.
-       *
-       * The first version aimed at a point a fixed 0.018 of *arc length* ahead
-       * and lifted whenever the heading error passed 0.055 rad. Both broke when
-       * the world got longer and the car started in its own lane: 0.018 of a
-       * 2 km route is 36 m rather than 14 m, and from 1.75 m off the centreline
-       * the bearing to a point 36 m ahead is already 0.048 rad out before the
-       * road has done anything. The car spent the whole run on the brakes and
-       * never left the start line.
-       *
-       * So the lookahead is in metres, it scales with speed the way a real
-       * driver's does, the aim point is the centre of the driver's own lane
-       * rather than the crown of the road, and there is always throttle below
-       * walking pace so it cannot deadlock. */
+      /* The shared driver — tools/autodriver.mjs. This file used to carry its
+       * own copy, which then drifted from the one telemetry.mjs uses: the lap
+       * measured 0% off the road while these stations reported the car in the
+       * tussock for the whole back half, because the two were not the same
+       * driver at all. Two instruments disagreeing about the same car is worse
+       * than either being wrong. */
+      const { drive } = await import('/tools/autodriver.mjs');
       let stalled = 0;
       for (let n = 0; n < 60 * 180; n++) {
         const q = trail.nearest(d.pos.x, d.pos.z, {});
         if (q.t >= target) break;
-        const lookM = 14 + d.speed * 1.1;
-        const ahead = Math.min(1, q.t + lookM / trail.length);
-        trail.pointAt(ahead, P);
-        trail.tangentAt(ahead, T);
-        /* Aim at the near lane, offset to the car's left of the centreline —
-         * (cos yaw, -sin yaw) is the left of a nose-+Z car in this frame. */
-        const ay = Math.atan2(T.x, T.z);
-        const ax = P.x + Math.cos(ay) * 1.75, az = P.z - Math.sin(ay) * 1.75;
-        const want = Math.atan2(ax - d.pos.x, az - d.pos.z);
-        let err = want - d.yaw;
-        while (err > Math.PI) err -= Math.PI * 2;
-        while (err < -Math.PI) err += Math.PI * 2;
-        /* Increasing yaw rotates the nose from +Z toward +X, which in a
-         * right-handed Y-up frame is the car's LEFT — so a positive heading
-         * error is corrected with A, not D. */
-        d.keys.KeyA = err > 0.015; d.keys.KeyD = err < -0.015;
-        const tooFast = d.speed > 30 && Math.abs(err) > 0.10;
-        d.keys.KeyW = d.speed < 6 || !tooFast;
-        d.keys.KeyS = d.speed > 24 && Math.abs(err) > 0.22;
+        drive(g);
         g.step(1 / 60);
         /* If it is genuinely stuck — in a ditch, against the world edge — put
          * it back on the road rather than burning three minutes of frames. */
         if (d.speed < 1.5) { if (++stalled > 240) { d.recover(); stalled = 0; } }
         else stalled = 0;
       }
-      /* Let the camera settle at speed rather than photographing it mid-lag. */
-      for (let n = 0; n < 20; n++) g.step(1 / 60);
+      /* Let the camera settle at speed rather than photographing it mid-lag —
+       * but keep driving while it does.
+       *
+       * This used to step without calling drive(), which leaves whatever keys
+       * the last frame set still held: at 150 km/h a third of a second of
+       * latched steering and throttle is fifteen metres of unattended car, and
+       * doing it at every one of eight stations walked it off the road and
+       * into a field. The lap telemetry said 0% off the seal the whole time,
+       * because the lap never stops driving — two instruments disagreeing
+       * about the same car, and this was why. */
+      for (let n = 0; n < 20; n++) { drive(g); g.step(1 / 60); }
       const q = trail.nearest(d.pos.x, d.pos.z, {});
       return { t: +q.t.toFixed(3), kmh: Math.round(d.speed * 3.6), surface: d.surface };
     }, { target: STOPS[i] });
