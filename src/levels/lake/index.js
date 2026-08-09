@@ -34,6 +34,7 @@ import { LakeFlora } from './flora.js';
 import { LakeProps } from './props.js';
 import { LakeShelter } from './shelter.js';
 import { LakeFences } from './fences.js';
+import { LakeFarm } from './farm.js';
 import { LakeFauna } from './fauna.js';
 import { LakeAmbience } from './audio.js';
 
@@ -212,12 +213,14 @@ class LakeLevel {
     this.shelter = new LakeShelter(this.terrain, tier); scene.add(this.shelter.root);
     await step(0.68, '拉起围栏');
     this.fences = new LakeFences(this.terrain, tier); scene.add(this.fences.root);
+    await step(0.70, '放牧');
+    this.farm = new LakeFarm(this.terrain, tier); scene.add(this.farm.root);
     this.fauna = new LakeFauna(this.trail, this.terrain, tier); scene.add(this.fauna.root);
     await step(0.72, '抬升南阿尔卑斯');
     this.distance = new LakeDistance(); this.distance.setTier(tier); scene.add(this.distance.root);
   }
 
-  materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.veg.materials, ...this.props.materials, ...this.shelter.materials, ...this.fences.materials, ...this.fauna.materials, ...this.distance.materials]; }
+  materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.veg.materials, ...this.props.materials, ...this.shelter.materials, ...this.fences.materials, ...this.farm.materials, ...this.fauna.materials, ...this.distance.materials]; }
 
   makeAmbience({ camera, walker }) { return new LakeAmbience({ camera, walker }); }
 
@@ -252,10 +255,11 @@ class LakeLevel {
     this.veg.cullAround(host.camera.position.x, host.camera.position.z);
     this.props?.cullAround(host.camera.position.x, host.camera.position.z);
     this.shelter?.cullAround(host.camera.position.x, host.camera.position.z);
+    this.farm?.cullAround(host.camera.position.x, host.camera.position.z);
     this.terrainMat.userData.uniforms.uTime.value = this.water.time;
   }
 
-  cullAround(x, z) { this.veg?.cullAround(x, z); this.props?.cullAround(x, z); this.shelter?.cullAround(x, z); this.fauna?.cullAround?.(x, z); }
+  cullAround(x, z) { this.veg?.cullAround(x, z); this.props?.cullAround(x, z); this.shelter?.cullAround(x, z); this.farm?.cullAround(x, z); this.fauna?.cullAround?.(x, z); }
 
   /* Water must not reflect itself, but the Southern Alps are the dominant
    * object in Lake Pukaki's real reflection. The old exclusion removed them
@@ -266,7 +270,7 @@ class LakeLevel {
 
   setViewportHeight() {}
 
-  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
+  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), farm:this.farm?.stats(), fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
 
   dispose() {
     this.road?.dispose();
@@ -275,6 +279,7 @@ class LakeLevel {
     this.props?.dispose();
     this.shelter?.dispose();
     this.fences?.dispose();
+    this.farm?.dispose();
     this.fauna?.dispose();
     this.distance?.dispose();
     new Set(this.terrainMat?.userData.groundTextures || []).forEach((texture) => texture.dispose());

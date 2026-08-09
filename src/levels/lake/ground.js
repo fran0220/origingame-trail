@@ -253,8 +253,8 @@ export function makeBasinMaterial(renderer) {
          * Tekapo has a green foreground under a snow range. The gold is still
          * here — it belongs on the dry crowns and the wind-scalded ridges —
          * but it is now the accent rather than the field. */
-        const TAWNY = vec3(1.462, 0.876, 0.412);   // dry crown, wind-scalded
-        const SWARD = vec3(0.610, 1.235, 0.545);   // grazed pasture green
+        const vec3 TAWNY = vec3(1.462, 0.876, 0.412);   // dry crown, wind-scalded
+        const vec3 SWARD = vec3(0.610, 1.235, 0.545);   // grazed pasture green
         vec3 bioA = texture2D(tMacro, vWPos.xz * 0.0055).rgb;
         vec3 bioB = texture2D(tMacro, vWPos.xz * 0.041 + 0.37).rgb;
         /* Dry unless there is a reason to be green. Terraces and crowns dry
