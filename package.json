@@ -8,7 +8,7 @@
     "serve": "node tools/serve.mjs",
     "shoot": "node tools/shoot.mjs",
     "pack": "node tools/pack.mjs",
-    "test": "node tools/smoke.mjs && node tools/journey.mjs && node tools/save-roundtrip.mjs",
+    "test": "node tools/smoke.mjs && node tools/journey.mjs && node tools/save-roundtrip.mjs && node tools/seating.mjs lake",
     "test:smoke": "node tools/smoke.mjs",
     "test:lake": "node tools/lake-truth.mjs",
     "test:picker": "node tools/scene-picker.mjs",
@@ -23,7 +23,9 @@
     "shots": "node tools/shots.mjs",
     "cover": "node tools/cover.mjs",
     "test:brook": "node tools/brook-edge.mjs",
-    "deploy:check": "node tools/pack.mjs && node tools/deploy-check.mjs"
+    "deploy:check": "node tools/pack.mjs && node tools/deploy-check.mjs",
+    "test:seating": "node tools/seating.mjs lake",
+    "audit:seating": "node tools/seating.mjs lake && node tools/seating.mjs jungle --report"
   },
   "devDependencies": {
     "playwright": "^1.62.0"
