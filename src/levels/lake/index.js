@@ -41,6 +41,7 @@ import { LakeRock } from './rock.js';
 import { LakeWayside } from './wayside.js';
 import { pick as pickCondition, applyCondition } from './conditions.js';
 import { WheelDust } from '../../player/dust.js';
+import { registerLakeColliders } from './colliders.js';
 import { LakeFauna } from './fauna.js';
 import { LakeAmbience } from './audio.js';
 
@@ -243,6 +244,11 @@ class LakeLevel {
     await step(0.74, '铺出观景台');
     this.wayside = new LakeWayside(this.terrain, tier); scene.add(this.wayside.root);
     this.dust = new WheelDust({ tier }); scene.add(this.dust.root);
+
+    /* Register solids LAST, so the proxies come from where the geometry
+     * actually ended up rather than from the rules that placed it. */
+    await step(0.76, '登记碰撞体');
+    this.colliderStats = registerLakeColliders(this.ctx.collision, this, this.terrain);
     this.fauna = new LakeFauna(this.trail, this.terrain, tier); scene.add(this.fauna.root);
     await step(0.72, '抬升南阿尔卑斯');
     this.distance = new LakeDistance(); this.distance.setTier(tier); scene.add(this.distance.root);
@@ -313,7 +319,7 @@ class LakeLevel {
 
   setViewportHeight() {}
 
-  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), farm:this.farm?.stats(), roadside:this.roadside?.stats(), structures:this.structures?.stats(), rock:this.rock?.stats(), wayside:this.wayside?.stats(), dust:this.dust?.stats(), fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
+  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), farm:this.farm?.stats(), roadside:this.roadside?.stats(), structures:this.structures?.stats(), rock:this.rock?.stats(), wayside:this.wayside?.stats(), dust:this.dust?.stats(), colliders:this.colliderStats, fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
 
   dispose() {
     this.road?.dispose();

@@ -23,7 +23,8 @@
  *   interrupted.
  */
 import * as THREE from 'three';
-import { BOUNDS, VALLEY, shoreX, LAKE_Y, ROAD_SHOULDER, FANS } from './basin.js';
+import { BOUNDS, VALLEY, shoreX, LAKE_Y, ROAD_SHOULDER, ROAD_HALF, FANS } from './basin.js';
+import { clearsSegment } from '../../world/clearance.js';
 
 function random(seed) {
   let s = seed >>> 0 || 1;
@@ -107,8 +108,32 @@ export class LakeStructures {
       trail.pointAt(bestT, P); trail.tangentAt(bestT, T);
       const nx = T.z, nz = -T.x;
       const yaw = Math.atan2(T.x, T.z);
+      const ax = Math.cos(yaw), az = Math.sin(yaw);
       for (const side of [-1, 1]) {
-        const off = (ROAD_SHOULDER + 0.5) * side;
+        /* PUSH THE WINGWALL OUT UNTIL ALL OF IT CLEARS THE SEAL.
+         *
+         * A headwall is 5.2 m long and laid on the local tangent, so on a bend
+         * its ends swing in toward the carriageway while its middle sits at
+         * the offset it was given. At ROAD_SHOULDER + 0.5 one of them reached
+         * 4.4 m from the centreline — inside the running surface — and the
+         * only reason it was ever found is that the car now collides with
+         * things: the lap gate failed on mean speed because the autodriver was
+         * hitting a concrete wall at 30 m/s once a lap.
+         *
+         * This is the fifth extended object in this project to need its whole
+         * length tested rather than its anchor, and the first one where the
+         * consequence was a solid obstacle standing in the road rather than
+         * something merely misplaced. */
+        let off = null;
+        const halfLen = 2.6;
+        for (const cand of [0.5, 1.4, 2.4, 3.6, 5.0]) {
+          const o = (ROAD_SHOULDER + cand) * side;
+          const cx = P.x + nx * o, cz = P.z + nz * o;
+          if (clearsSegment(trail, cx - ax * halfLen, cz - az * halfLen,
+                            cx + ax * halfLen, cz + az * halfLen,
+                            ROAD_HALF + 1.6, 0.8)) { off = o; break; }
+        }
+        if (off === null) continue;
         const x = P.x + nx * off, z = P.z + nz * off;
         const y = groundAt(x, z);
         if (y < LAKE_Y + 0.6) continue;

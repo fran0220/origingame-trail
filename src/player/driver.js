@@ -39,6 +39,15 @@
 import * as THREE from 'three';
 import { clamp, lerp, smoothstep, Noise2D } from '../world/noise.js';
 import { WHEELBASE, TRACK, WHEEL_R } from './carMesh.js';
+
+/* The car, as the collision world sees it. Half the track plus a little, which
+ * puts the disc inside the bodywork rather than around it: a disc circumscribing
+ * a 4.2 m car would stop it a metre short of every obstacle. */
+const CAR_RADIUS = 0.95;
+/* How much of the along-wall velocity survives a scrape. Panel on wire or
+ * timber is lossy; 0.72 makes brushing a fence line cost speed without
+ * arresting the car. */
+const WALL_SLIDE = 0.72;
 import { BOUNDS } from '../levels/lake/basin.js';
 
 /* ── the car ───────────────────────────────────────────────────────────────
@@ -182,6 +191,7 @@ export class Driver {
     this.slipAngle = 0;
     this.surface = 'seal';
     this.offRoad = 0;                 // 0 sealed, 1 fully off the formation
+    this.impact = 0;                  // closing speed of the last hit, m/s
     this.skid = 0;                    // 0..1, how hard the tyres are complaining
 
     /* Camera. A chase camera is not a position, it is a filter: it lags the
@@ -701,8 +711,74 @@ export class Driver {
     const s2 = Math.sin(this.yaw), c2 = Math.cos(this.yaw);
     const wx = this.vx * s2 + this.vy * c2;
     const wz = this.vx * c2 - this.vy * s2;
-    this.pos.x += wx * dt;
-    this.pos.z += wz * dt;
+    /* ── hit things ───────────────────────────────────────────────────────
+     *
+     * The car held a CollisionWorld reference from the day it was written and
+     * never once asked it a question, so it drove through fence posts, power
+     * poles, trees, sheds and parked vans without so much as a change in
+     * pitch. Reported, correctly, as the car having no real interaction with
+     * the world and being unable to be stopped by anything.
+     *
+     * The sweep is done with the car as a circle. A 4.2 m car is not a circle
+     * and a box would be more accurate, but the collision world sweeps a
+     * circle against boxes and capsules, and at the closing speeds here the
+     * difference between a 0.95 m disc and the real footprint is far smaller
+     * than the difference between hitting a pole and not noticing it.
+     *
+     * WHAT AN IMPACT DOES TO THE CAR is the part worth getting right, because
+     * simply refusing the movement produces a car that sticks to a fence post
+     * and keeps its speed, which feels far worse than driving through it. The
+     * component of velocity INTO the surface is destroyed and partially
+     * reflected; the component along it survives with friction taken out. That
+     * is what makes glancing a fence line scrub speed and turn you slightly,
+     * while hitting a pole square stops you. */
+    const nx0 = this.pos.x, nz0 = this.pos.z;
+    let mx = wx * dt, mz = wz * dt;
+    if (this.collision && this.collision.enabled) {
+      const feet = this.terrain.height(nx0, nz0);
+      const res = this.collision.move(nx0, nz0, mx, mz, feet + 0.10, feet + 1.35,
+                                      CAR_RADIUS, null);
+      this.pos.x = res.x;
+      this.pos.z = res.z;
+      if (res.collided) {
+        /* The contact normal, derived from what the solver REFUSED to move.
+         *
+         * CollisionWorld keeps its normals in private arrays and its result
+         * object does not carry one. Rather than reach into those, take the
+         * difference between the movement asked for and the movement granted:
+         * that vector is the depenetration the solver applied, so its
+         * direction is the surface normal by construction. It also stays
+         * correct when several colliders resolve at once — a fence post and
+         * its wire, or an inside corner — where a single stored normal would
+         * only describe whichever one happened to be tested last. */
+        const nx = (res.x - nx0) - mx;
+        const nz = (res.z - nz0) - mz;
+        const len = Math.hypot(nx, nz);
+        if (len > 1e-4) {
+          const ux = nx / len, uz = nz / len;
+          /* Split world velocity into normal and tangent. */
+          const vn = wx * ux + wz * uz;
+          if (vn < 0) {
+            const tvx = wx - vn * ux, tvz = wz - vn * uz;
+            /* Sheet metal does not bounce. 0.12 is enough to stop the car
+             * settling inside the obstacle without launching it back. */
+            const nvx = -vn * ux * 0.12, nvz = -vn * uz * 0.12;
+            const newWx = tvx * WALL_SLIDE + nvx;
+            const newWz = tvz * WALL_SLIDE + nvz;
+            /* Back into body axes. */
+            this.vx = newWx * s2 + newWz * c2;
+            this.vy = newWx * c2 - newWz * s2;
+            /* A hit that is not square also twists the car. */
+            this.yawRate += (ux * c2 - uz * s2) * Math.min(1, Math.abs(vn) * 0.06)
+                          * (vn < -4 ? 1 : 0.35);
+            this.impact = Math.max(this.impact || 0, Math.abs(vn));
+          }
+        }
+      }
+    } else {
+      this.pos.x += mx;
+      this.pos.z += mz;
+    }
 
     /* The edge of the world, made of something.
      *
