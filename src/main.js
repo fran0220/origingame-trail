@@ -256,6 +256,10 @@ class Game {
      * ambience, the save — is written against the small surface both share:
      * a position, a heading, a speed, an update and a place-me-here. */
     this.driving = this.levelModule.locomotion === 'drive';
+    /* Told once, here, rather than inferred in the HUD: the overlay differs
+     * between the two verbs by a layout and a set of widgets, and the host is
+     * the only thing that knows which verb this level uses. */
+    this.hud?.setDriving(this.driving);
 
     if (this.driving) {
       await step(0.80, '交付赛车');

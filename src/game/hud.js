@@ -57,6 +57,7 @@ export class Hud {
       rBest: $('#rBest'),
       rFlag: $('#rFlag'),
       hints: $('#hints'),
+      hintsDrive: $('#hintsDrive'),
       finder: $('#finder'),
       lock: $('#finder .lock'),
       lockTag: $('#finder .lock .tag'),
@@ -127,7 +128,12 @@ export class Hud {
     this.el.hud.classList.remove('hidden');
     setTimeout(() => this.el.boot.remove(), 900);
     // The control list is useful for about a minute and then it is clutter.
-    this._hintTimer = setTimeout(() => this.el.hints.classList.add('faded'), 45_000);
+    /* Both sets fade, because only one of them is in the document and this
+     * runs before the host has said which. */
+    this._hintTimer = setTimeout(() => {
+      this.el.hints?.classList.add('faded');
+      this.el.hintsDrive?.classList.add('faded');
+    }, 45_000);
   }
 
   /* --------------------------------------------------------------- meta */
@@ -260,6 +266,23 @@ export class Hud {
 
   setRaceVisible(on) {
     this.el.race?.classList.toggle('hidden', !on);
+  }
+
+  /**
+   * Switch the whole overlay between the walked game and the driven one.
+   *
+   * One class on the root, because the difference is a *layout*, not a list of
+   * widgets: the minimap has to move out from under the readout, the
+   * photographic counters have to go because nothing on a timed stage is
+   * scored on them, and the control hints have to describe keys that exist.
+   * Doing it in CSS from one class keeps all of that in the stylesheet with
+   * the rest of the layout instead of spreading it across this file.
+   */
+  setDriving(on) {
+    this.el.hud.classList.toggle('driving', !!on);
+    this.el.hints?.classList.toggle('hidden', !!on);
+    this.el.hintsDrive?.classList.toggle('hidden', !on);
+    this.setRaceVisible(!!on);
   }
 
   /* --------------------------------------------------------- viewfinder */
