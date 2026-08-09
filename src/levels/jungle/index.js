@@ -32,6 +32,7 @@ import { standingWater } from './spillway.js';
 import { drawWater } from './mapwater.js';
 import { JungleLife } from './life.js';
 import { JungleDeadwood } from './deadwood.js';
+import { JungleVines } from './vines.js';
 import { Ambience } from '../../audio/engine.js';
 import { content } from '../../game/content.js';
 
@@ -149,6 +150,10 @@ class JungleLevel {
     this.deadwood = new JungleDeadwood(this.terrain, this.trail, tier);
     scene.add(this.deadwood.root);
 
+    await step(0.84, '垂下藤蔓');
+    this.vines = new JungleVines(this.terrain, this.trail, tier);
+    scene.add(this.vines.root);
+
     await step(0.88, '放出飞虫');
     this.life = new JungleLife(this.terrain, this.trail, tier);
     scene.add(this.life.root);
@@ -158,7 +163,7 @@ class JungleLevel {
   materials() {
     return [this.terrainMat, this.veg.leafMat, this.veg.woodMat,
             this.ruins.material, ...this.water.materials,
-            ...this.deadwood.materials];
+            ...this.deadwood.materials, ...this.vines.materials];
   }
 
   /**

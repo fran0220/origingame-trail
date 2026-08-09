@@ -23,6 +23,7 @@
  */
 import * as THREE from 'three';
 import { BOUNDS, VALLEY, shoreX, LAKE_Y, ROAD_SHOULDER } from './basin.js';
+import { clearsPoint, clearsDisc } from '../../world/clearance.js';
 
 function random(seed) {
   let s = seed >>> 0 || 1;
@@ -186,7 +187,7 @@ export class LakeRock {
       const x = BOUNDS.x0 + 8 + rng() * (BOUNDS.x1 - BOUNDS.x0 - 16);
       const y = terrain.height(x, z);
       if (y < LAKE_Y + 2.0) continue;
-      if (trail.nearest(x, z, {}).dist < ROAD_SHOULDER + 4) continue;
+      if (!clearsDisc(trail, x, z, 3.0, ROAD_SHOULDER + 4)) continue;
       const s = slopeAt(x, z);
       /* THE RULE: rock only where soil cannot hold. The threshold is not a
        * guess about real hillsides, it is read off THIS terrain's own slope
@@ -235,7 +236,7 @@ export class LakeRock {
          * the seal — a rule that clears the parent does not clear the
          * children, and every derived scatter needs the exclusion applied to
          * it directly. Real scree that reaches a highway gets picked up. */
-        if (trail.nearest(sx2, sz2, {}).dist < ROAD_SHOULDER + 2.5) continue;
+        if (!clearsPoint(trail, sx2, sz2, ROAD_SHOULDER + 2.5)) continue;
         const size = (0.16 + rng() * 0.42) * (1 - run / (9 + scale * 7)) * scale * 0.55;
         if (size < 0.05) continue;
         const vv = (rng() * screeVariants.length) | 0;
@@ -263,7 +264,7 @@ export class LakeRock {
       if (y > LAKE_Y + 2.6 || y < LAKE_Y - 1.2) continue;
       /* The road runs within a few metres of the water in places, and a
        * beach-height test alone will happily put shingle on the seal there. */
-      if (trail.nearest(x, z, {}).dist < ROAD_SHOULDER + 2.5) continue;
+      if (!clearsPoint(trail, x, z, ROAD_SHOULDER + 2.5)) continue;
       const size = 0.055 + Math.pow(rng(), 2.6) * 0.34;
       const v = (rng() * cobVariants.length) | 0;
       cobLists[v].push({
@@ -281,7 +282,7 @@ export class LakeRock {
       const x = shoreX(z) - (0.4 + rng() * 4.5);
       const y = terrain.height(x, z);
       if (y > LAKE_Y + 1.9 || y < LAKE_Y - 0.5) continue;
-      if (trail.nearest(x, z, {}).dist < ROAD_SHOULDER + 2.5) continue;
+      if (!clearsDisc(trail, x, z, 2.0, ROAD_SHOULDER + 2.5)) continue;
       drift.push({
         x, y: y + 0.05, z, s: 0.7 + rng() * 0.8,
         /* Driftwood lies parallel to the shore. Waves that put it there were

@@ -25,6 +25,7 @@
  *   one.
  */
 import * as THREE from 'three';
+import { clearsPoint, clearsSegment } from '../../world/clearance.js';
 
 function random(seed) {
   let s = seed >>> 0 || 1;
@@ -154,8 +155,7 @@ export class JungleDeadwood {
         const a = rng() * Math.PI * 2;
         const r = near + Math.pow(rng(), 0.7) * (far - near);
         const x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r;
-        const q = trail.nearest(x, z, {});
-        if (q.dist < CLEAR) continue;
+        if (!clearsPoint(trail, x, z, CLEAR)) continue;
         return { x, z, y: terrain.height(x, z) };
       }
       return null;
@@ -183,13 +183,9 @@ export class JungleDeadwood {
        * sweeps straight across it, and the first render had logs lying over
        * the trail like a barricade. Same mistake as the lake's scree fans:
        * an extended object needs the exclusion tested along its extent. */
-      let blocked = false;
-      for (let k = 0; k <= 6; k++) {
-        const u = (k / 6) * len;
-        const qx = site.x + Math.cos(yaw) * u, qz = site.z + Math.sin(yaw) * u;
-        if (trail.nearest(qx, qz, {}).dist < CLEAR) { blocked = true; break; }
-      }
-      if (blocked) continue;
+      if (!clearsSegment(trail, site.x, site.z,
+                         site.x + Math.cos(yaw) * len, site.z + Math.sin(yaw) * len,
+                         CLEAR)) continue;
 
       const start = M.pos.length / 3;
       limb(M, rng, len, r0, r1, 7, 1.0);
