@@ -1417,14 +1417,31 @@ export class CarMesh {
     box(paint, 0.78, 0.042, 0.075, 0.016, 2, 0, 0.788, 3.418);
     box(paint, 0.78, 0.040, 0.075, 0.016, 2, 0, 0.550, 3.416);
     for (const s of [1, -1]) box(paint, 0.044, 0.274, 0.075, 0.016, 2, s * 0.368, 0.668, 3.417);
-    /* Vanes: four uprights on the aperture floor, standing halfway out to the
-     * surround so they are lit on their leading edges and shadowed between.
-     * Four rather than three is an even count, so there is no vane on the
-     * centreline hiding the badge position, which is where every manufacturer
-     * puts the split. */
-    for (const x of [-0.240, -0.080, 0.080, 0.240]) {
-      box(trim, 0.032, 0.190, 0.05, 0.010, 1, x, 0.668, 3.408);
+    /* Vanes, and the first set of them was invisible.
+     *
+     * Four 32 mm uprights across a 680 mm aperture is a 160 mm pitch, and at
+     * the distance this car is ever seen from — six metres in the chase view,
+     * four in the turntable — a 32 mm bar is around two pixels. Two pixels of
+     * dark trim between two pixels of dark shadow is not a grille, it is a
+     * uniformly black slot, which is exactly what the aperture read as.
+     *
+     * So: two horizontal bars instead of four thin uprights. Horizontal is
+     * what most manufacturers actually use, a 62 mm bar survives being three
+     * or four pixels, and because they run across the aperture they catch the
+     * sun along their whole length rather than on an edge that is one pixel
+     * wide. The badge plinth on the centreline gives the eye the third thing
+     * it needs to read the shape as a grille rather than a hole. */
+    /* Body colour, not trim, and that is the whole fix. Making the bars bigger
+     * did nothing while they stayed the same near-black as the recess floor
+     * they stand on: dark on dark has no edge at any size, and the aperture
+     * went on reading as one flat slot. A painted bar against a shadowed
+     * opening is a hard light-to-dark boundary, it is what half the industry
+     * actually does with a grille, and it ties the front end back to the rest
+     * of the car instead of leaving a black hole in the middle of it. */
+    for (const y of [0.606, 0.730]) {
+      box(paint, 0.652, 0.058, 0.056, 0.014, 2, 0, y, 3.408);
     }
+    box(paint, 0.092, 0.092, 0.066, 0.022, 2, 0, 0.668, 3.414);
 
     /* Lower intake, built into the bumper skin by the same trick: a floor a
      * little proud of the bumper face and a lip proud of that. This is the

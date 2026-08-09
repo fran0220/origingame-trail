@@ -213,3 +213,40 @@
   out nearly as far as they rise — and that is what makes neighbouring clumps touch.
 - Dry vegetation against dry ground differs in texture and silhouette, not in tone. Anything
   darker than what it stands in reads as an object dropped on the ground.
+
+## Enlarging a world silently un-tunes everything counted for the old one
+
+- Tripling the valley turned every absolute scatter count into a third of its density. Only
+  the system being actively worked on got corrected; props, meadow, fauna and the photo
+  anchors were all left behind and none of it announced itself.
+- Export an `AREA_SCALE` (new area / the area the counts were tuned against) and multiply
+  absolute populations by it. Densities per square metre survive a resize; counts do not.
+- Route-anchored content needs a different fix from area-anchored content. Fauna is one
+  colony per species at one arc length, so scaling by area does nothing — it needs repeating
+  per kilometre of route, with the authored `t` becoming a position *within* a repeat.
+- Anything authored in absolute metres that refers to something else that moved is now
+  wrong. The backdrop was translated 1330 m so the road could not drive into it, which left
+  two photographic anchors pointing at empty sky beside the peaks they name.
+- Survey for this rather than remembering it: list every scattered system's density per km²
+  and every authored point's distance to the road, and read the outliers.
+
+## Constants derived for one level get applied to the next one silently
+
+- `SHADOW_REACH = 46` was correctly derived from the jungle's fog: FogExp2 at 0.038 leaves a
+  surface at 46 m with 5% of its own colour, so shadows past that cannot change the frame.
+  The lake's fog is 0.00135 and its subject is forty kilometres away.
+- It only became visible when the level was driven. At 150 km/h the car covers 46 m in
+  1.1 s, so the shadow cascade was a ring of darkness travelling with the player.
+- When a constant is justified by a *level's* physical properties, it belongs to the level.
+  Give it a default and let the level override it.
+
+## Dark detail on a dark surface has no edge at any size
+
+- The grille aperture read as a plain black slot. The first fix made the vanes bigger, which
+  changed nothing, because they were the same near-black trim as the recess floor behind
+  them.
+- Size is only worth spending when there is a tonal boundary to resolve. Body-colour bars
+  against a shadowed opening read instantly at the same dimensions.
+- The same error, twice in one file: mud flaps hung outboard of a flank that had been pulled
+  in, so they floated as separate black shapes. Detail parts must be positioned against the
+  surface they attach to, not against a number that was right before the surface moved.
