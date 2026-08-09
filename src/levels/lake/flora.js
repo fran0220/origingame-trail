@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BOUNDS, shoreX, ROAD_SHOULDER, AREA_SCALE } from './basin.js';
+import { BOUNDS, shoreX, ROAD_SHOULDER, AREA_SCALE, LAKE_Y } from './basin.js';
 import { bakeImage } from '../../gfx/bake.js';
 
 /* Three crossed cards render each sub-metre sward crown. The baked texture is
@@ -378,6 +378,173 @@ function buildGroundCover(owner,terrain,renderer,dummy){
  placeLayer('sward',geoSward,matSward,.30,1.5,34,.52,.94,.97,false);
 }
 
+/* ── the roadside turf ──────────────────────────────────────────────────────
+ *
+ * Measured cover within 25 m of the road was 0.087 clumps per square metre.
+ * Real short-tussock grassland is one to four, and the difference is exactly
+ * what "the vegetation is far too sparse" means: the hero species are placed
+ * across a 1.05 km^2 basin, so however many there are of them, almost none are
+ * where the player is.
+ *
+ * The answer is not more hero plants. Thirty-one species at 350-500 triangles
+ * each cannot reach that density anywhere, and card cover has been refuted on
+ * this level three times — at the density that closes the ground it is a crop,
+ * and below that it is speckle. What has never been tried is the obvious thing
+ * between those two: real tussock geometry, cheap enough to have a hundred
+ * thousand of, and placed only in the band that is ever seen.
+ *
+ * So this is a 42-triangle tuft — seven bent ribbons, three segments each,
+ * which is the smallest thing that still has a silhouette and a self-shadow —
+ * laid down the road at better than one per square metre out to 26 m and
+ * nowhere else. It is placed against the trail directly rather than through
+ * the distance field, because at ninety thousand plants a nearest-point query
+ * per plant is most of the boot.
+ */
+function tuftGeometry(variant, rng) {
+  const p = [], ix = [], col = [];
+  const blades = 11 + variant * 3;
+  const push = (x, y, z, c) => { const n = p.length / 3; p.push(x, y, z); col.push(...c); return n; };
+  for (let b = 0; b < blades; b++) {
+    const yaw = b * 2.399 + rng() * 0.6;
+    /* Wider and floppier than the first cut. Upright narrow blades at one
+     * scale read as a seedling, and a field of seedlings at even spacing reads
+     * as a crop — which is what the first version of this looked like. A
+     * tussock is a fountain: the outer blades arch out almost as far as they
+     * go up, and that is what makes neighbouring clumps touch. */
+    const lean = 0.26 + rng() * 0.70;
+    const h = 0.26 + rng() * 0.40;
+    const w = 0.020 + rng() * 0.016;
+    /* Straw at the tip, olive at the root: the two ends of a dry tussock
+     * blade, and the same ramp the ground shader uses for its sward. */
+    /* Nearly the value of the ground it stands in. Dry tussock against dry
+     * litter is a difference of texture and silhouette, not of tone, and the
+     * first cut of these was dark enough against the tawny surface that each
+     * clump read as an object dropped on the ground rather than as the ground
+     * being grassy. Paler and warmer, with the tip lighter than the root
+     * because that is the part that died back first. */
+    const root = [0.205, 0.180, 0.092], tip = [0.435, 0.378, 0.190];
+    let prev = null;
+    for (let s = 0; s <= 3; s++) {
+      const u = s / 3;
+      const reach = lean * (u * u * 0.72 + u * 0.28);
+      const y = h * (u + 0.16 * Math.sin(Math.PI * u) - 0.44 * u * u);
+      const ww = w * (1 - u * 0.85);
+      const cx = Math.cos(yaw) * reach, cz = Math.sin(yaw) * reach;
+      const sx = -Math.sin(yaw) * ww, sz = Math.cos(yaw) * ww;
+      const c = root.map((v, i) => v + (tip[i] - v) * u);
+      const a = push(cx + sx, y, cz + sz, c);
+      const d = push(cx - sx, y, cz - sz, c);
+      if (prev) { ix.push(prev[0], prev[1], a); ix.push(prev[1], d, a); }
+      prev = [a, d];
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(ix);
+  g.computeVertexNormals();
+  return g;
+}
+
+function buildRoadsideTurf(owner, terrain, tier, dummy) {
+  const trail = terrain.trail;
+  /* Per square metre of the band. 1.2 is the low end of real short tussock and
+   * the point at which the ground stops showing between clumps at a driver's
+   * eye height. */
+  const PER_M2 = tier === 'low' ? 0.45 : tier === 'medium' ? 0.8 : 1.3;
+  const INNER = ROAD_SHOULDER + 1.0, OUTER = 26;
+  const rng = random(0x7ee5a1);
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, vertexColors: true, roughness: .97, metalness: 0,
+    side: THREE.DoubleSide,
+  });
+  /* Wind, and a fade that hands over to the scanned ground rather than ending.
+   * The tufts are 0.3-0.6 m and stop resolving well before the cull distance,
+   * so they shrink into the surface instead of popping out of it. */
+  const U = { uTurfTime: { value: 0 }, uTurfFade: { value: new THREE.Vector2(52, 96) } };
+  mat.userData.uniforms = U;
+  mat.customProgramCacheKey = () => 'lake-roadside-turf-v1';
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U);
+    mat.userData.shader = sh;
+    sh.vertexShader = `uniform float uTurfTime; uniform vec2 uTurfFade;\n` + sh.vertexShader
+      .replace('#include <beginnormal_vertex>',
+        '#include <beginnormal_vertex>\nobjectNormal = normalize(mix(objectNormal, vec3(0.0,1.0,0.0), 0.62));')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        float ph = instanceMatrix[3].x * 0.11 + instanceMatrix[3].z * 0.13;
+        float flex = smoothstep(0.02, 0.55, position.y);
+        transformed.x += sin(uTurfTime * 0.9 + ph) * 0.035 * flex * flex;
+        transformed.z += cos(uTurfTime * 0.7 + ph * 1.3) * 0.022 * flex * flex;
+        vec4 wp = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
+        float fade = 1.0 - smoothstep(uTurfFade.x, uTurfFade.y, length(cameraPosition - wp.xyz));
+        transformed.y *= fade;`);
+  };
+  owner.materials.push(mat);
+
+  const variants = [0, 1, 2].map((v) => tuftGeometry(v, random(0x31d0 + v * 977)));
+  owner.geometries?.push?.(...variants);
+
+  const P = new THREE.Vector3(), T = new THREE.Vector3();
+  const L = trail.length;
+  const CHUNK_M = 90;
+  const chunks = Math.ceil(L / CHUNK_M);
+  const perMetre = PER_M2 * (OUTER - INNER) * 2;
+
+  for (let c = 0; c < chunks; c++) {
+    const lists = [[], [], []];
+    for (let m = c * CHUNK_M; m < Math.min(L, (c + 1) * CHUNK_M); m += 1) {
+      trail.pointAt(m / L, P); trail.tangentAt(m / L, T);
+      const nx = T.z, nz = -T.x;
+      /* In clumps, not scattered. Tussock grows as discrete stools that
+       * spread and merge, so the ground between two clumps is bare litter and
+       * the clumps themselves touch — placing every plant independently gives
+       * an even lawn of identical marks, which is the crop again. Each site
+       * gets a few plants within a metre, and sites are what is random. */
+      for (let site = 0; site < perMetre / 4; site++) {
+        const side = rng() < .5 ? -1 : 1;
+        /* Denser near the road and thinning outward, which is both what a
+         * roadside verge does — it is watered by runoff — and where the
+         * triangles are worth spending. */
+        const o = (INNER + Math.pow(rng(), 1.45) * (OUTER - INNER)) * side;
+        const sx = P.x + nx * o, sz = P.z + nz * o;
+        /* One stool in three is an old one: nearly twice the size of its
+         * neighbours. That spread is most of what separates grassland from
+         * planting, and it costs nothing. */
+        const big = rng() < .34;
+        const members = 3 + ((rng() * 4) | 0);
+        for (let k = 0; k < members; k++) {
+          const r = Math.sqrt(rng()) * (big ? 1.15 : 0.70);
+          const a = rng() * 6.283;
+          const x = sx + Math.cos(a) * r, z = sz + Math.sin(a) * r;
+          const y = terrain.height(x, z);
+          if (y < LAKE_Y + 0.55) continue;         // not in the lake or the swash
+          const s = (big ? 1.15 : 0.62) + Math.pow(rng(), 1.7) * (big ? 0.85 : 0.55);
+          lists[(rng() * 3) | 0].push({ x, y, z, s, yaw: rng() * 6.283 });
+        }
+      }
+    }
+    lists.forEach((list, v) => {
+      if (!list.length) return;
+      const mesh = new THREE.InstancedMesh(variants[v], mat, list.length);
+      mesh.name = `flora:roadside-turf:${c}:${v}`;
+      list.forEach((q, i) => {
+        dummy.position.set(q.x, q.y - .02, q.z);
+        dummy.rotation.set(0, q.yaw, 0);
+        dummy.scale.set(q.s, q.s * (.85 + (i % 5) * .07), q.s);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.castShadow = false;      // 42 triangles do not earn a shadow pass
+      mesh.receiveShadow = true;
+      mesh.computeBoundingSphere();
+      owner.root.add(mesh);
+      owner.meshes.push(mesh);
+    });
+  }
+}
+
 function plantGeometry(id,kind,variant,hex){
  const p=[],ix=[],col=[],soft=[],floraUv=[],rng=random(0x91e3+variant*997+id.length*71);
  /* THREE.Color is already converted to linear space. Multiplying it by 3.2
@@ -478,6 +645,7 @@ function plantGeometry(id,kind,variant,hex){
 
 export class LakeFlora{
  constructor(terrain,tier='high',renderer=null,options={}){this.root=new THREE.Group();this.root.name='lake-native-flora';this.materials=[];this.textures=[];this.species=SPECIES.map(s=>s[0]);this.notable=Object.create(null);this.meshes=[];const dummy=new THREE.Object3D();this.plumeTexture=renderer?bakeImage(renderer,PLUME_FRAG,{size:512,colorSpace:THREE.SRGBColorSpace,coverageMips:.30}):null;if(this.plumeTexture)this.textures.push(this.plumeTexture);if(renderer&&options.groundCover!==false)buildGroundCover(this,terrain,renderer,dummy);
+  buildRoadsideTurf(this,terrain,tier,dummy);
   SPECIES.forEach(([id,habitat,color,kind],si)=>{const rng=random(0x51a7+si*7919),pts=[],q={},parents=[],target=Math.max(24,Math.round(POPULATION[id]*(NOTEBOOK_SPECIES.has(id)?.62:.20)*AREA_SCALE));
    /* Two orders of clustering, not one. Sixteen parents with a 6..16 m spread
     * had to hold up to 520 plants, so each was a tight blob of thirty and the
@@ -540,7 +708,11 @@ export class LakeFlora{
   });this.setTier(tier);}
  cullAround(x,z){this.lastCull=[x,z];this.meshes.forEach(m=>{const c=m.boundingSphere?.center,near=!c||Math.hypot(c.x-x,c.z-z)<260+(m.boundingSphere?.radius||0),matches=m.name.startsWith(`flora:${this.debugSpecies}:`);m.visible=this.debugSpecies?matches:near;});}
  setDebug(mode='none'){this.debugSpecies=this.species.includes(mode)?mode:null;if(this.lastCull)this.cullAround(...this.lastCull);}
- update(time){this.materials.forEach(m=>{m.userData.uniforms.uFloraTime.value=time;});}
+ /* Materials no longer share one uniform name — the roadside turf has its own
+  * wind. Written defensively rather than by branching on the material, because
+  * this list is appended to from four different builders. */
+ update(time){this.materials.forEach(m=>{const u=m.userData.uniforms;if(!u)return;
+   if(u.uFloraTime)u.uFloraTime.value=time; if(u.uTurfTime)u.uTurfTime.value=time;});}
  setTier(t){this.tier=t;this.meshes.forEach(m=>m.count=t==='low'?Math.ceil(m.instanceMatrix.count*.55):m.instanceMatrix.count);}
  stats(){return{species:this.species.length,speciesIds:[...this.species],instances:this.meshes.reduce((n,m)=>n+m.count,0),notable:Object.keys(this.notable).length,chunks:this.meshes.length};}
  dispose(){const geos=new Set(this.meshes.map(m=>m.geometry));geos.forEach(g=>g.dispose());this.materials.forEach(m=>m.dispose());this.textures.forEach(t=>t.dispose());}
