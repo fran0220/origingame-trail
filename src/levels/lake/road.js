@@ -287,10 +287,16 @@ function makeSealMaterial() {
     envMapIntensity: 0.42,
   });
 
-  mat.customProgramCacheKey = () => 'lake-chipseal-v1';
+  mat.customProgramCacheKey = () => 'lake-chipseal-v2';
 
   mat.onBeforeCompile = (sh) => {
     mat.userData.shader = sh;
+    /* A switch for the crack repairs, so the layer can be measured the way a
+     * mesh layer is measured — turned off, the frame diffed, and the result
+     * reported as a percentage. Detail that lives in a shader is otherwise
+     * invisible to every instrument this project has, which is the same
+     * argument as naming a mesh. */
+    sh.uniforms.uRepair = { value: 1.0 };
 
     /* This material assigns no map, so three never defines USE_UV and `vUv`
      * does not exist in the fragment stage. The ribbon's uv is not a texture
@@ -307,6 +313,7 @@ function makeSealMaterial() {
     );
 
     sh.fragmentShader = SSTEP + `
+      uniform float uRepair;
       varying vec3 vRoadPos;
       varying vec2 vRoad;
 
@@ -421,6 +428,60 @@ function makeSealMaterial() {
       float joint = 1.0 - sstep(0.05, 0.35, alat);
       seal *= 1.0 - joint * 0.10;
 
+      /* ── crack sealing and patches ──────────────────────────────────────
+       * The blotch above is called patches in its comment but it is a smooth
+       * multiplier — it makes the road non-uniform, which is not the same as
+       * giving it a HISTORY. What a rural seal actually carries is repairs,
+       * and they are the difference between a road that was extruded and one
+       * that has been maintained for thirty years.
+       *
+       * TAR SNAKES. Cracks are sealed by pouring hot bitumen along them, and
+       * the result is a black band 30-50 mm wide that wanders. It is drawn
+       * here as a CONTOUR of a noise field rather than as drawn lines,
+       * because a contour is what a crack is: the level set where the seal
+       * failed. It wanders, it branches where the field is flat, and it never
+       * repeats — none of which is true of any line primitive.
+       *
+       * They are the darkest thing on the road by a long way. Fresh bitumen
+       * has no chip in it at all, so where the seal is 0.13-0.23 these run
+       * near 0.045, and that contrast is the whole point: it is the only
+       * hard-edged dark detail in the middle of the frame. */
+      float crackField = fbm2(vRoadPos.xz * vec2(0.55, 0.21) + 4.7);
+      float crackDist = abs(crackField - 0.5);
+      /* Width in field units, widened as the pixel footprint grows so a
+       * 40 mm line converges to its own coverage instead of aliasing into a
+       * dashed mess at distance — the same argument, and the same fix, as the
+       * chip fade above. */
+      float crackW = 0.016 + chipFade * 0.055;
+      float snake = 1.0 - sstep(crackW * 0.55, crackW, crackDist);
+      /* Not every crack has been sealed, and a road where they all have looks
+       * machine-made. A second, much slower field gates whole stretches. */
+      snake *= sstep(0.42, 0.58, fbm2(vRoadPos.xz * 0.035 + 19.0));
+      /* Bitumen is poured proud of the surface and stays glossy for years, so
+       * it is both darker and smoother than what it sits on. */
+      seal = mix(seal, vec3(0.045, 0.044, 0.048), snake * 0.88 * uRepair);
+
+      /* PATCHES. A dig-out is cut with a saw in a rectangle, filled with hot
+       * mix, and it never matches: different aggregate, no chip, laid at a
+       * different time. Cells in ROAD space rather than world space, because
+       * the crew cuts along the road, not along north. */
+      vec2 pcell = vec2(lat * 0.32, along * 0.055);
+      vec2 pid = floor(pcell);
+      vec2 pf = fract(pcell);
+      float pr = h21(pid + 3.1);
+      /* About one cell in nine, and inset so the patch does not fill its cell
+       * and tile visibly. */
+      float isPatch = step(0.885, pr);
+      float inset = 0.10 + 0.22 * h21(pid + 7.7);
+      float pmask = isPatch
+        * sstep(inset, inset + 0.02, pf.x) * (1.0 - sstep(1.0 - inset - 0.02, 1.0 - inset, pf.x))
+        * sstep(inset, inset + 0.02, pf.y) * (1.0 - sstep(1.0 - inset - 0.02, 1.0 - inset, pf.y));
+      /* Hot mix is finer and darker than chipseal and it weathers paler with
+       * age, so each patch gets its own tone from its own cell hash. */
+      vec3 patchCol = mix(vec3(0.088, 0.086, 0.090), vec3(0.170, 0.166, 0.162),
+                          h21(pid + 12.9));
+      seal = mix(seal, patchCol * (0.94 + 0.12 * chip), pmask * 0.92 * uRepair);
+
       /* Ravelling at the edge. The outer 0.5 m of a chipseal loses its chip
        * to the shoulder and gains gravel and dust off it, so the boundary
        * between seal and shoulder is a gradient, never a cut line. */
@@ -506,6 +567,44 @@ function makeSealMaterial() {
         roughnessFactor -= wheel2 * 0.20;
         roughnessFactor = mix(roughnessFactor, 0.62, paint2);
         roughnessFactor = mix(roughnessFactor, 0.98, shoulder2);
+
+        /* CRACK SEALING AND PATCHES ARE A ROUGHNESS FEATURE FIRST.
+         *
+         * They went into the albedo block alone to begin with, at 0.045
+         * against a seal of 0.13-0.23 — a four-fold contrast that should have
+         * been the darkest thing on the road. It was invisible, and the
+         * instrument said why: masking the road by hiding every other mesh
+         * and then forcing the ENTIRE seal albedo to black moved the median
+         * road pixel from 114 to 109. Five levels out of 114 for a total loss
+         * of albedo.
+         *
+         * That is not a bug, it is this material working as designed. The
+         * comment on the material says the grazing sheen is most of what
+         * sells a chipseal, and it is right — but the consequence is that at
+         * driving angles the road's brightness is carried by its specular
+         * lobe and almost none of it by its colour. Painting detail into the
+         * albedo of a surface seen at three degrees is painting under the
+         * varnish.
+         *
+         * Bitumen's real signature is not that it is darker. It is that it is
+         * SMOOTHER: poured as a liquid, it sets to a skin with no chip in it,
+         * and on a road it shows up as a glossy line that flares when the sun
+         * is behind it and goes dark when it is not. That is a roughness
+         * difference, and roughness is the channel this road actually reads
+         * in. 0.94 down to 0.30 is a bigger change than any albedo could be. */
+        float crackField2 = fbm2(vRoadPos.xz * vec2(0.55, 0.21) + 4.7);
+        float crackW2 = 0.016 + sstep(0.0035, 0.016, px2) * 0.055;
+        float snake2 = 1.0 - sstep(crackW2 * 0.55, crackW2, abs(crackField2 - 0.5));
+        snake2 *= sstep(0.42, 0.58, fbm2(vRoadPos.xz * 0.035 + 19.0));
+        vec2 pcell2 = vec2(vRoad.x * 0.32, vRoad.y * 0.055);
+        vec2 pid2 = floor(pcell2), pf2 = fract(pcell2);
+        float inset2 = 0.10 + 0.22 * h21(pid2 + 7.7);
+        float pmask2 = step(0.885, h21(pid2 + 3.1))
+          * sstep(inset2, inset2 + 0.02, pf2.x) * (1.0 - sstep(1.0 - inset2 - 0.02, 1.0 - inset2, pf2.x))
+          * sstep(inset2, inset2 + 0.02, pf2.y) * (1.0 - sstep(1.0 - inset2 - 0.02, 1.0 - inset2, pf2.y));
+        roughnessFactor = mix(roughnessFactor, 0.30, snake2 * 0.90 * uRepair);
+        /* Hot mix is finer than chipseal but still a road, not a mirror. */
+        roughnessFactor = mix(roughnessFactor, 0.72, pmask2 * 0.85 * uRepair);
       }
       `
     );
