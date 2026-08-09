@@ -214,12 +214,24 @@ services, each of which degrades to the local behaviour if it is unavailable:
 ### Deploying
 
 ```
-npm run pack                       # dist/: index.html, src/, vendor/ — 2.3 MB
-npm run cover                      # media/cover.jpg, rendered not cropped
-scripts/deploy.sh dist --title "Jungle Trail" --cover media/cover.jpg \
+npm run deploy:check               # pack, then boot dist/ in a browser
+node tools/cover-lake.mjs          # media/cover-lake.png, driven not posed
+scripts/deploy.sh dist --update yupadwblpc --title "OriginGame Trail" \
+  --engine threejs --genre racing --cover media/cover-lake.jpg \
   --license open --license-name MIT \
   --source-url https://github.com/fran0220/origingame-trail
 ```
+
+`npm run deploy:check` is not optional. `pack.mjs` copies an allowlist and
+prints a file count, which is not evidence: the allowlist was
+`['index.html', 'src', 'vendor']` and Lake Tekapo's scanned ground and glTF
+plants live under `media/lake-assets`, so the packed build was a level that
+404s every texture it asks for — and it produced exactly the same cheerful
+summary as a good one. The check serves `dist/` over HTTP, boots both levels in
+a real browser from a fresh page each, and fails on any 404 or page error.
+
+`--update yupadwblpc` matters too: without it a deploy creates a second game
+rather than a new version of the one people already have a link to.
 
 It is live at
 [play.origingame.dev/yupadwblpc](https://play.origingame.dev/yupadwblpc/).
