@@ -44,6 +44,7 @@ import { WheelDust } from '../../player/dust.js';
 import { registerLakeColliders } from './colliders.js';
 import { LakeStage } from './stage.js';
 import { LakeBoards } from './boards.js';
+import { LakeTiming } from './timing.js';
 import { LakeFauna } from './fauna.js';
 import { LakeAmbience } from './audio.js';
 
@@ -249,6 +250,7 @@ class LakeLevel {
     this.stage = new LakeStage(this.terrain, tier); scene.add(this.stage.root);
 
     this.boards = new LakeBoards(this.terrain, tier); scene.add(this.boards.root);
+    this.timing = new LakeTiming(this.terrain, tier); scene.add(this.timing.root);
 
     this.dust = new WheelDust({ tier }); scene.add(this.dust.root);
 
@@ -261,7 +263,7 @@ class LakeLevel {
     this.distance = new LakeDistance(); this.distance.setTier(tier); scene.add(this.distance.root);
   }
 
-  materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.veg.materials, ...this.props.materials, ...this.shelter.materials, ...this.fences.materials, ...this.farm.materials, ...this.roadside.materials, ...this.structures.materials, ...this.rock.materials, ...this.wayside.materials, ...this.stage.materials, ...this.boards.materials, ...this.fauna.materials, ...this.distance.materials]; }
+  materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.veg.materials, ...this.props.materials, ...this.shelter.materials, ...this.fences.materials, ...this.farm.materials, ...this.roadside.materials, ...this.structures.materials, ...this.rock.materials, ...this.wayside.materials, ...this.stage.materials, ...this.boards.materials, ...this.timing.materials, ...this.fauna.materials, ...this.distance.materials]; }
 
   makeAmbience({ camera, walker }) {
     const amb = new LakeAmbience({ camera, walker });
@@ -336,7 +338,7 @@ class LakeLevel {
 
   setViewportHeight() {}
 
-  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), farm:this.farm?.stats(), roadside:this.roadside?.stats(), structures:this.structures?.stats(), rock:this.rock?.stats(), wayside:this.wayside?.stats(), stage:this.stage?.stats(), boards:this.boards?.stats(), dust:this.dust?.stats(), colliders:this.colliderStats, fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
+  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), farm:this.farm?.stats(), roadside:this.roadside?.stats(), structures:this.structures?.stats(), rock:this.rock?.stats(), wayside:this.wayside?.stats(), stage:this.stage?.stats(), boards:this.boards?.stats(), timing:this.timing?.stats(), dust:this.dust?.stats(), colliders:this.colliderStats, fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
 
   dispose() {
     this.road?.dispose();
@@ -352,6 +354,7 @@ class LakeLevel {
     this.wayside?.dispose();
     this.stage?.dispose();
     this.boards?.dispose();
+    this.timing?.dispose();
     this.dust?.dispose();
     this.fauna?.dispose();
     this.distance?.dispose();
