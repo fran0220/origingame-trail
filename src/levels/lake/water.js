@@ -417,7 +417,14 @@ function shorelineStones(terrain) {
       const t = rng();
       terrain.trail.pointAt(t,pathPoint);
       terrain.trail.tangentAt(t,pathTangent);
-      const side = (rng()-.5) * terrain.trail.widthAt(t) * 1.28;
+      /* On the VERGE, not on the running surface. This scatter was written
+       * when the lake trail was a gravel path and a stone in the wheel track
+       * was correct; it is now a sealed state highway, and loose greywacke
+       * lying on the seal is both wrong and directly under the car. A
+       * highway's chip is on the shoulder, in the metre or so between the
+       * edgeline and the grass, where the sweeper throws it. */
+      const half = terrain.trail.widthAt(t);
+      const side = (rng() < .5 ? -1 : 1) * (half + .35 + Math.pow(rng(), 1.4) * 1.9);
       x = pathPoint.x + pathTangent.z * side;
       z = pathPoint.z - pathTangent.x * side;
     } else {
