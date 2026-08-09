@@ -170,11 +170,11 @@ class JungleLevel {
     scene.add(this.trackwork.root);
 
     await step(0.77, '立起步道标识');
-    this.trailhead = new JungleTrailhead(this.terrain, this.trail, tier);
+    this.trailhead = new JungleTrailhead(this.terrain, this.trail, tier, collision);
     scene.add(this.trailhead.root);
 
     await step(0.775, '搭起观瀑台');
-    this.lookout = new JungleLookout(this.terrain, this.trail, tier);
+    this.lookout = new JungleLookout(this.terrain, this.trail, tier, collision);
     scene.add(this.lookout.root);
 
     await step(0.78, '让林子收回遗迹');

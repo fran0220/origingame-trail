@@ -42,7 +42,7 @@ const PLATE = [0.185, 0.180, 0.170];
 const ORANGE = [0.780, 0.300, 0.045];
 
 export class JungleTrailhead {
-  constructor(terrain, trail, tier = 'high') {
+  constructor(terrain, trail, tier = 'high', collision = null) {
     this.root = new THREE.Group();
     this.root.name = 'jungle-trailhead';
     this.materials = [];
@@ -107,6 +107,17 @@ export class JungleTrailhead {
       box(px, terrain.height(px, pz) - 0.1, pz, 0.055, 1.85, 0.055, yaw, TIMBER);
     }
     box(hx, hy + 1.18, hz, 0.72, 0.52, 0.035, yaw, PANEL);
+    /* The sign is a solid object at head height. Walking through a signboard
+     * is a small thing that reads as a large one: it is the first man-made
+     * object in the level and the first chance to establish that things here
+     * are real. */
+    if (collision) {
+      collision.addCapsule({
+        ax: hx - Math.cos(yaw) * 0.66, az: hz - Math.sin(yaw) * 0.66,
+        bx: hx + Math.cos(yaw) * 0.66, bz: hz + Math.sin(yaw) * 0.66,
+        radius: 0.14, minY: hy - 0.4, maxY: hy + 2.0, kind: 'sign',
+      });
+    }
     /* A header band and the orange triangle that identifies the route. */
     box(hx, hy + 1.60, hz, 0.72, 0.11, 0.040, yaw, ORANGE);
     triangle(hx, hy + 1.42, hz + 0.05, 0.155, yaw, ORANGE);
@@ -116,6 +127,10 @@ export class JungleTrailhead {
     const bx = hx + nx * 2.0, bz = hz + nz * 2.0;
     const by = terrain.height(bx, bz);
     box(bx, by, bz, 0.62, 0.34, 0.44, yaw, PLATE);
+    if (collision) {
+      collision.addCircle({ x: bx, z: bz, radius: 0.60,
+                            minY: by - 0.4, maxY: by + 1.2, kind: 'sign' });
+    }
     for (let i = 0; i < 5; i++) {
       box(bx - 0.5 + i * 0.25, by + 0.34, bz, 0.055, 0.035, 0.42, yaw, [0.10, 0.105, 0.11]);
     }

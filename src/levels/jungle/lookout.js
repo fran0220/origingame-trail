@@ -31,7 +31,7 @@ const TIMBER = [0.150, 0.128, 0.098];
 const RAIL = [0.128, 0.108, 0.082];
 
 export class JungleLookout {
-  constructor(terrain, trail, tier = 'high') {
+  constructor(terrain, trail, tier = 'high', collision = null) {
     this.root = new THREE.Group();
     this.root.name = 'jungle-lookout';
     this.materials = [];
@@ -64,7 +64,16 @@ export class JungleLookout {
      * bank rather than short of it. */
     const cx = P.x + fx * 1.3, cz = P.z + fz * 1.3;
     const ground = terrain.height(cx, cz);
-    const deckY = ground + 0.42;
+    /* 0.22 rather than 0.42.
+     *
+     * The walker's height comes from the heightfield, not from the geometry it
+     * is standing on, so a deck the player cannot actually step onto is a deck
+     * they walk THROUGH. At 0.42 m that discrepancy is plainly visible; at
+     * 0.22 it is inside the litter depth and reads as flush, which is also the
+     * boardwalk's height — and the two are meant to be one piece of trackwork.
+     * The honest fix is a walkable surface layer; this is the honest interim,
+     * and it is stated rather than hidden. */
+    const deckY = ground + 0.22;
     const HW = 2.0, HD = 1.5;
 
     /* Piles. The far pair are longer because the bank falls away — which is
@@ -88,8 +97,22 @@ export class JungleLookout {
     }
 
     /* Rail on the three open sides. Top rail at 1.05 m, a mid rail, and posts
-     * — a single top rail with nothing under it reads as a washing line. */
+     * — a single top rail with nothing under it reads as a washing line.
+     *
+     * AND IT COLLIDES. A rail exists for exactly one reason: to stop people
+     * walking off the edge into the plunge pool. Built without a collider it
+     * was scenery shaped like a safety barrier, and the player walked through
+     * it — which is worse than no rail, because the rail is a promise. */
     const railAt = (ax, az, halfLen, ryaw) => {
+      if (collision) {
+        collision.addCapsule({
+          ax: ax - Math.cos(ryaw) * halfLen, az: az - Math.sin(ryaw) * halfLen,
+          bx: ax + Math.cos(ryaw) * halfLen, bz: az + Math.sin(ryaw) * halfLen,
+          radius: 0.10,
+          minY: deckY - 0.6, maxY: deckY + 1.2,
+          kind: 'rail',
+        });
+      }
       for (const h of [1.05, 0.62]) {
         box(ax, deckY + h, az, halfLen, 0.055, 0.045, ryaw, RAIL);
       }
