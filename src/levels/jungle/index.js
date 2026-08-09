@@ -36,6 +36,7 @@ import { JungleVines } from './vines.js';
 import { JungleBirds } from './birds.js';
 import { JungleFungi } from './fungi.js';
 import { JungleReclaim } from './reclaim.js';
+import { JungleTrackwork } from './trackwork.js';
 import { pick as pickCondition, applyCondition } from './conditions.js';
 import { Ambience } from '../../audio/engine.js';
 import { content } from '../../game/content.js';
@@ -162,6 +163,10 @@ class JungleLevel {
     this.deadwood = new JungleDeadwood(this.terrain, this.trail, tier);
     scene.add(this.deadwood.root);
 
+    await step(0.76, '铺设木栈道');
+    this.trackwork = new JungleTrackwork(this.terrain, this.trail, tier);
+    scene.add(this.trackwork.root);
+
     await step(0.78, '让林子收回遗迹');
     this.reclaim = new JungleReclaim(this.ruins, this.terrain, tier);
     scene.add(this.reclaim.root);
@@ -188,7 +193,7 @@ class JungleLevel {
     return [this.terrainMat, this.veg.leafMat, this.veg.woodMat,
             this.ruins.material, ...this.water.materials,
             ...this.deadwood.materials, ...this.vines.materials, ...this.birds.materials,
-            ...this.fungi.materials, ...this.reclaim.materials];
+            ...this.fungi.materials, ...this.reclaim.materials, ...this.trackwork.materials];
   }
 
   /**
