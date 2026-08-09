@@ -266,11 +266,24 @@ export class Driver {
   }
 
   /** Face the car back down the road it is nearest to. Used by a reset key. */
+  /**
+   * Put the car back on the road it is nearest to, in its own lane.
+   *
+   * This used to drop it on the centreline. placeAt() has offset into the near
+   * lane since the spawn was fixed, and recover() — which is the same action,
+   * just triggered later — was left behind, so pressing R after an excursion
+   * put the player straddling the paint with half the car in the oncoming
+   * lane. The two now share one placement, which is the only way they can stop
+   * disagreeing.
+   *
+   * It also faces the direction of travel rather than whatever the car was
+   * pointing at when it stopped. Someone pressing R has just spun, and the
+   * thing they want is the road ahead of them, not a tidier version of the
+   * mess they are in.
+   */
   recover() {
     const q = this.trail.nearest(this.pos.x, this.pos.z, {});
-    const p = this.trail.pointAt(q.t, new THREE.Vector3());
-    const tan = this.trail.tangentAt(q.t, new THREE.Vector3());
-    return this.placeAtPoint(p.x, p.z, Math.atan2(tan.x, tan.z));
+    return this.placeAt(q.t);
   }
 
   /* ── input ─────────────────────────────────────────────────────────────── */
