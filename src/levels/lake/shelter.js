@@ -182,7 +182,7 @@ function treeGeometry(kind, variant, rng, detail = 1) {
       branch(out, 0, y, 0, Math.cos(a) * 0.75, y + 1.9, Math.sin(a) * 0.75,
              0.075, 0.03, bark);
     }
-    crownClumps(out, kind, h, rng, top, bot, dt, Math.round(30 * N), (u) => ({
+    crownClumps(out, kind, h, rng, top, bot, dt, Math.round(84 * N), (u) => ({
       y: 0.18 + 0.78 * u,
       /* CLUMPS MUST OVERLAP OR THEY ARE BEADS.
        *
@@ -192,9 +192,22 @@ function treeGeometry(kind, variant, rng, detail = 1) {
        * faceted balls threaded on a pole, which is worse than the four big
        * lobes it replaced. A clump has to be comfortably larger than the
        * spacing of its neighbours before a cloud of them becomes a mass. */
-      r: 1.15 * (1 - Math.abs(u - 0.34) * 0.85),
+      /* SMALLER CLUMPS AGAIN, AND THE ARITHMETIC SAYS WHY. The pass above
+       * fixed beads-on-a-pole by making clumps comfortably larger than their
+       * spacing, and it was right, but it left them at 1.15 m radius on a
+       * crown whose half-width is about 1.9 m. That is TWO BALLS ACROSS THE
+       * TREE. No amount of overlap saves a canopy built from two spheres —
+       * inspected at 26 m the row read as stacks of faceted green boulders,
+       * which is the same complaint the jungle trees drew before they were
+       * rebuilt from small clumps.
+       *
+       * 0.62 m at 84 clumps keeps the overlap rule intact — spacing up the
+       * trunk is 0.13 m, still far under the radius — while putting six
+       * masses across the crown instead of two, which is the number at which
+       * a silhouette stops being a stack of circles. */
+      r: 0.62 * (1 - Math.abs(u - 0.34) * 0.85),
       squash: 1.30,
-      spread: 0.72 * (1 - Math.abs(u - 0.38) * 0.9),
+      spread: 0.86 * (1 - Math.abs(u - 0.38) * 0.9),
     }));
   } else if (kind === 'pine') {
     /* Radiata: a dark, heavy, slightly ragged dome on a bare lower trunk,
