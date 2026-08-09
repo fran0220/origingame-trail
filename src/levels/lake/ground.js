@@ -15,56 +15,25 @@ import { bakeSurface } from '../../gfx/bake.js';
 import { SSTEP } from '../../gfx/glsl.js';
 import { SHINGLE, TUSSOCK_MAT, GREYWACKE, MACRO_HI } from './groundTex.js';
 
-const MEADOW_MAPS = {
-  color: new URL('../../../media/lake-assets/ground/Grass004_1K-JPG_Color.jpg', import.meta.url).href,
-  normal: new URL('../../../media/lake-assets/ground/Grass004_1K-JPG_NormalGL.jpg', import.meta.url).href,
-  orm: new URL('../../../media/lake-assets/ground/Grass004_1K-JPG_ORM.jpg', import.meta.url).href,
-};
-const SHINGLE_MAPS = {
-  color: new URL('../../../media/lake-assets/ground/gravel_stones/gravel_stones_diff_1k.jpg', import.meta.url).href,
-  normal: new URL('../../../media/lake-assets/ground/gravel_stones/gravel_stones_nor_gl_1k.jpg', import.meta.url).href,
-  orm: new URL('../../../media/lake-assets/ground/gravel_stones/gravel_stones_arm_1k.jpg', import.meta.url).href,
-};
+/* Every surface in this file is baked in code from levels/lake/groundTex.js.
+ *
+ * It did not used to be. A scanned ambientCG grass set and a Poly Haven gravel
+ * set were loaded here and passed in as `meadowAssets`, with the procedural
+ * bakes demoted to "a deterministic fallback for tools and old cached builds".
+ * That is backwards for this project: the README's first line is zero external
+ * art assets, and every texture, mesh and sound generated in code. A scan is a
+ * photograph of someone else's ground, it has to ship as 57 MB beside the game,
+ * and it is the reason the deploy allowlist silently broke.
+ *
+ * The bakes were always here and always worked. What the scans bought was a
+ * head start on grass structure, and that job now belongs to the sward in
+ * flora.js — real blades with real silhouettes — which is a better answer than
+ * a photograph of blades on a flat plane anyway.
+ */
 
-/** Load the scanned meadow and shingle before the first real world frame. */
-export async function loadBasinGroundAssets(renderer) {
-  const loader = new THREE.TextureLoader();
-  const [map, normalMap, ormMap, shingleMap, shingleNormalMap, shingleOrmMap] = await Promise.all([
-    loader.loadAsync(MEADOW_MAPS.color),
-    loader.loadAsync(MEADOW_MAPS.normal),
-    loader.loadAsync(MEADOW_MAPS.orm),
-    loader.loadAsync(SHINGLE_MAPS.color),
-    loader.loadAsync(SHINGLE_MAPS.normal),
-    loader.loadAsync(SHINGLE_MAPS.orm),
-  ]);
-  map.colorSpace = THREE.SRGBColorSpace;
-  shingleMap.colorSpace = THREE.SRGBColorSpace;
-  const anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  for (const texture of [map, normalMap, ormMap, shingleMap, shingleNormalMap, shingleOrmMap]) {
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.minFilter = THREE.LinearMipmapLinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    texture.anisotropy = anisotropy;
-    texture.needsUpdate = true;
-  }
-  return {
-    map, normalMap, ormMap,
-    shingleMap, shingleNormalMap, shingleOrmMap,
-    textures: [map, normalMap, ormMap, shingleMap, shingleNormalMap, shingleOrmMap],
-  };
-}
-
-export function makeBasinMaterial(renderer, meadowAssets = null) {
-  const shingle = meadowAssets?.shingleMap ? {
-    map: meadowAssets.shingleMap,
-    normalMap: meadowAssets.shingleNormalMap,
-    ormMap: meadowAssets.shingleOrmMap,
-  } : bakeSurface(renderer, SHINGLE, { size: 1024, normalStrength: 2.1 });
-  /* The shader-authored mat remains a deterministic fallback for tools and
-   * for old cached builds. Production Lake uses the locally bundled ambientCG
-   * scan: real blade fragments, moss and soil states are a stronger foundation
-   * than asking more procedural noise to imitate a photograph. */
-  const mat_ = meadowAssets || bakeSurface(renderer, TUSSOCK_MAT, { size: 1024, normalStrength: 2.4 });
+export function makeBasinMaterial(renderer) {
+  const shingle = bakeSurface(renderer, SHINGLE, { size: 1024, normalStrength: 2.1 });
+  const mat_ = bakeSurface(renderer, TUSSOCK_MAT, { size: 1024, normalStrength: 2.4 });
   const rock = bakeSurface(renderer, GREYWACKE, { size: 1024, normalStrength: 3.6 });
   const macro = bakeSurface(renderer, MACRO_HI, { size: 256, normal: false, orm: false });
 
@@ -241,13 +210,11 @@ export function makeBasinMaterial(renderer, meadowAssets = null) {
       vec3 cRok = tap2(tRokA, tuv * 0.7);
 
       /* ── the biome ─────────────────────────────────────────────────────
-       * The ground cover is a scan of northern-hemisphere pasture — Grass004 —
-       * and it is the right *structure* and emphatically the wrong *colour*.
-       * Its measured linear mean is (0.127, 0.161, 0.034): green-dominant,
-       * which is what a fertilised temperate sward looks like and is not what
-       * this basin is. Left alone it made every frame read as Irish farmland
-       * with a snowfield behind it, which is a stronger and more immediate
-       * signal than any amount of correct native flora standing on top of it.
+       * The tussock bake is authored green-dominant, which is what a
+       * fertilised temperate sward looks like and is not what this basin is.
+       * Left alone it made every frame read as Irish farmland with a snowfield
+       * behind it, which is a stronger and more immediate signal than any
+       * amount of correct native flora standing on top of it.
        *
        * The Mackenzie is short-tussock grassland in a rain shadow: Festuca and
        * Poa on thin, stony, glacial soil, dormant and straw-coloured for most
@@ -296,11 +263,11 @@ export function makeBasinMaterial(renderer, meadowAssets = null) {
       /* These are the *measured* means of each bake, not chosen colours: a fade
        * to anything else makes the surface change value with camera distance,
        * which is far more visible than the aliasing it is there to prevent. */
-      /* The mean of the *recoloured* mat, not of the raw scan's (0.127,
-       * 0.161, 0.034). This constant and the biome block above have to be kept
-       * in step: fading to a mean measured before the correction puts a green
-       * band across every hill beyond 150 m while the ground at the player's
-       * feet is tawny, which reads as fog with the wrong colour in it. */
+      /* The mean of the *recoloured* mat. This constant and the biome block
+       * above have to be kept in step: fading to a mean measured before the
+       * correction puts a green band across every hill beyond 150 m while the
+       * ground at the player's feet is tawny, which reads as fog with the
+       * wrong colour in it. */
       cGrv = mix(cGrv, vec3(0.081, 0.080, 0.075), farDetail);
       cMat = mix(cMat, vec3(0.171, 0.135, 0.070), farDetail);
       cRok = mix(cRok, vec3(0.380, 0.388, 0.377), farDetail);

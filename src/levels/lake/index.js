@@ -25,14 +25,12 @@
 import { Trail } from '../../world/path.js';
 import { ROUTE } from './route.js';
 import { Basin, LAKE_Y, shoreX } from './basin.js';
-import { loadBasinGroundAssets, makeBasinMaterial } from './ground.js';
+import { makeBasinMaterial } from './ground.js';
 import { content } from './content.js';
 import { LakeDistance } from './distance.js';
 import { LakeWater, drawLakeWater } from './water.js';
 import { LakeRoad } from './road.js';
 import { LakeFlora } from './flora.js';
-import { LakeMeadow } from './meadow.js';
-import { LakeHabitat } from './habitat.js';
 import { LakeProps } from './props.js';
 import { LakeFauna } from './fauna.js';
 import { LakeAmbience } from './audio.js';
@@ -148,8 +146,7 @@ class LakeLevel {
 
     await step(0.16, '刻蚀冰川盆地');
     this.terrain = new Basin(this.trail);
-    const groundAssets = await loadBasinGroundAssets(renderer);
-    this.terrainMat = makeBasinMaterial(renderer, groundAssets);
+    this.terrainMat = makeBasinMaterial(renderer);
     /* This ground is broad, not flat. Moraine lips, fan channels and terrace
      * risers must shadow one another under the same sun as the vegetation;
      * disabling terrain casting removed the largest directional-light cue in
@@ -163,18 +160,25 @@ class LakeLevel {
 
     await step(0.38, '铺展冰川湖水');
     this.water = new LakeWater(this.terrain, tier, renderer, scene); scene.add(this.water.root);
-    await step(0.46, '铺展春日草甸');
-    this.meadow = await LakeMeadow.create(this.terrain, tier); scene.add(this.meadow.root);
-    await step(0.51, '建立湖岸生境');
-    /* Photoscanned middle-storey communities carry the visible mass between
-     * the PBR floor and the named native specimens. Habitat owns broadleaf
-     * scrub, fern swales and real stone; flora below owns species identity. */
-    this.habitat = await LakeHabitat.create(this.terrain, tier); scene.add(this.habitat.root);
+    /* The scanned meadow and the photoscanned habitat used to sit here — a
+     * glTF flower island layer and eleven families of scanned shrub, fern,
+     * grass and rock. Both are gone.
+     *
+     * They were never compatible with what this project is. The README's first
+     * line is zero external art assets and every texture, mesh and sound
+     * generated in code, and the jungle keeps that promise completely; the
+     * lake quietly did not, and shipped 57 MB of someone else's photographs
+     * beside a game whose whole claim is that it contains none.
+     *
+     * What they were carrying — the middle storey, the mass between the ground
+     * and the named specimens — is now carried by flora.js, which is entirely
+     * procedural: a sward of real blades, tussock stools, lupin drifts and
+     * thirty-one authored native species. That is a better answer than a
+     * photograph anyway, because a scan of a plant is a plant seen from one
+     * direction under one sky.
+     */
     await step(0.58, '种植高地植物');
-    /* The scanned PBR meadow closes the continuous floor. Native flora keeps
-     * authored hero silhouettes and notable points without laying a uniform
-     * card carpet over it: R21's bent cards became a mint crop, while R22's
-     * upright revision became a field of black V-shaped marks. */
+    /* Everything that grows in this basin, and all of it built in code. */
     /* Ground cover stays off, and this is the third time it has been switched
      * off rather than the first time it was never tried. See the refutation in
      * docs/experiments.md: restricting the card layer to the near field fixed
@@ -196,7 +200,7 @@ class LakeLevel {
     this.distance = new LakeDistance(); this.distance.setTier(tier); scene.add(this.distance.root);
   }
 
-  materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.meadow.materials, ...this.habitat.materials, ...this.veg.materials, ...this.props.materials, ...this.fauna.materials, ...this.distance.materials]; }
+  materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.veg.materials, ...this.props.materials, ...this.fauna.materials, ...this.distance.materials]; }
 
   makeAmbience({ camera, walker }) { return new LakeAmbience({ camera, walker }); }
 
@@ -228,33 +232,27 @@ class LakeLevel {
     this.water.update(dt, host.camera, host.sky.sunDir, host);
     this.fauna.update(dt);
     this.veg.update(this.water.time);
-    this.meadow.update(this.water.time);
-    this.habitat.update(this.water.time);
     this.veg.cullAround(host.camera.position.x, host.camera.position.z);
-    this.meadow.cullAround(host.camera.position.x, host.camera.position.z);
-    this.habitat.cullAround(host.camera.position.x, host.camera.position.z);
     this.props?.cullAround(host.camera.position.x, host.camera.position.z);
     this.terrainMat.userData.uniforms.uTime.value = this.water.time;
   }
 
-  cullAround(x, z) { this.meadow?.cullAround(x, z); this.habitat?.cullAround(x, z); this.veg?.cullAround(x, z); this.props?.cullAround(x, z); this.fauna?.cullAround?.(x, z); }
+  cullAround(x, z) { this.veg?.cullAround(x, z); this.props?.cullAround(x, z); this.fauna?.cullAround?.(x, z); }
 
   /* Water must not reflect itself, but the Southern Alps are the dominant
    * object in Lake Pukaki's real reflection. The old exclusion removed them
    * from the PMREM and forced the lake shader to invent a flat sky colour. */
   envExclude() { return [this.water?.root, this.fauna?.root].filter(Boolean); }
 
-  setTier(tier) { this.water?.setTier(tier); this.meadow?.setTier(tier); this.habitat?.setTier(tier); this.veg?.setTier(tier); this.props?.setTier(tier); this.fauna?.setTier(tier); this.distance?.setTier(tier); }
+  setTier(tier) { this.water?.setTier(tier); this.veg?.setTier(tier); this.props?.setTier(tier); this.fauna?.setTier(tier); this.distance?.setTier(tier); }
 
   setViewportHeight() {}
 
-  stats() { return { water:this.water?.stats(), meadow:this.meadow?.stats(), habitat:this.habitat?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
+  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
 
   dispose() {
     this.road?.dispose();
     this.water?.dispose();
-    this.meadow?.dispose();
-    this.habitat?.dispose();
     this.veg?.dispose();
     this.props?.dispose();
     this.fauna?.dispose();

@@ -214,7 +214,7 @@ services, each of which degrades to the local behaviour if it is unavailable:
 ### Deploying
 
 ```
-npm run deploy:check               # pack, then boot dist/ in a browser
+npm run deploy:check               # pack (2.9 MB), then boot dist/ in a browser
 node tools/cover-lake.mjs          # media/cover-lake.png, driven not posed
 scripts/deploy.sh dist --update yupadwblpc --title "OriginGame Trail" \
   --engine threejs --genre racing --cover media/cover-lake.jpg \
@@ -223,12 +223,19 @@ scripts/deploy.sh dist --update yupadwblpc --title "OriginGame Trail" \
 ```
 
 `npm run deploy:check` is not optional. `pack.mjs` copies an allowlist and
-prints a file count, which is not evidence: the allowlist was
-`['index.html', 'src', 'vendor']` and Lake Tekapo's scanned ground and glTF
-plants live under `media/lake-assets`, so the packed build was a level that
-404s every texture it asks for — and it produced exactly the same cheerful
-summary as a good one. The check serves `dist/` over HTTP, boots both levels in
-a real browser from a fresh page each, and fails on any 404 or page error.
+prints a file count, which is not evidence of anything — it will happily ship a
+level that 404s every file it asks for and print the same cheerful summary. The
+check serves `dist/` over HTTP, boots both levels in a real browser from a fresh
+page each, and fails on any 404 or page error.
+
+The allowlist is three entries and should never grow. There was a period when
+it read `[..., 'media/lake-assets']`, because Lake Tekapo had acquired a scanned
+ambientCG ground and eleven families of glTF plants and could not boot without
+57 MB of them. That made the deploy work and made this README's first line
+false. They are gone: the ground is baked from `levels/lake/groundTex.js` again
+and the middle storey is `levels/lake/flora.js` — a sward of real blades,
+tussock stools, lupin drifts and thirty-one authored native species, all built
+in code. `dist/` contains no image, mesh or audio file of any kind.
 
 `--update yupadwblpc` matters too: without it a deploy creates a second game
 rather than a new version of the one people already have a link to.
