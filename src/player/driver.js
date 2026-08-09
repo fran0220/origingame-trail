@@ -86,6 +86,13 @@ const DRAG = 0.5 * 1.20 * 0.32 * 2.2;
 /* Rolling resistance, as a fraction of vertical load. */
 const ROLL_RESIST = 0.014;
 
+/* How far the driver can turn their head, and how long they can hold it there.
+ * Ninety degrees is as far as anyone looks out of a moving car, and a second
+ * after the mouse stops the head comes back — see the `move` handler. */
+const LOOK_MAX = Math.PI / 2;
+const LOOK_HOLD = 0.9;
+const LOOK_RETURN = 3.2;
+
 const MAX_STEER = 0.52;            // rad at the roadwheel, ~30 degrees
 /* How fast the driver can turn the wheel, and how much less lock they get at
  * speed. Both are the *player's* limits rather than the car's: without them a
@@ -143,6 +150,12 @@ export class Driver {
     this.camPos = new THREE.Vector3();
     this.camLook = new THREE.Vector3();
     this.camMode = 'chase';           // 'chase' | 'hood'
+    /* Always numbers, never undefined. Every consumer of these used to guard
+     * with `?? 0`, which is the shape a field takes when it was added from the
+     * event handler outwards rather than declared. */
+    this.lookYaw = 0;
+    this.lookPitch = 0;
+    this._lookHeld = -99;
     this._camInit = false;
     this._baseFov = camera.fov;
 
@@ -226,11 +239,30 @@ export class Driver {
     };
 
     /* The mouse only looks around; it does not steer. A mouse-steered car
-     * cannot be driven smoothly because the input has no centre. */
+     * cannot be driven smoothly because the input has no centre.
+     *
+     * Neither could this, and that was the bug that made the whole car feel
+     * inverted. A walker's look is *absolute* — the mouse is the heading, and
+     * leaving it pointing somewhere is the player's choice. A driver's is not:
+     * the car has its own heading, the mouse is a neck, and a neck that stays
+     * where it was left is a driver looking out of the side window at 100
+     * km/h. With the old ±2.4 rad clamp and no return, a couple of ordinary
+     * mouse movements parked the chase camera round the side or the front of
+     * the car, and from there every steering input reads backwards — not
+     * because steering is backwards, but because the player is looking at the
+     * car rather than along it.
+     *
+     * So the look is now a glance: it moves while the mouse moves and springs
+     * back to straight ahead when it stops, which is what a driver's head
+     * actually does. `_lookHeld` is the timestamp of the last movement and
+     * update() below does the returning.
+     */
     const move = (e) => {
       if (document.pointerLockElement !== dom) return;
-      this.lookYaw = clamp((this.lookYaw ?? 0) + e.movementX * 0.0022, -2.4, 2.4);
-      this.lookPitch = clamp((this.lookPitch ?? 0) - e.movementY * 0.0022, -0.5, 0.6);
+      if (Math.abs(e.movementX) < 1 && Math.abs(e.movementY) < 1) return;
+      this.lookYaw = clamp(this.lookYaw + e.movementX * 0.0026, -LOOK_MAX, LOOK_MAX);
+      this.lookPitch = clamp(this.lookPitch - e.movementY * 0.0022, -0.42, 0.50);
+      this._lookHeld = this._time;
     };
     window.addEventListener('mousemove', move);
     const _d = this._detach;
@@ -531,6 +563,17 @@ export class Driver {
 
   _updateCamera(dt) {
     const cam = this.camera;
+
+    /* Bring the head back to straight ahead once the mouse has been still.
+     * Without this the glance is a permanent camera offset — see attach(). */
+    if (this._time - this._lookHeld > LOOK_HOLD) {
+      const k = 1 - Math.exp(-LOOK_RETURN * dt);
+      this.lookYaw = lerp(this.lookYaw, 0, k);
+      this.lookPitch = lerp(this.lookPitch, 0, k);
+      if (Math.abs(this.lookYaw) < 1e-4) this.lookYaw = 0;
+      if (Math.abs(this.lookPitch) < 1e-4) this.lookPitch = 0;
+    }
+
     const sinY = Math.sin(this.yaw), cosY = Math.cos(this.yaw);
 
     if (this.camMode === 'hood') {
@@ -539,8 +582,11 @@ export class Driver {
       const ez = this.pos.z + cosY * 0.10 - sinY * 0.36;
       cam.position.set(ex, this.pos.y + 1.14, ez);
       cam.rotation.set(0, 0, 0);
-      cam.rotateY(this.yaw + (this.lookYaw ?? 0) + Math.PI);
-      cam.rotateX(this.bodyPitch * 0.6 + (this.lookPitch ?? 0));
+      /* +PI because a three.js camera looks down its own -Z and the car's nose
+       * is +Z. The glance then adds to that, so mouse right turns the head
+       * right, which is the same sign the chase view uses. */
+      cam.rotateY(this.yaw + this.lookYaw + Math.PI);
+      cam.rotateX(this.bodyPitch * 0.6 + this.lookPitch);
       cam.rotateZ(-this.bodyRoll * 0.8);
       cam.fov = lerp(this._baseFov, this._baseFov + 12,
                      smoothstep(0, TOP_SPEED, this.speed));
@@ -557,13 +603,17 @@ export class Driver {
 
     /* The rig follows the car's *heading*, not its velocity, and it lags.
      * Following velocity points the camera where the car is sliding, which
-     * hides the slide — the one thing the player most needs to see. */
-    const lookYaw = this.lookYaw ?? 0;
-    const ry = this.yaw + lookYaw;
+     * hides the slide — the one thing the player most needs to see.
+     *
+     * The rig is placed from the car's heading alone. It used to be placed
+     * from `yaw + lookYaw`, which orbits the whole camera round the car when
+     * the player glances — so a glance did not turn the driver's head, it
+     * walked the tripod, and which way the world appeared to swing depended on
+     * where the tripod had got to. A glance belongs on the aim, below. */
     const want = this._tmp.set(
-      this.pos.x - Math.sin(ry) * back,
+      this.pos.x - sinY * back,
       this.pos.y + high,
-      this.pos.z - Math.cos(ry) * back,
+      this.pos.z - cosY * back,
     );
     /* Never underground. A crest or a batter will otherwise put the rig
      * inside the hill and the frame goes to black. */
@@ -580,10 +630,16 @@ export class Driver {
      * goes. This is the part that makes a chase camera read as driving: the
      * player is looking where they are going, not at their own boot lid. */
     const lead = lerp(3.0, 15.0, fast);
+    /* The aim point carries no glance in it. It is heavily smoothed — that
+     * smoothing is what stops the camera twitching over every bump — and a
+     * smoothed target eats a glance almost entirely: rotating it 30 degrees
+     * moved the actual view by 0.01, because the filter had a second and a
+     * half of memory and the glance was over before it arrived. The glance is
+     * applied to the camera itself below, where it is immediate. */
     const target = this._tmp.set(
-      this.pos.x + Math.sin(this.yaw) * lead,
-      this.pos.y + 1.15 + (this.lookPitch ?? 0) * 6,
-      this.pos.z + Math.cos(this.yaw) * lead,
+      this.pos.x + sinY * lead,
+      this.pos.y + 1.15,
+      this.pos.z + cosY * lead,
     );
     if (!this._camLookInit) { this.camLook.copy(target); this._camLookInit = true; }
     this.camLook.lerp(target, 1 - Math.exp(-9 * dt));
@@ -591,6 +647,18 @@ export class Driver {
     cam.position.copy(this.camPos);
     cam.up.copy(UP);
     cam.lookAt(this.camLook);
+    /* The glance, turned directly on the camera so it is not filtered away.
+     *
+     * The sign is positive, and it is the opposite of the one the same idea
+     * takes in the hood view above — which is worth stating because deriving
+     * it got it backwards and the measurement in tools/control-truth.mjs got
+     * it right. After lookAt() has aimed this camera down the road, its local
+     * +X points at world -X, because mapping local -Z onto the car's forward
+     * and keeping +Y up flips the remaining axis. So the camera's own "right"
+     * is the car's left, and a positive rotation about local +Y is what swings
+     * the view to the driver's right. */
+    if (this.lookYaw) cam.rotateY(this.lookYaw);
+    if (this.lookPitch) cam.rotateX(this.lookPitch);
     /* Roll the frame slightly into the corner. Small — a few degrees — and it
      * is doing the job a camera operator's shoulder does. */
     cam.rotateZ(-this.bodyRoll * 0.35);
