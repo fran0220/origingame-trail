@@ -261,6 +261,7 @@ class LakeLevel {
     this.water.update(dt, host.camera, host.sky.sunDir, host);
     this.fauna.update(dt);
     this.farm?.update(dt);
+    this.shelter?.update(dt);
     this.veg.update(this.water.time);
     this.veg.cullAround(host.camera.position.x, host.camera.position.z);
     this.props?.cullAround(host.camera.position.x, host.camera.position.z);

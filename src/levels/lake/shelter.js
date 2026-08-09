@@ -123,6 +123,17 @@ function treeGeometry(kind, variant, rng, detail = 1) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(out.pos, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(out.col, 3));
+  /* Compliance, baked per species into the geometry rather than carried on a
+   * uniform, because all three species share one material and one draw path.
+   * A Lombardy poplar is a flagpole with leaves — it barely bends but its
+   * whole crown shivers; a radiata pine is stiff and heavy; a willow is the
+   * loosest thing in the basin. Getting these three wrong relative to each
+   * other is more noticeable than getting the absolute amount wrong. */
+  const SWAY = { poplar: 1.00, pine: 0.42, willow: 1.55 }[kind] ?? 0.8;
+  const n = out.pos.length / 3;
+  const sway = new Float32Array(n);
+  sway.fill(SWAY);
+  g.setAttribute('aSway', new THREE.BufferAttribute(sway, 1));
   g.setIndex(out.idx);
   g.computeVertexNormals();
   return g;
@@ -143,6 +154,52 @@ export class LakeShelter {
     });
     this.materials.push(mat);
     this.mat = mat;
+
+    /* Wind.
+     *
+     * The grass and the jungle canopy have swayed since they were written;
+     * these trees did not, and they are the tallest things in the basin. A
+     * static poplar row beside a moving sward is worse than both being still,
+     * because the eye reads the contradiction directly — the shelterbelt looks
+     * painted onto a live landscape.
+     *
+     * Displacement is proportional to height above the ground ^1.7, which is
+     * the standard cantilever approximation and the reason a tree's crown
+     * moves several times as far as its mid-trunk while its base stays put. A
+     * linear falloff makes the whole tree slide sideways, which reads as the
+     * ground moving. */
+    this.uniforms = {
+      uShelterTime: { value: 0 },
+      uShelterWind: { value: new THREE.Vector2(0.62, 0.78) },
+    };
+    mat.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, this.uniforms);
+      shader.vertexShader =
+        'uniform float uShelterTime;\nuniform vec2 uShelterWind;\nattribute float aSway;\n' +
+        shader.vertexShader.replace('#include <begin_vertex>', [
+          '#include <begin_vertex>',
+          '{',
+          '  /* Per-tree phase from its own world position, so a shelterbelt',
+          '     does not beat in unison — a row of poplars all reaching the',
+          '     same way at the same instant is the single most artificial',
+          '     thing wind can do. */',
+          '  vec3 inst = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);',
+          '  float ph = inst.x * 0.21 + inst.z * 0.17;',
+          '  /* A slow gust travelling across the valley, modulating a faster',
+          '     flutter. Wind arrives in waves; a single sine reads as a',
+          '     metronome and is the tell of every cheap vegetation shader. */',
+          '  float gust = 0.55 + 0.45 * sin(uShelterTime * 0.23 - inst.x * 0.010 - inst.z * 0.008);',
+          '  float s = sin(uShelterTime * 1.15 + ph) * 0.62',
+          '          + sin(uShelterTime * 2.31 + ph * 1.7) * 0.27',
+          '          + sin(uShelterTime * 4.10 + ph * 2.9) * 0.11;',
+          '  float h = max(transformed.y, 0.0);',
+          '  float amp = aSway * gust * pow(h * 0.085, 1.7) * 0.42;',
+          '  transformed.x += uShelterWind.x * s * amp;',
+          '  transformed.z += uShelterWind.y * s * amp;',
+          '}',
+        ].join('\n'));
+    };
+    mat.customProgramCacheKey = () => 'lake-shelter-wind-v1';
 
     const rng = random(0x7a1e3);
     const dummy = new THREE.Object3D();
@@ -243,7 +300,7 @@ export class LakeShelter {
     }
   }
 
-  update() {}
+  update(dt) { this.uniforms.uShelterTime.value += dt; }
   setTier() {}
   cullAround(x, z) {
     this.meshes.forEach((m) => {
