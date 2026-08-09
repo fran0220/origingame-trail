@@ -34,14 +34,23 @@ function random(seed) {
  * driven by height within the crown so the underside is in its own shade. */
 function lobe(out, cx, cy, cz, rx, ry, rz, rng, top, bottom, detail) {
   const geo = new THREE.IcosahedronGeometry(1, detail);
+  const clumpWarp = 0.86 + 0.26 * rng();
   const pos = geo.getAttribute('position');
   const n = pos.count;
   const base = out.pos.length / 3;
   for (let i = 0; i < n; i++) {
     const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
     /* Lumpy rather than spherical: a tree crown is a pile of smaller masses
-     * and a clean ellipsoid reads as a lollipop at any distance. */
-    const warp = 0.78 + 0.30 * rng();
+     * and a clean ellipsoid reads as a lollipop at any distance.
+     *
+     * The warp is now PER CLUMP with only a slight per-vertex jitter on top.
+     * It used to be a fresh 0.78-1.08 random at every vertex, which was
+     * tolerable on a 42-vertex subdivision-1 lobe and turns a 12-vertex
+     * subdivision-0 one into a spiked star — each vertex is a sixth of the
+     * silhouette, so randomising them individually IS the silhouette. The
+     * shape variation has to live at the scale of the clump; anything below
+     * that is noise on a surface too coarse to carry it. */
+    const warp = clumpWarp * (0.96 + 0.08 * rng());
     out.pos.push(cx + x * rx * warp, cy + y * ry * warp, cz + z * rz * warp);
     const u = Math.min(1, Math.max(0, y * 0.5 + 0.5));
     for (let c = 0; c < 3; c++) out.col.push(bottom[c] + (top[c] - bottom[c]) * (0.25 + 0.75 * u));
@@ -74,50 +83,162 @@ function taperedTrunk(out, h, r0, r1, lean, rng, bark) {
   }
 }
 
+/* A tree crown, as a cloud of small clumps.
+ *
+ * The first version built each crown from four to seven LARGE icosahedron
+ * lobes at subdivision 1. That is 80 facets per lobe spread over a mass two to
+ * three metres across, so each facet was most of a metre wide and every tree
+ * read as a stack of faceted polyhedra — reported, accurately, as the trees
+ * being crude.
+ *
+ * The fix costs nothing, because FACET SIZE SCALES WITH LOBE SIZE. Twenty-four
+ * clumps at subdivision 0 is 480 triangles, exactly what six lobes at
+ * subdivision 1 cost, and every facet is now a fifth the size. The silhouette
+ * stops being a polygon and starts being foliage, for the same budget.
+ *
+ * Two other things a tree needs and these did not have:
+ *
+ *   BRANCHES. A crown floating above a bare pole is the single clearest tell
+ *   of a game tree. Real limbs leave the trunk low and carry the foliage
+ *   outward, and even three of them change the read completely because they
+ *   connect the two masses the eye is trying to reconcile.
+ *
+ *   AN IRREGULAR OUTLINE. Clumps are placed on a profile with jitter in all
+ *   three axes and random per-clump scale, so no two trees share a silhouette
+ *   and none of them is symmetrical. A tree that is symmetrical about its
+ *   trunk is a lamp.
+ */
+function crownClumps(out, kind, h, rng, top, bot, detail, count, profile) {
+  for (let i = 0; i < count; i++) {
+    const u = i / Math.max(1, count - 1);
+    /* Golden-angle spiral: fills a volume evenly without the banding a
+     * uniformly random scatter shows at these counts. */
+    const a = i * 2.399 + rng() * 0.8;
+    const p = profile(u, rng);
+    const rad = p.r * (0.55 + rng() * 0.75);
+    const y = p.y * h * (0.97 + rng() * 0.06);
+    const dist = p.spread * Math.sqrt(rng());
+    const cx = Math.cos(a) * dist, cz = Math.sin(a) * dist;
+    lobe(out, cx, y, cz,
+         rad, rad * p.squash * (0.8 + rng() * 0.45), rad,
+         rng, top, bot, detail);
+  }
+}
+
+function branch(out, x0, y0, z0, x1, y1, z1, r0, r1, bark) {
+  const SIDES = 4;
+  const base = out.pos.length / 3;
+  const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+  const len = Math.hypot(dx, dy, dz) || 1;
+  /* An arbitrary frame perpendicular to the limb. */
+  const ux = dx / len, uy = dy / len, uz = dz / len;
+  let px = -uz, py = 0, pz = ux;
+  const pl = Math.hypot(px, py, pz) || 1;
+  px /= pl; py /= pl; pz /= pl;
+  const qx = uy * pz - uz * py, qy = uz * px - ux * pz, qz = ux * py - uy * px;
+  for (let ring = 0; ring < 2; ring++) {
+    const t = ring, r = r0 + (r1 - r0) * t;
+    for (let s = 0; s < SIDES; s++) {
+      const ang = (s / SIDES) * Math.PI * 2;
+      const cs = Math.cos(ang) * r, sn = Math.sin(ang) * r;
+      out.pos.push(x0 + dx * t + px * cs + qx * sn,
+                   y0 + dy * t + py * cs + qy * sn,
+                   z0 + dz * t + pz * cs + qz * sn);
+      const shade = 0.72 + 0.4 * (Math.sin(ang) * 0.5 + 0.5);
+      out.col.push(bark[0] * shade, bark[1] * shade, bark[2] * shade);
+    }
+  }
+  for (let s = 0; s < SIDES; s++) {
+    const n = (s + 1) % SIDES;
+    out.idx.push(base + s, base + SIDES + s, base + n);
+    out.idx.push(base + n, base + SIDES + s, base + SIDES + n);
+  }
+}
+
 function treeGeometry(kind, variant, rng, detail = 1) {
   const out = { pos: [], col: [], idx: [] };
   const lean = { a: rng() * 6.283, d: 0.10 + rng() * 0.22 };
+  /* Clump subdivision follows the tier. Small clumps hide facets far better
+   * than large ones, but at arm's length a 20-face blob still reads as a
+   * polyhedron, and these stand right beside the road. Subdivision 1 is 80
+   * faces on a one-metre clump — about 12 cm per facet — which is under the
+   * size the eye picks out at the distance they are passed. Low tier keeps
+   * the coarse clump and drops the count instead, because a coarse clump
+   * still reads as foliage while half as many leaves a hole in the tree. */
+  const dt = detail === 0 ? 0 : 1;
+  const N = detail === 0 ? 0.55 : 1;
 
   if (kind === 'poplar') {
     /* Lombardy poplar: a green exclamation mark. Almost no width, all height,
      * and the reason a row of them is visible from the next valley. */
     const h = 11 + rng() * 7;
-    taperedTrunk(out, h * 0.94, 0.26, 0.10, lean, rng, [0.115, 0.100, 0.072]);
+    const bark = [0.115, 0.100, 0.072];
+    taperedTrunk(out, h * 0.94, 0.26, 0.10, lean, rng, bark);
     const top = [0.230, 0.330, 0.115], bot = [0.070, 0.115, 0.048];
-    const lobes = 5 + (variant % 2);
-    for (let i = 0; i < lobes; i++) {
-      const u = i / (lobes - 1);
-      const y = h * (0.20 + 0.76 * u);
-      const r = (1.55 - 0.85 * Math.abs(u - 0.42) * 2) * (0.85 + rng() * 0.3);
-      lobe(out, lean.d * (y / h) * Math.cos(lean.a), y, lean.d * (y / h) * Math.sin(lean.a),
-           Math.max(0.5, r), Math.max(0.9, r * 1.9), Math.max(0.5, r), rng, top, bot, detail);
+    /* Short branches, steeply upswept — a Lombardy's limbs run almost
+     * parallel to its trunk, which is why the whole tree is a column. */
+    for (let i = 0; i < 5; i++) {
+      const a = i * 2.399, y = h * (0.22 + i * 0.13);
+      branch(out, 0, y, 0, Math.cos(a) * 0.75, y + 1.9, Math.sin(a) * 0.75,
+             0.075, 0.03, bark);
     }
+    crownClumps(out, kind, h, rng, top, bot, dt, Math.round(30 * N), (u) => ({
+      y: 0.18 + 0.78 * u,
+      /* CLUMPS MUST OVERLAP OR THEY ARE BEADS.
+       *
+       * The first tuning used 0.52 m clumps spaced up 14 m of trunk, which is
+       * a vertical gap of half a metre between centres and a radius smaller
+       * than that — so they never touched and the tree read as a string of
+       * faceted balls threaded on a pole, which is worse than the four big
+       * lobes it replaced. A clump has to be comfortably larger than the
+       * spacing of its neighbours before a cloud of them becomes a mass. */
+      r: 1.15 * (1 - Math.abs(u - 0.34) * 0.85),
+      squash: 1.30,
+      spread: 0.72 * (1 - Math.abs(u - 0.38) * 0.9),
+    }));
   } else if (kind === 'pine') {
     /* Radiata: a dark, heavy, slightly ragged dome on a bare lower trunk,
      * which is what a shelterbelt pine looks like once it has been up thirty
      * years and lost its skirt. */
     const h = 9 + rng() * 6;
-    taperedTrunk(out, h * 0.55, 0.34, 0.20, lean, rng, [0.085, 0.070, 0.052]);
+    const bark = [0.085, 0.070, 0.052];
+    taperedTrunk(out, h * 0.62, 0.34, 0.20, lean, rng, bark);
     const top = [0.105, 0.160, 0.078], bot = [0.030, 0.052, 0.030];
-    const lobes = 4 + (variant % 3);
-    for (let i = 0; i < lobes; i++) {
-      const u = i / lobes;
-      const y = h * (0.42 + 0.58 * u);
-      const spread = (1 - u * 0.55) * (2.4 + rng() * 1.1);
-      const a = rng() * 6.283, off = rng() * spread * 0.45;
-      lobe(out, Math.cos(a) * off, y, Math.sin(a) * off,
-           spread, spread * 0.72, spread, rng, top, bot, detail);
+    for (let i = 0; i < 6; i++) {
+      const a = i * 2.399 + rng() * 0.4;
+      const y = h * (0.44 + (i % 3) * 0.14);
+      const reach = 1.5 + rng() * 1.1;
+      branch(out, 0, y, 0, Math.cos(a) * reach, y + 0.7 + rng() * 0.7,
+             Math.sin(a) * reach, 0.11, 0.035, bark);
     }
+    crownClumps(out, kind, h, rng, top, bot, dt, Math.round(28 * N), (u) => ({
+      y: 0.46 + 0.52 * u,
+      r: 1.42 * (1 - u * 0.38),
+      squash: 0.80,
+      /* Ragged: a mature radiata's outline is not a dome, it is a dome with
+       * pieces missing where limbs have been lost to wind. */
+      spread: 2.3 * (1 - u * 0.55),
+    }));
   } else {
     /* Willow: wide, low, and drooping, sitting in the wet. */
     const h = 6.5 + rng() * 3.5;
-    taperedTrunk(out, h * 0.42, 0.38, 0.24, lean, rng, [0.105, 0.092, 0.066]);
+    const bark = [0.105, 0.092, 0.066];
+    taperedTrunk(out, h * 0.42, 0.38, 0.24, lean, rng, bark);
     const top = [0.245, 0.300, 0.118], bot = [0.078, 0.108, 0.052];
     for (let i = 0; i < 5; i++) {
-      const a = i * 1.257 + rng() * 0.5, r = 1.5 + rng() * 1.5;
-      lobe(out, Math.cos(a) * r, h * (0.52 + rng() * 0.30), Math.sin(a) * r,
-           2.5 + rng(), 1.5 + rng() * 0.7, 2.5 + rng(), rng, top, bot, detail);
+      const a = i * 2.399 + rng() * 0.6;
+      const reach = 1.9 + rng() * 1.3;
+      branch(out, 0, h * 0.40, 0, Math.cos(a) * reach, h * (0.62 + rng() * 0.2),
+             Math.sin(a) * reach, 0.13, 0.04, bark);
     }
+    crownClumps(out, kind, h, rng, top, bot, dt, Math.round(26 * N), (u) => ({
+      y: 0.52 + 0.34 * u,
+      r: 1.48 * (1 - u * 0.22),
+      /* Flattened and hanging — the top of a willow is broad and its edges
+       * fall away below the widest point. */
+      squash: 0.62,
+      spread: 2.6 * (1 - u * 0.30),
+    }));
   }
 
   const g = new THREE.BufferGeometry();
@@ -128,10 +249,12 @@ function treeGeometry(kind, variant, rng, detail = 1) {
    * A Lombardy poplar is a flagpole with leaves — it barely bends but its
    * whole crown shivers; a radiata pine is stiff and heavy; a willow is the
    * loosest thing in the basin. Getting these three wrong relative to each
-   * other is more noticeable than getting the absolute amount wrong. */
+   * other is more noticeable than getting the absolute amount wrong.
+   *
+   * Re-added deliberately: rewriting this function once dropped the attribute
+   * and the shelterbelts silently stopped moving. */
   const SWAY = { poplar: 1.00, pine: 0.42, willow: 1.55 }[kind] ?? 0.8;
-  const n = out.pos.length / 3;
-  const sway = new Float32Array(n);
+  const sway = new Float32Array(out.pos.length / 3);
   sway.fill(SWAY);
   g.setAttribute('aSway', new THREE.BufferAttribute(sway, 1));
   g.setIndex(out.idx);
