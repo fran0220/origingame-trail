@@ -93,6 +93,11 @@ const LOOK_MAX = Math.PI / 2;
 const LOOK_HOLD = 0.9;
 const LOOK_RETURN = 3.2;
 
+/* Half a 3.5 m lane. The car sits this far to the left of the centreline,
+ * because this is New Zealand and because a car parked on the paint reads as a
+ * mistake before the player has touched anything. */
+const LANE_OFFSET = 1.75;
+
 const MAX_STEER = 0.52;            // rad at the roadwheel, ~30 degrees
 /* How fast the driver can turn the wheel, and how much less lock they get at
  * speed. Both are the *player's* limits rather than the car's: without them a
@@ -181,11 +186,29 @@ export class Driver {
 
   /* ── placement ─────────────────────────────────────────────────────────── */
 
-  /** Drop the car on the road at normalised arc length `t`, facing along it. */
+  /**
+   * Drop the car on the road at normalised arc length `t`, in its own lane.
+   *
+   * On the centreline is not on the road. The trail's point is the middle of
+   * an 8.2 m carriageway with a dashed line painted down it, so putting the car
+   * there straddles the paint with half the bodywork in the oncoming lane —
+   * which is what "the spawn is the wrong way round" looks like from the
+   * driver's seat, because the first thing the road tells you is that you are
+   * on the wrong side of it.
+   *
+   * New Zealand drives on the left, so the car is offset a half-lane to the
+   * left of the centreline: LANE_OFFSET is half of 3.5 m, which puts the car's
+   * centre in the middle of the near lane and its wheels either side of where
+   * a real one's would be.
+   */
   placeAt(t) {
     const p = this.trail.pointAt(t, new THREE.Vector3());
     const tan = this.trail.tangentAt(t, new THREE.Vector3());
-    return this.placeAtPoint(p.x, p.z, Math.atan2(tan.x, tan.z));
+    const yaw = Math.atan2(tan.x, tan.z);
+    /* The car's left, in the frame this model uses: see _readInput() for why
+     * +X is the left of a car whose nose is +Z. */
+    const lx = Math.cos(yaw), lz = -Math.sin(yaw);
+    return this.placeAtPoint(p.x + lx * LANE_OFFSET, p.z + lz * LANE_OFFSET, yaw);
   }
 
   /**

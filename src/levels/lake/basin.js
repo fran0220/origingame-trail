@@ -35,8 +35,30 @@ import * as THREE from 'three';
 import { Heightfield } from '../../world/heightfield.js';
 import { Noise2D, clamp, smoothstep, lerp } from '../../world/noise.js';
 
-export const BOUNDS = { x0: -280, x1: 190, z0: 70, z1: -660 };
-export const STEP = 0.6;
+/* The basin, and it is now a valley rather than a bay.
+ *
+ * 470 x 730 m held 761 m of road, which is 27 seconds at open-road speed. That
+ * is not a stage, it is a corner — the reported experience was "you drive for a
+ * moment and it is gone", and the road also ran within 10 m of the world edge
+ * at its start, so leaving the seal put you off the end of the terrain almost
+ * immediately.
+ *
+ * The valley is extended along -Z, which is the axis it actually runs on, to
+ * 2060 m. The grid step goes up with it: at 0.6 m a world this long is 3.5M
+ * vertices to solve at boot and 20 MB of channel data, and the detail it buys
+ * is below the scale of anything this level draws — the landform is 20-80 m,
+ * the beach cusps are 15-30 m, and the fine grain at 2.9 m is already faded out
+ * by the footprint term in the ground shader. 0.9 m costs 1.3M vertices, which
+ * is 1.36x what the short basin cost, for 2.8x the road.
+ *
+ * The road surface itself does not depend on this at all: road.js builds its
+ * own ribbon at 2 m stations, so the seal keeps its resolution whatever the
+ * terrain does. */
+export const BOUNDS = { x0: -300, x1: 210, z0: 70, z1: -1990 };
+export const STEP = 0.9;
+/** How far the valley runs, so shapes authored along it can be written in a
+ *  fraction of its length rather than in absolute metres that go stale. */
+export const VALLEY = BOUNDS.z0 - BOUNDS.z1;
 const CHUNK = 48;
 
 /** Lake surface. Everything in this level is measured from it. */
@@ -76,17 +98,33 @@ export const ROAD_FREEBOARD = 1.5;
  * noisy height field disagrees with itself between any two of them.
  */
 export function shoreX(z) {
-  const u = clamp((70 - z) / 730, 0, 1);
+  /* Written in a fraction of the valley's length rather than in the old
+   * absolute 730 m, so the whole shoreline stretches with BOUNDS instead of
+   * running out a third of the way up a longer lake. */
+  const u = clamp((BOUNDS.z0 - z) / VALLEY, 0, 1);
   /* The lake narrows toward its head and the delta pushes the water back, so
-   * the shore swings east through the last fifth of the walk. */
-  let x = -34 - 96 * smoothstep(0.05, 0.55, u) + 120 * smoothstep(0.72, 1.0, u);
-  // Two fans, at the side streams. Each pushes a lobe of shingle out.
-  x += 26 * Math.exp(-((((z + 300) / 46) ** 2)));
-  x += 17 * Math.exp(-((((z + 486) / 38) ** 2)));
+   * the shore swings east through the last fifth of the drive. */
+  let x = -34 - 96 * smoothstep(0.05, 0.55, u) + 120 * smoothstep(0.80, 1.0, u);
+  /* Alluvial fans at the side streams, each pushing a lobe of shingle out into
+   * the lake. Placed as fractions of the valley for the same reason as above;
+   * a longer valley carries more of them, at the spacing the two original ones
+   * had. */
+  for (const [fu, amp, width] of FANS) {
+    const fz = BOUNDS.z0 - fu * VALLEY;
+    x += amp * Math.exp(-(((z - fz) / width) ** 2));
+  }
   // Small bays and spits, so the waterline is not a drawn curve.
   x += 5.5 * Math.sin(z * 0.019) + 2.4 * Math.sin(z * 0.047 + 1.7);
   return x;
 }
+
+/* Where the side streams come in, as a fraction of the valley, with the lobe
+ * each one pushes out and its along-shore width. The first two are the pair the
+ * short basin had, at the same proportions of its length. */
+export const FANS = [
+  [0.16, 26, 46], [0.27, 17, 38], [0.41, 30, 58],
+  [0.56, 21, 44], [0.71, 27, 52], [0.86, 15, 36],
+];
 
 /* Still-water depth profile, as a function of metres lakeward of the waterline.
  *
@@ -312,7 +350,12 @@ export class Basin extends Heightfield {
 
       /* The two alluvial fans. Convex cones, spreading from the wall down to
        * the water, and the reason the track has to climb inland twice. */
-      for (const [fz, fh, fr] of [[-300, 9.0, 120], [-486, 6.2, 96]]) {
+      /* Fan surfaces, from the same table shoreX() uses — see FANS. Two hardcoded
+       * z values would have left the rest of a 2 km valley without any of the
+       * landform that gives this road its only real gradients. */
+      for (const [fu, famp, fw] of FANS) {
+        const fz = BOUNDS.z0 - fu * VALLEY;
+        const fh = 0.30 * famp, fr = 2.4 * fw;
         const r = Math.hypot((z - fz) * 1.5, Math.max(0, fromShore + 10)) / fr;
         if (r < 1) {
           const cone = (1 - r) ** 1.6 * fh;
@@ -486,7 +529,8 @@ export class Basin extends Heightfield {
      * bare pebble even where the flora is a continuous sward. Real terrace is
      * tussock mat with a narrow cobble foreshore; leave fans only partly open. */
     let shingle = 1 - smoothstep(2.0, 14.0, fromShore);
-    for (const [fz, fr] of [[-300, 120], [-486, 96]]) {
+    for (const [fu, famp, fw] of FANS) {
+      const fz = BOUNDS.z0 - fu * VALLEY, fr = 2.4 * fw;
       const r = Math.hypot((z - fz) * 1.5, Math.max(0, fromShore + 10)) / fr;
       shingle = Math.max(shingle, (1 - clamp(r, 0, 1)) * 0.42);
     }

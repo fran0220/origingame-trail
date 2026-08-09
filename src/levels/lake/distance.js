@@ -556,10 +556,27 @@ function mountainMaterial(spec, layer) {
   return mat;
 }
 
+/* How far up the valley the ranges have to be pushed.
+ *
+ * The RANGES table below is authored in absolute metres and its nearest layer,
+ * the foothills, starts at z = -1150. That was comfortably beyond the head of a
+ * basin that ended at -660. The valley now runs to -1990, so the road drives
+ * 840 m *inside* the first range: the frames from the top of the stage came
+ * back with the sky replaced by a wall of olive, which is the underside of a
+ * mountain seen from within it.
+ *
+ * The whole backdrop is translated rather than re-authoring forty peak
+ * positions. It is a backdrop — its internal arrangement is the composition and
+ * its absolute position is not, so long as it stays beyond the ground the
+ * player can reach and keeps the same bearing from the road.
+ */
+const BACKDROP_Z = -1330;
+
 export class LakeDistance {
   constructor() {
     this.root = new THREE.Group();
     this.root.name = 'lake-distance-southern-alps';
+    this.root.position.z = BACKDROP_Z;
     this.materials = [];
     this.meshes = RANGES.map((spec, i) => {
       const material = mountainMaterial(spec, i);

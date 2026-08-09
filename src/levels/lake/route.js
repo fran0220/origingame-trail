@@ -41,7 +41,7 @@
  * flattening into a silhouette.
  */
 import { smoothstep } from '../../world/noise.js';
-import { ROAD_HALF } from './basin.js';
+import { ROAD_HALF, BOUNDS, shoreX } from './basin.js';
 
 /* Hand-placed, and much straighter than the jungle's. A lakeshore path has
  * nowhere to hide: the whole basin is visible from everywhere in it, so bends
@@ -49,24 +49,48 @@ import { ROAD_HALF } from './basin.js';
  * a path that wanders for no reason a walker can see. What these do instead is
  * follow the shape the water and the fans left — out onto each shingle spit,
  * back in behind each fan. */
-const CONTROL = [
-  /* Explicitly follow the authored shoreX() curve. The previous x values
-   * drifted from 75 m inland at the start to 161 m around z=-352 despite the
-   * route being described as a shore walk; the lake was consequently a thin
-   * strip in every principal view. These controls hold 15–60 m of dry setback,
-   * with the two fan crossings moving inland and the delta returning to the
-   * water. Basin truth still owns the exact contour. */
-  [29, 60], [29, 20], [11, -30], [-17, -84], [-41, -140],
-  [-74, -196], [-81, -248], [-49, -300], [-72, -352], [-101, -404],
-  [-103, -452], [-79, -500], [-51, -548], [-21, -590], [-3, -624],
-];
+/* Generated from shoreX() rather than hand-placed, and that is a change of
+ * method forced by the length.
+ *
+ * Fifteen hand-placed points described 760 m of shore. Two kilometres of it
+ * would be forty, and hand-placing forty points against a curve that is itself
+ * authored is not authorship, it is transcription — the previous set had
+ * already drifted off the shoreline it was meant to follow and had to be
+ * rewritten once for exactly that reason.
+ *
+ * So the alignment is the shoreline, offset inland by a setback that breathes.
+ * Everything that makes this a good road to drive is already in shoreX(): the
+ * bays and spits put in long open curves at a 330 m and a 134 m wavelength, and
+ * the six alluvial fans push the water out into lobes that the road has to
+ * swing around. Following that at a varying distance produces sighted straights
+ * joined by sweepers, which is what a lakeshore highway is, and it cannot drift
+ * away from the water because it is defined by it.
+ *
+ * The setback runs 16 to 46 m at two incommensurate wavelengths, so the road
+ * closes on the water and opens away from it without ever repeating.
+ */
+const CONTROL = (() => {
+  const pts = [];
+  const z0 = BOUNDS.z0 - 10, z1 = BOUNDS.z1 + 40;
+  const STEP_Z = 52;
+  for (let z = z0; z >= z1; z -= STEP_Z) {
+    const setback = 31
+      + 15 * Math.sin(z * 0.0043 + 0.7)
+      + 8 * Math.sin(z * 0.0117 + 2.1);
+    pts.push([shoreX(z) + setback, z]);
+  }
+  return pts;
+})();
 
 /** Where the walk ends, at the head of the lake. */
-export const HEAD_Z = -590;
+export const HEAD_Z = BOUNDS.z1 + 90;
 
 export const ROUTE = {
   control: CONTROL,
-  samples: 1100,
+  /* About 0.55 m between samples over a 2.2 km alignment. The polyline is what
+   * every distance query and the road ribbon are built from, so its spacing is
+   * the resolution of the road's geometry rather than a performance knob. */
+  samples: 4000,
 
   /* Half-width of the *tread*, which for this level means the sealed lane
    * surface, and which is now a constant.

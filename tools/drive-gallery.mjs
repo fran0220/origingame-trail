@@ -37,26 +37,49 @@ await run({ width: W, height: H, hash: 'manual&tier=ultra&level=lake', timeout: 
   for (let i = 0; i < STOPS.length; i++) {
     const info = await page.evaluate(async ({ target }) => {
       const g = window.__game, d = g.walker, trail = g.trail, THREE = window.THREE;
-      const P = new THREE.Vector3();
-      for (let n = 0; n < 60 * 120; n++) {
+      const P = new THREE.Vector3(), T = new THREE.Vector3();
+      /* A driver, not a controller with a hair trigger.
+       *
+       * The first version aimed at a point a fixed 0.018 of *arc length* ahead
+       * and lifted whenever the heading error passed 0.055 rad. Both broke when
+       * the world got longer and the car started in its own lane: 0.018 of a
+       * 2 km route is 36 m rather than 14 m, and from 1.75 m off the centreline
+       * the bearing to a point 36 m ahead is already 0.048 rad out before the
+       * road has done anything. The car spent the whole run on the brakes and
+       * never left the start line.
+       *
+       * So the lookahead is in metres, it scales with speed the way a real
+       * driver's does, the aim point is the centre of the driver's own lane
+       * rather than the crown of the road, and there is always throttle below
+       * walking pace so it cannot deadlock. */
+      let stalled = 0;
+      for (let n = 0; n < 60 * 180; n++) {
         const q = trail.nearest(d.pos.x, d.pos.z, {});
         if (q.t >= target) break;
-        trail.pointAt(Math.min(1, q.t + 0.018), P);
-        const want = Math.atan2(P.x - d.pos.x, P.z - d.pos.z);
+        const lookM = 14 + d.speed * 1.1;
+        const ahead = Math.min(1, q.t + lookM / trail.length);
+        trail.pointAt(ahead, P);
+        trail.tangentAt(ahead, T);
+        /* Aim at the near lane, offset to the car's left of the centreline —
+         * (cos yaw, -sin yaw) is the left of a nose-+Z car in this frame. */
+        const ay = Math.atan2(T.x, T.z);
+        const ax = P.x + Math.cos(ay) * 1.75, az = P.z - Math.sin(ay) * 1.75;
+        const want = Math.atan2(ax - d.pos.x, az - d.pos.z);
         let err = want - d.yaw;
         while (err > Math.PI) err -= Math.PI * 2;
         while (err < -Math.PI) err += Math.PI * 2;
         /* Increasing yaw rotates the nose from +Z toward +X, which in a
          * right-handed Y-up frame is the car's LEFT — so a positive heading
-         * error is corrected with A, not D. This mapping was the other way
-         * round while the steering itself was mirrored, and the two faults
-         * cancelled: the autopilot drove the stage perfectly with the controls
-         * reversed, which is exactly why no test caught it. */
-        d.keys.KeyA = err > 0.012; d.keys.KeyD = err < -0.012;
-        const hot = Math.abs(err) > 0.055 || d.speed > 26;
-        d.keys.KeyW = !hot;
-        d.keys.KeyS = Math.abs(err) > 0.13 && d.speed > 17;
+         * error is corrected with A, not D. */
+        d.keys.KeyA = err > 0.015; d.keys.KeyD = err < -0.015;
+        const tooFast = d.speed > 30 && Math.abs(err) > 0.10;
+        d.keys.KeyW = d.speed < 6 || !tooFast;
+        d.keys.KeyS = d.speed > 24 && Math.abs(err) > 0.22;
         g.step(1 / 60);
+        /* If it is genuinely stuck — in a ditch, against the world edge — put
+         * it back on the road rather than burning three minutes of frames. */
+        if (d.speed < 1.5) { if (++stalled > 240) { d.recover(); stalled = 0; } }
+        else stalled = 0;
       }
       /* Let the camera settle at speed rather than photographing it mid-lag. */
       for (let n = 0; n < 20; n++) g.step(1 / 60);
