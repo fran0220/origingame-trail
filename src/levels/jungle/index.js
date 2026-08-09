@@ -31,6 +31,7 @@ import { Vegetation, roofDensity } from '../../world/vegetation.js';
 import { standingWater } from './spillway.js';
 import { drawWater } from './mapwater.js';
 import { JungleLife } from './life.js';
+import { JungleDeadwood } from './deadwood.js';
 import { Ambience } from '../../audio/engine.js';
 import { content } from '../../game/content.js';
 
@@ -144,6 +145,10 @@ class JungleLevel {
     this.water = new Water(renderer, this.terrain, this.trail, { tier });
     scene.add(this.water.root);
 
+    await step(0.80, '放倒枯木');
+    this.deadwood = new JungleDeadwood(this.terrain, this.trail, tier);
+    scene.add(this.deadwood.root);
+
     await step(0.88, '放出飞虫');
     this.life = new JungleLife(this.terrain, this.trail, tier);
     scene.add(this.life.root);
@@ -152,7 +157,8 @@ class JungleLevel {
   /** Every opaque material this level put in the scene, for the canopy patch. */
   materials() {
     return [this.terrainMat, this.veg.leafMat, this.veg.woodMat,
-            this.ruins.material, ...this.water.materials];
+            this.ruins.material, ...this.water.materials,
+            ...this.deadwood.materials];
   }
 
   /**
