@@ -159,3 +159,57 @@
 - Rule: for anything a player experiences — look, feel, pace, length — build an instrument
   that *reports and compares*, not one that passes. Reserve assertions for contracts that are
   genuinely binary and externally defined (a save round-trips, a level boots without throwing).
+
+## "It handles badly" was a road fault, and only an instrument found it
+
+- The car was blamed for four rounds. Held to a strict standard the trace kept failing in
+  one place, and driving it *more slowly* made it worse — which is not how a grip problem
+  behaves, and was the clue that the fault was not in the tyre model.
+- Watching that place answered it in one frame: 20 degrees of steering applied, lateral
+  acceleration 0.00 g. All four wheels were airborne and the tyre model was correctly
+  multiplying grip by zero. The road was launching the car.
+- A 1-2-1 smoothing pass has sigma ~ sqrt(n/2) samples, so the 400 passes on the elevation
+  profile smoothed about 7 m of road — fine for a walker, and nowhere near enough for a car,
+  which leaves the ground when v²/R > g, i.e. any crest tighter than 92 m at 30 m/s. Smooth
+  to ~45 m and crest-limit to a vertical radius derived from that physics.
+- Generalisation: when a vehicle "feels wrong", measure whether it is *in contact*. Zero
+  lateral force with lock applied is unambiguous, and no amount of tuning grip, stiffness or
+  damping would ever have fixed it.
+
+## Judge a road by its curvature, not by driving it
+
+- Offsetting a shoreline that carries alluvial-fan lobes produced 34 m radius hairpins on a
+  state highway. Smoothing the shoreline enough to remove them left a 316 m minimum radius —
+  flat out end to end, 0.41° of average steering. Both are the same error: the alignment was
+  never measured, only driven and judged.
+- Corners are authorable. R = L²/(4π²A) for a sinusoidal lateral offset, so choosing the
+  corner you want fixes the amplitude. Target and verify the curvature distribution — min,
+  10th percentile, median, and how many corners are under 200 m — before driving it.
+- A real highway cuts across the back of an alluvial fan and lets the shingle run out to the
+  water on its own. Terrain features that the road should ignore must be filtered out of the
+  alignment with a window wider than the feature.
+
+## For a fixed-line instrument, the driver has to be competent
+
+- A bang-bang autopilot that spends a third of the stage off the road makes every handling
+  number a measurement of the driver. Tuning the car against it means tuning the car to
+  flatter a bad driver.
+- The shared driver plans corner speed by working backwards through the braking it can
+  actually do — v = sqrt(v_req² + 2 a s), minimised over the lookahead — rather than reacting
+  to the worst curvature in a window, which brakes too early for far corners and too late for
+  near ones.
+- With a binary keyboard, steer to a target *angle* and release, rather than holding a key
+  until the error goes away. Holding always overshoots. A reversal count on the hands then
+  measures the controller's dithering, not the car — measure yaw-rate sign changes instead.
+
+## Density is not cover: three properties have to be right
+
+- Reaching 1.5 clumps/m² still looked like a planted crop. Density was necessary and nowhere
+  near sufficient.
+- Even spacing at one scale is a crop. Real grassland grows as discrete stools that spread
+  and merge, so randomise *sites* and give each several plants, with a third of them much
+  larger than their neighbours.
+- Upright narrow blades read as seedlings. A tussock is a fountain — the outer blades arch
+  out nearly as far as they rise — and that is what makes neighbouring clumps touch.
+- Dry vegetation against dry ground differs in texture and silhouette, not in tone. Anything
+  darker than what it stands in reads as an object dropped on the ground.
