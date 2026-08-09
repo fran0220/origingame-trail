@@ -36,7 +36,7 @@ const outDir = path.join(ROOT, 'shots', tag);
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 
-await run({ width: W, height: H, hash: 'manual&tier=high&level=lake', timeout: 300_000 }, async ({ page, errs, gl }) => {
+await run({ width: W, height: H, hash: 'manual&tier=high&level=lake&cond=morning', timeout: 300_000 }, async ({ page, errs, gl }) => {
   const stations = (await page.evaluate(({ system, ablate, isolate }) => {
     const g = window.__game;
     const THREE = window.THREE;

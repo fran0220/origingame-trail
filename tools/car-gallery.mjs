@@ -25,7 +25,7 @@ const VIEWS = [
   ['07-close-rear',  180,  5,  4.2],
 ];
 
-await run({ width: 1000, height: 750, hash: 'manual&tier=ultra&level=lake', timeout: 420_000 }, async ({ page }) => {
+await run({ width: 1000, height: 750, hash: 'manual&tier=ultra&level=lake&cond=morning', timeout: 420_000 }, async ({ page }) => {
   for (const [name, az, el, dist] of VIEWS) {
     await page.evaluate(({ az, el, dist }) => {
       const g = window.__game, d = g.walker;

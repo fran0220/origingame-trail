@@ -41,7 +41,7 @@ const AZ = flag('az', 35);
 const W = flag('w', 1280), H = flag('h', 720);
 const WARMUP = flag('warmup', 26);   // seconds of sim before the splash clears
 
-await run({ width: W, height: H, hash: `manual&tier=high&level=${level}`, timeout: 600_000 },
+await run({ width: W, height: H, hash: `manual&tier=high&level=${level}&cond=morning`, timeout: 600_000 },
   async ({ page }) => {
     const info = await page.evaluate(async (o) => {
       const g = window.__game;

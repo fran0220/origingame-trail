@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { run, capture } from './harness.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.join(ROOT, 'media', 'cover-lake.jpg');
-await run({ width: 1600, height: 900, hash: 'manual&tier=ultra&level=lake', timeout: 600_000 }, async ({ page }) => {
+await run({ width: 1600, height: 900, hash: 'manual&tier=ultra&level=lake&cond=morning', timeout: 600_000 }, async ({ page }) => {
   await page.evaluate(async () => {
     const g = window.__game, d = g.walker;
     g.begin(); g.setSun(30, 24);

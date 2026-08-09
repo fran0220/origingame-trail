@@ -39,6 +39,7 @@ import { LakeRoadside } from './roadside.js';
 import { LakeStructures } from './structures.js';
 import { LakeRock } from './rock.js';
 import { LakeWayside } from './wayside.js';
+import { pickCondition, applyCondition } from './conditions.js';
 import { WheelDust } from '../../player/dust.js';
 import { LakeFauna } from './fauna.js';
 import { LakeAmbience } from './audio.js';
@@ -53,7 +54,7 @@ export const meta = {
  * input to build — see main.js. The jungle omits it and walks. */
 export const locomotion = 'drive';
 
-export const mood = {
+const BASE_MOOD = {
   /* Far plane at fifty kilometres rather than the jungle's nine hundred
    * metres. The range is the subject and it is genuinely that far away. What
    * makes this affordable is that the far distance is drawn in its own pass —
@@ -135,6 +136,19 @@ export const mood = {
    * 46 m cascade is a ring of shadow that travels with the car. */
   shadowReach: 170,
 };
+
+/* The stage under whatever sky today brings — see conditions.js.
+ *
+ * mood is read once, at build, by main.js. Deriving it here at module load
+ * means a condition costs nothing at runtime and every system that reads mood
+ * (sky, fog, hemisphere, exposure, shadows, the distance pass) picks it up
+ * without knowing conditions exist. `?cond=<id>` pins one, which the capture
+ * tools need: an instrument whose subject changes between runs is not an
+ * instrument. */
+export const condition = pickCondition(
+  typeof location === 'undefined' ? '' : `${location.search}${location.hash}`);
+export const mood = applyCondition(BASE_MOOD, condition);
+
 
 export { content };
 

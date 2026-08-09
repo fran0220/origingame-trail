@@ -21,7 +21,7 @@ const outDir = path.join(ROOT, 'shots', tag);
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 
-await run({ width: W, height: H, hash: 'manual&tier=ultra&level=lake', timeout: 420_000 }, async ({ page }) => {
+await run({ width: W, height: H, hash: 'manual&tier=ultra&level=lake&cond=morning', timeout: 420_000 }, async ({ page }) => {
   await page.evaluate((mode) => {
     const g = window.__game;
     g.begin();

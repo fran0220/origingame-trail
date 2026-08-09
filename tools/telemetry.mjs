@@ -22,7 +22,7 @@ const dir = path.join(ROOT, 'media', 'telemetry');
 fs.mkdirSync(dir, { recursive: true });
 
 let t = null;
-await run({ hash: 'manual&tier=high&level=lake', timeout: 600_000 }, async ({ page }) => {
+await run({ hash: 'manual&tier=high&level=lake&cond=morning', timeout: 600_000 }, async ({ page }) => {
   t = await page.evaluate(async () => {
     const g = window.__game, d = g.walker, trail = g.trail, THREE = window.THREE;
     const P = new THREE.Vector3(), T = new THREE.Vector3();

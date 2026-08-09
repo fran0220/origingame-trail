@@ -63,7 +63,7 @@ const AIRBORNE = [
   /vine/i,             // climbers: hanging from a tree is the whole point
 ];
 
-await run({ hash: `manual&tier=high&level=${level}`, timeout: 600_000 }, async ({ page }) => {
+await run({ hash: `manual&tier=high&level=${level}&cond=morning`, timeout: 600_000 }, async ({ page }) => {
   const out = await page.evaluate(async (airborneSrc) => {
     const airborne = airborneSrc.map((s) => new RegExp(s.source, s.flags));
     const g = window.__game;

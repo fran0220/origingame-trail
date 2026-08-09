@@ -44,7 +44,7 @@ const dir = path.join(ROOT, 'media', 'handling');
 fs.mkdirSync(dir, { recursive: true });
 
 let out = null;
-await run({ hash: 'manual&tier=high&level=lake', timeout: 600_000 }, async ({ page }) => {
+await run({ hash: 'manual&tier=high&level=lake&cond=morning', timeout: 600_000 }, async ({ page }) => {
   out = await page.evaluate(() => {
     const g = window.__game, d = g.walker;
     const H = 1 / 120;                      // fine steps: this is a measurement
