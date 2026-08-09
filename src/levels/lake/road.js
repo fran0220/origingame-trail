@@ -287,7 +287,7 @@ function makeSealMaterial() {
     envMapIntensity: 0.42,
   });
 
-  mat.customProgramCacheKey = () => 'lake-chipseal-v2';
+  mat.customProgramCacheKey = () => 'lake-chipseal-v3';
 
   mat.onBeforeCompile = (sh) => {
     mat.userData.shader = sh;
@@ -383,7 +383,29 @@ function makeSealMaterial() {
       float pxA = max(fwidth(vRoadPos.x), 1e-5), pxB = max(fwidth(vRoadPos.z), 1e-5);
       float pxMin = min(pxA, pxB), pxMax = max(pxA, pxB);
       float px = pow(pxMin, 0.35) * pow(pxMax, 0.65);
-      float chipFade = sstep(0.0035, 0.016, px);
+      /* THE FADE WINDOW, MEASURED RATHER THAN CHOSEN — third pass at this bug.
+       *
+       * A metric first, because the previous two passes had none. On the near
+       * seal, pixel-to-pixel difference ACROSS the streaks is the comb; the
+       * same difference at a station where the road is nearly head-on is the
+       * chip you want to keep. A road with the chip forced to its mean is the
+       * floor for both. Sweeping the window:
+       *
+       *     window            comb (t.55)   near chip (t.30)
+       *     0.0035-0.016         4.97           1.90     <- was shipped
+       *     0.0030-0.012         3.38           1.24
+       *     0.0025-0.0090        1.76           0.77
+       *     0.0020-0.0070        0.96           0.69
+       *     chip disabled        0.83           0.69     <- the floor
+       *
+       * Every window tight enough to kill the comb also lands the near-field
+       * number ON the floor, which is not filtering the chip, it is deleting
+       * it — precisely the failure the first comment above describes. So the
+       * scalar fade cannot separate them, and the sweep is the proof rather
+       * than another opinion. 0.0030-0.012 takes 32% off the comb and keeps
+       * the near chip at 1.8x the floor, and that is the whole of what a
+       * single number can buy here. */
+      float chipFade = sstep(0.0030, 0.012, px);
       float fade = max(sstep(30.0, 190.0, distance(cameraPosition, vRoadPos)), chipFade);
 
       /* Chip. 90 cells per metre puts a cell at about 11 mm, which is a
@@ -555,7 +577,7 @@ function makeSealMaterial() {
          * glitter rather than as a tint. */
         float a2 = max(fwidth(vRoadPos.x), 1e-5), b2 = max(fwidth(vRoadPos.z), 1e-5);
         float px2 = pow(min(a2,b2), 0.35) * pow(max(a2,b2), 0.65);
-        float chip2 = mix(fbm2(vRoadPos.xz * 90.0), 0.5, sstep(0.0035, 0.016, px2));
+        float chip2 = mix(fbm2(vRoadPos.xz * 90.0), 0.5, sstep(0.0030, 0.012, px2));
         float wheel2 = max(1.0 - sstep(0.30, 0.62, abs(vRoad.x + 1.85)),
                            1.0 - sstep(0.30, 0.62, abs(vRoad.x - 1.85)));
         float dash2 = step(fract(vRoad.y / 12.0), 0.25);
