@@ -39,6 +39,7 @@ import { JungleReclaim } from './reclaim.js';
 import { JungleTrackwork } from './trackwork.js';
 import { JungleTrailhead } from './trailhead.js';
 import { JungleLookout } from './lookout.js';
+import { JungleWindthrow } from './windthrow.js';
 import { pick as pickCondition, applyCondition } from './conditions.js';
 import { Ambience } from '../../audio/engine.js';
 import { content } from '../../game/content.js';
@@ -173,6 +174,10 @@ class JungleLevel {
     this.trailhead = new JungleTrailhead(this.terrain, this.trail, tier, collision);
     scene.add(this.trailhead.root);
 
+    await step(0.772, '锯开倒下的巨木');
+    this.windthrow = new JungleWindthrow(this.terrain, this.trail, tier, collision);
+    scene.add(this.windthrow.root);
+
     await step(0.775, '搭起观瀑台');
     this.lookout = new JungleLookout(this.terrain, this.trail, tier, collision);
     scene.add(this.lookout.root);
@@ -203,7 +208,7 @@ class JungleLevel {
     return [this.terrainMat, this.veg.leafMat, this.veg.woodMat,
             this.ruins.material, ...this.water.materials,
             ...this.deadwood.materials, ...this.vines.materials, ...this.birds.materials,
-            ...this.fungi.materials, ...this.reclaim.materials, ...this.trackwork.materials, ...this.trailhead.materials, ...this.lookout.materials];
+            ...this.fungi.materials, ...this.reclaim.materials, ...this.trackwork.materials, ...this.trailhead.materials, ...this.lookout.materials, ...this.windthrow.materials];
   }
 
   /**
