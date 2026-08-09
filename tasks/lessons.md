@@ -135,3 +135,27 @@
   test self-consistency, not correctness, whenever the frame convention is itself suspect.
 - Corollary: when a user reports a reversal that your green test denies, suspect the test's
   frame before suspecting the user.
+
+## Assertion tests were the wrong instrument for this project, twice over
+
+- Five `*-truth.mjs` files asserted pass/fail on the racing level and were all green on a
+  build with reversed steering, a spawn straddling the centreline, a 27-second road, and a
+  world edge the car drove off. Every one of those is obvious within ten seconds of playing.
+- Two distinct failure modes, and both are inherent to the format here:
+  1. **They asserted against conventions this code invented.** A test that computes the car's
+     "right" the same wrong way the physics does agrees with the bug.
+  2. **They asserted the things that are easy to assert**, which are not the things that are
+     wrong. No assertion was ever going to say "this road is too short to be fun".
+- The method this project already had is in `tools/gallery.mjs`: fixed stations, images
+  *plus* a `metrics.json`, and `--compare <baseline>` to diff two runs — with gates only wide
+  enough to catch a frame that has stopped being a picture at all. Its own header: "Pictures
+  are the judgement, but they are not the record." That is the loop. Change one thing, render
+  the same stations, look, and read the deltas.
+- `tools/telemetry.mjs` is the same idea for feel. It cannot pass or fail — there is no lap
+  time that is "correct" — it drives a fixed line, records what the car did, and diffs two
+  runs. It diagnosed the handling in a single run: 34.9% of the stage off the seal, 9.7° of
+  average steering, 39 wheel reversals per kilometre. That is a car that will not turn and
+  rings rather than settles, and none of it needed an assertion.
+- Rule: for anything a player experiences — look, feel, pace, length — build an instrument
+  that *reports and compares*, not one that passes. Reserve assertions for contracts that are
+  genuinely binary and externally defined (a save round-trips, a level boots without throwing).
