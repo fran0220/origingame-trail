@@ -29,6 +29,21 @@ import * as THREE from 'three';
 import { BOUNDS, LAKE_Y, ROAD_SHOULDER } from './basin.js';
 import { clearsPoint } from '../../world/clearance.js';
 
+/* Shortest signed angle between two headings. Without this a figure whose
+ * target crosses the +/-PI seam takes the long way round — 350 degrees of
+ * turn to look 10 degrees left. */
+/* One in six figures repose per frame — see update(). */
+const SLICE_STRIDE = 6;
+/* Radians per second. A person turning to watch something manages about
+ * 130 deg/s with head and shoulders together. */
+const MAX_TURN = 2.3;
+
+function wrapAngle(a) {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+}
+
 function random(seed) {
   let s = seed >>> 0 || 1;
   s ^= s >>> 16; s = Math.imul(s, 0x7feb352d) >>> 0;
@@ -232,10 +247,18 @@ export class LakeStage {
       }
     }
 
+    /* Kept so update() can move them. Everything else alive in this level
+     * moves; a crowd that does not is the most conspicuous thing that can
+     * stand beside a road, because a human figure is the one object a viewer
+     * has a lifetime of experience of. */
+    this._meshes = [];
+    this._dummy = dummy;
+
     variants.forEach((geo, v) => {
       const list = lists[v];
       if (!list.length) return;
       const mesh = new THREE.InstancedMesh(geo, mat, list.length);
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.name = `stage:people:${v}`;
       const col = new THREE.Color();
       list.forEach((q, i) => {
@@ -255,6 +278,8 @@ export class LakeStage {
       mesh.receiveShadow = true;
       mesh.computeBoundingSphere();
       this.root.add(mesh);
+      list.forEach((q) => { q.phase = rng() * 6.283; q.baseYaw = q.yaw; });
+      this._meshes.push({ mesh, list, cursor: 0 });
     });
 
     this.counts = {
@@ -263,7 +288,89 @@ export class LakeStage {
     };
   }
 
-  update() {}
+  /**
+   * Sway, and turn to watch the car go past.
+   *
+   * THE TRACKING IS THE WHOLE POINT. Idle sway alone makes a crowd that is
+   * alive but indifferent, which is worse than a still one because it is
+   * animation spent on nothing. What a spectator actually does is follow the
+   * car: they are looking up the road before it arrives, they turn their head
+   * as it passes, and they are looking down the road after it has gone. That
+   * single behaviour is what makes a crowd feel like it is there FOR the car
+   * rather than decorating the verge.
+   *
+   * The turn is rate-limited. A figure that snaps instantly to face the car is
+   * a turret, and at 130 km/h the unlimited version spun people through half a
+   * revolution in a few frames.
+   *
+   * Cost is kept down the same way the flocks do it: a slice of each mesh per
+   * frame. A spectator's pose does not need rewriting sixty times a second,
+   * and the tracking error introduced by updating a sixth of them each frame
+   * is a fraction of a degree.
+   */
+  update(dt, car) {
+    if (!this._meshes) return;
+    this._t = (this._t || 0) + dt;
+    const T = this._t;
+    const d = this._dummy;
+    const cx = car ? car.pos.x : 0, cz = car ? car.pos.z : 0;
+    for (const entry of this._meshes) {
+      const { mesh, list } = entry;
+      /* LAZY FOR THE FAR ONES, EVERY FRAME FOR THE NEAR ONES.
+       *
+       * Updating a sixth of the crowd per frame is right for cost and wrong
+       * for anything the player is looking at: a figure repositioned once
+       * every six frames jumps 13 degrees and then holds, which is a visible
+       * stutter on the very spectators the car is passing. The ones that
+       * matter are always few — a handful within eighty metres out of 232 —
+       * so they get every frame and the rest keep the slice. */
+      const slice = Math.max(1, Math.ceil(list.length / SLICE_STRIDE));
+      for (let n = 0; n < list.length; n++) {
+        const i = n;
+        const q = list[i];
+        const near = Math.hypot(cx - q.x, cz - q.z) < 90;
+        const inSlice = ((i - entry.cursor + list.length) % list.length) < slice;
+        if (!near && !inSlice) continue;
+        const stride = near ? 1 : SLICE_STRIDE;
+        const dx = cx - q.x, dz = cz - q.z;
+        const dist = Math.hypot(dx, dz);
+        /* Only look at the car when it is close enough to be interesting.
+         * Beyond eighty metres they are watching the corner, not the car. */
+        const interest = Math.max(0, Math.min(1, (110 - dist) / 45));
+        const want = interest > 0.02
+          ? q.baseYaw + wrapAngle(Math.atan2(dx, dz) - q.baseYaw) * interest
+          : q.baseYaw;
+        /* Proportional approach, then a HARD RATE CAP.
+         *
+         * An exponential approach alone is not a rate limit: when the car is
+         * close its bearing sweeps very fast, the error is large every frame,
+         * and the figure tracked it at a measured 305 deg/s — a turret, not a
+         * person. A human tracking something with head and shoulders manages
+         * about 130 deg/s and no more.
+         *
+         * The step is scaled by SLICE, because each figure is only touched
+         * once every six frames; using the frame dt directly would make the
+         * whole crowd turn six times slower than the constant says. */
+        const step = wrapAngle(want - q.yaw)
+                   * Math.min(1, dt * stride * (1.6 + interest * 3.2));
+        const cap = MAX_TURN * dt * stride;
+        q.yaw += Math.max(-cap, Math.min(cap, step));
+        /* Idle: a slow weight shift, and a small bob that rises with
+         * interest — people bounce when something is happening. */
+        const sway = Math.sin(T * 0.7 + q.phase) * 0.10;
+        const bob = interest > 0.35
+          ? Math.abs(Math.sin(T * 5.2 + q.phase)) * 0.05 * interest : 0;
+        d.position.set(q.x, q.y + bob, q.z);
+        d.rotation.set(0, q.yaw + sway * 0.35, sway * 0.045);
+        d.scale.setScalar(q.s);
+        d.updateMatrix();
+        mesh.setMatrixAt(i, d.matrix);
+      }
+      entry.cursor = (entry.cursor + slice) % list.length;
+      mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+
   setTier() {}
   cullAround() {}
   stats() { return this.counts; }

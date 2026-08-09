@@ -298,6 +298,7 @@ class LakeLevel {
     this.fauna.update(dt);
     this.farm?.update(dt);
     this.shelter?.update(dt);
+    this.stage?.update(dt, host.walker);
     /* The dust is driven by the car, so it needs the walker rather than the
      * camera. It is deliberately NOT in materials(): it is unlit by design —
      * a puff of dust in bright sun is its own light source as far as the eye
