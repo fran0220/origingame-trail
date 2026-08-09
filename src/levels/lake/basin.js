@@ -231,24 +231,24 @@ export class Basin extends Heightfield {
      * and a sealed road there would be under water in the first nor'wester. */
     for (let i = 0; i < y.length; i++) y[i] = Math.max(y[i], LAKE_Y + ROAD_FREEBOARD);
 
-    for (let pass = 0; pass < 400; pass++) {
-      for (let i = 1; i < y.length - 1; i++) y[i] = (y[i - 1] + y[i] * 2 + y[i + 1]) * 0.25;
-    }
-
-    /* Grade limiting, both directions. `ds` is the real spacing along the
-     * alignment, so the clamp is a true gradient rather than a per-sample
-     * step. */
-    const ds = this.trail.length / Math.max(1, y.length - 1);
-    const rise = ROAD_MAX_GRADE * ds;
-    for (let pass = 0; pass < 4; pass++) {
-      for (let i = 1; i < y.length; i++) y[i] = Math.min(y[i], y[i - 1] + rise);
-      for (let i = y.length - 2; i >= 0; i--) y[i] = Math.min(y[i], y[i + 1] + rise);
-      for (let i = 1; i < y.length; i++) y[i] = Math.max(y[i], y[i - 1] - rise);
-      for (let i = y.length - 2; i >= 0; i--) y[i] = Math.max(y[i], y[i + 1] - rise);
-    }
-    /* The clamp introduces corners where it bit. Take them out again with a
-     * short smooth that is far too narrow to reintroduce a grade violation. */
-    for (let pass = 0; pass < 40; pass++) {
+    /* Smoothed over about 45 m of road, not 7 m.
+     *
+     * A 1-2-1 pass is a binomial filter with a standard deviation of about
+     * sqrt(passes/2) samples, so 400 passes at this spacing smooths over some
+     * 7 m. That is enough to stop a walker noticing a bump and nowhere near
+     * enough for a car: a crest of vertical radius R throws the car off the
+     * ground once v^2 / R exceeds g, which at 30 m/s is any crest tighter than
+     * 92 m — and a 7 m filter leaves plenty of those.
+     *
+     * The symptom is not a bumpy ride. It is a car with 20 degrees of lock
+     * applied and no lateral force at all, because all four wheels are in the
+     * air and the tyre model correctly multiplies its grip by zero. The
+     * telemetry trace showed exactly that at the crest before the fast left
+     * at t=0.68: full steering, latG 0.00, and the car running straight off
+     * the road while the driver waited for a response that could not come.
+     */
+    const SMOOTH_PASSES = 4200;
+    for (let pass = 0; pass < SMOOTH_PASSES; pass++) {
       for (let i = 1; i < y.length - 1; i++) y[i] = (y[i - 1] + y[i] * 2 + y[i + 1]) * 0.25;
     }
     this.pathY = y;

@@ -552,6 +552,11 @@ export class Driver {
     this.yawRate *= Math.exp(-2.9 * dt);
 
     this._ax = ax; this._ay = ay_;
+    /* The lateral acceleration the tyres are actually producing, which is the
+     * one bounded by grip. `_ay` is the body-frame derivative and carries the
+     * -vx*r transport term with it, so it reads far above mu in any steady
+     * corner and is useless as a measure of how hard the car is working. */
+    this.latAccel = (fyF * Math.cos(this.steer) + fyR) / MASS;
 
     /* Stop cleanly. Without this the car creeps for ever on residual force
      * and the HUD reads 0.4 km/h at a standstill. */

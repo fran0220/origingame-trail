@@ -70,14 +70,54 @@ import { ROAD_HALF, BOUNDS, shoreX } from './basin.js';
  * closes on the water and opens away from it without ever repeating.
  */
 const CONTROL = (() => {
+  /* The road does not follow the shoreline. It follows the *trend* of it.
+   *
+   * The first version of this offset shoreX() directly, and shoreX() is not a
+   * road alignment — it carries six alluvial fan lobes 15 to 30 m tall over
+   * widths of 36 to 58 m, plus bays at 330 m and 134 m. Tracing that at a fixed
+   * setback produced corners of 34 to 100 m radius, which is hairpin geometry:
+   * the telemetry showed the car held its lane to 1-4 m over most of the stage
+   * and then ran 36 m wide between t=0.25 and t=0.35, which is not a car
+   * failing, it is a road no car could take at open-road speed.
+   *
+   * What a real highway does with an alluvial fan is cut across the back of it
+   * and let the shingle run out to the water on its own. So the alignment is
+   * built from a heavily smoothed shoreline — a ±170 m moving average, which is
+   * wider than any fan and any bay — and the fans then bulge out toward the
+   * road rather than dragging it around them. The long 1.4 km swing of the lake
+   * survives the filter, because that is the only thing in shoreX() bigger than
+   * the window, and it is exactly the part a road would follow.
+   */
+  const SMOOTH_M = 170, SAMPLE = 10;
+  const trend = (z) => {
+    let sum = 0, n = 0;
+    for (let o = -SMOOTH_M; o <= SMOOTH_M; o += SAMPLE) { sum += shoreX(z + o); n++; }
+    return sum / n;
+  };
+
   const pts = [];
   const z0 = BOUNDS.z0 - 10, z1 = BOUNDS.z1 + 40;
-  const STEP_Z = 52;
+  const STEP_Z = 60;
   for (let z = z0; z >= z1; z -= STEP_Z) {
-    const setback = 31
-      + 15 * Math.sin(z * 0.0043 + 0.7)
-      + 8 * Math.sin(z * 0.0117 + 2.1);
-    pts.push([shoreX(z) + setback, z]);
+    /* The corners, and they are authored as a radius rather than as an
+     * amplitude that looked about right.
+     *
+     * A sinusoidal lateral offset of amplitude A and wavelength L has a minimum
+     * radius of curvature R = L^2 / (4 pi^2 A), so picking the corner you want
+     * fixes the amplitude. Smoothing the shoreline to kill the hairpins left a
+     * 316 m minimum radius — a road that is flat out from end to end, 0.41
+     * degrees of average steering, and 0.13 g of mean lateral, which is not a
+     * stage either. It is the same mistake as the hairpins, in the other
+     * direction.
+     *
+     * These two give about 180 m and about 145 m on their own and rather less
+     * where they add. v = sqrt(a R) at 8.6 m/s^2 makes a 145 m corner a 115
+     * km/h corner and a 110 m one about 100 km/h, so a car arriving at 160 has
+     * to brake for them — which is the thing that was missing. */
+    const setback = 36
+      + 14 * Math.sin(z * (2 * Math.PI / 430) + 0.7)
+      + 6 * Math.sin(z * (2 * Math.PI / 250) + 2.1);
+    pts.push([trend(z) + setback, z]);
   }
   return pts;
 })();

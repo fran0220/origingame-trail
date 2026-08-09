@@ -1,0 +1,121 @@
+{
+ "stageM": 2030,
+ "timeS": 69.8,
+ "finished": true,
+ "meanKmh": 102.5,
+ "topKmh": 141.7,
+ "meanLatG": 0.269,
+ "maxLatG": 1.18,
+ "maxSlipDeg": 7,
+ "pctOffRoad": 15.3,
+ "pctAtLimit": 0,
+ "laneRmsM": 8.28,
+ "laneMaxM": 36.1,
+ "yawFlipPerKm": 8.9,
+ "yawJerkPerS": 1.33,
+ "meanSteerDeg": 4.17,
+ "spinFrames": 0,
+ "lostIt": 0,
+ "worstBy20th": [
+  {
+   "t": 0,
+   "laneM": 1.6,
+   "radiusM": 141
+  },
+  {
+   "t": 0.05,
+   "laneM": 0.6,
+   "radiusM": 52
+  },
+  {
+   "t": 0.1,
+   "laneM": 2.9,
+   "radiusM": 34
+  },
+  {
+   "t": 0.15,
+   "laneM": 10.9,
+   "radiusM": 59
+  },
+  {
+   "t": 0.2,
+   "laneM": 11.1,
+   "radiusM": 106
+  },
+  {
+   "t": 0.25,
+   "laneM": 36.1,
+   "radiusM": 98
+  },
+  {
+   "t": 0.3,
+   "laneM": 35.7,
+   "radiusM": 97
+  },
+  {
+   "t": 0.35,
+   "laneM": 15.6,
+   "radiusM": 61
+  },
+  {
+   "t": 0.4,
+   "laneM": 3.7,
+   "radiusM": 54
+  },
+  {
+   "t": 0.45,
+   "laneM": 1.6,
+   "radiusM": 77
+  },
+  {
+   "t": 0.5,
+   "laneM": 1.7,
+   "radiusM": 46
+  },
+  {
+   "t": 0.55,
+   "laneM": 4.3,
+   "radiusM": 38
+  },
+  {
+   "t": 0.6,
+   "laneM": 1.7,
+   "radiusM": 96
+  },
+  {
+   "t": 0.65,
+   "laneM": 1.7,
+   "radiusM": 96
+  },
+  {
+   "t": 0.7,
+   "laneM": 3.5,
+   "radiusM": 75
+  },
+  {
+   "t": 0.75,
+   "laneM": 1.7,
+   "radiusM": 109
+  },
+  {
+   "t": 0.8,
+   "laneM": 1,
+   "radiusM": 79
+  },
+  {
+   "t": 0.85,
+   "laneM": 3.1,
+   "radiusM": 69
+  },
+  {
+   "t": 0.9,
+   "laneM": 2.8,
+   "radiusM": 104
+  },
+  {
+   "t": 0.95,
+   "laneM": 2.2,
+   "radiusM": 128
+  }
+ ]
+}

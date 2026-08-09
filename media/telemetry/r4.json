@@ -1,0 +1,105 @@
+{
+ "stageM": 2019,
+ "minRadiusM": 124,
+ "p10RadiusM": 185,
+ "medianRadiusM": 556,
+ "cornersUnder200": 12,
+ "timeS": 54.7,
+ "finished": true,
+ "meanKmh": 131.1,
+ "topKmh": 162.9,
+ "meanLatG": 0.278,
+ "maxLatG": 1.17,
+ "maxSlipDeg": 9.4,
+ "pctOffRoad": 20.7,
+ "pctAtLimit": 0.2,
+ "laneRmsM": 8.12,
+ "laneMaxM": 23.9,
+ "yawFlipPerKm": 3.5,
+ "yawJerkPerS": 1.06,
+ "meanSteerDeg": 4.15,
+ "spinFrames": 0,
+ "lostIt": 0,
+ "worstBy20th": [
+  {
+   "t": 0,
+   "laneM": 1.9
+  },
+  {
+   "t": 0.05,
+   "laneM": 1.7
+  },
+  {
+   "t": 0.1,
+   "laneM": 1.7
+  },
+  {
+   "t": 0.15,
+   "laneM": 1.2
+  },
+  {
+   "t": 0.2,
+   "laneM": 0.8
+  },
+  {
+   "t": 0.25,
+   "laneM": 1.7
+  },
+  {
+   "t": 0.3,
+   "laneM": 1.7
+  },
+  {
+   "t": 0.35,
+   "laneM": 1.7
+  },
+  {
+   "t": 0.4,
+   "laneM": 3.2
+  },
+  {
+   "t": 0.45,
+   "laneM": 1.2
+  },
+  {
+   "t": 0.5,
+   "laneM": 0.8
+  },
+  {
+   "t": 0.55,
+   "laneM": 1.4
+  },
+  {
+   "t": 0.6,
+   "laneM": 1.7
+  },
+  {
+   "t": 0.65,
+   "laneM": 4.4
+  },
+  {
+   "t": 0.7,
+   "laneM": 13.4
+  },
+  {
+   "t": 0.75,
+   "laneM": 17.5
+  },
+  {
+   "t": 0.8,
+   "laneM": 23
+  },
+  {
+   "t": 0.85,
+   "laneM": 23.9
+  },
+  {
+   "t": 0.9,
+   "laneM": 23.8
+  },
+  {
+   "t": 0.95,
+   "laneM": 2.4
+  }
+ ]
+}
