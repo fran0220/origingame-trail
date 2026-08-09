@@ -606,6 +606,221 @@ function buildLupinDrifts(owner, terrain, tier, dummy) {
   owner.lupins = placed;
 }
 
+/* ── the sward ──────────────────────────────────────────────────────────────
+ *
+ * Grass is not made of grass plants. That is the mistake this level kept
+ * making: the roadside was built out of individual tussock stools, and however
+ * many were placed and however tightly they were clumped, the result read as
+ * "one plant, and another plant, and another plant" rather than as grass —
+ * because a lawn, a meadow and a tussock flat are all a *continuous surface* of
+ * blades with soil visible only in gaps, not a scatter of discrete objects.
+ *
+ * So the unit here is a PATCH, not a plant: a square metre containing fifty
+ * blades, instanced edge to edge so neighbouring patches interlock and no seam
+ * is ever visible. Fifty blades per square metre is the density at which the
+ * ground stops showing between them at a driver's eye height, and it is
+ * unreachable one plant at a time — 50 instances/m2 over even a short corridor
+ * is millions of draws, while 1 patch/m2 is a few thousand.
+ *
+ * The tussock stools stay, on top of this, because a Mackenzie flat genuinely
+ * is a short sward with taller stools standing out of it. What was wrong was
+ * never that the stools existed; it was that there was nothing underneath them.
+ *
+ * Colour: the previous pale grey-cream was the value of sun-bleached dead leaf
+ * and nothing else, which is why it read as lifeless. Real dry grassland has
+ * green at the base of every blade where it is still growing and shaded, ochre
+ * through the middle and bleached gold at the tip, and it is that vertical
+ * gradient repeated fifty times a square metre that makes a grass surface look
+ * alive rather than like carpet.
+ */
+function grassPatchGeometry(variant, rng) {
+  const p = [], ix = [], col = [];
+  const push = (x, y, z, c) => { const n = p.length / 3; p.push(x, y, z); col.push(...c); return n; };
+  const SIDE = 1.05;
+  /* A hundred and twenty blades to the square metre, not forty-four.
+   *
+   * Isolating the layer showed the problem exactly: at 44 the blades were
+   * discrete red spears with the ground plainly visible between every one of
+   * them, so the surface the player saw was still the terrain's own dark olive
+   * texture with some grass standing in it. Grass reads as grass when it
+   * *occludes* the ground, and that takes roughly a hundred blades per square
+   * metre at this blade width — which is also, unsurprisingly, about what a
+   * real sward has. */
+  const blades = 118 + variant * 14;
+
+  for (let b = 0; b < blades; b++) {
+    const bx = (rng() - 0.5) * SIDE, bz = (rng() - 0.5) * SIDE;
+    const yaw = rng() * 6.283;
+    /* Short. This is the mat, not the stools: 90 to 260 mm, which is what a
+     * grazed high-country sward stands at between its tussocks. */
+    /* Short. 70 to 200 mm, which is a grazed high-country sward — the taller
+     * stools are a separate layer. The first cut ran to 340 mm and, seen from
+     * a metre away, a field of it read as a wheat crop rather than as turf. */
+    const h = 0.070 + Math.pow(rng(), 1.6) * 0.130;
+    const lean = 0.30 + rng() * 0.55;
+    /* Thinner, because there are three times as many of them and a blade of
+     * grass is 3-6 mm across, not 13. */
+    const w = 0.0026 + rng() * 0.0026;
+    const dx = Math.cos(yaw), dz = Math.sin(yaw);
+
+    /* Per-blade colour, varied enough that fifty of them do not read as one
+     * flat tone. Green root, ochre body, bleached tip. */
+    /* Warm all the way up, and only faintly green at the very base.
+     *
+     * The first ramp put green over the lower three quarters of every blade
+     * and, seen from above where most of a short sward's area is its middle,
+     * the whole mat came out as dark moss. Dry high-country grass is *ochre*
+     * — a hot yellow-brown — with a green cast only in the first centimetre or
+     * two that is shaded by everything above it. The bands below are shifted
+     * up accordingly so the ochre owns most of the blade. */
+    /* `vigour` runs green-to-gold rather than dark-to-light, because that is
+     * the axis a real sward varies on: most blades are dead straw, a minority
+     * are still growing and markedly greener, and it is that mixture — not a
+     * brightness spread — that stops a hundred blades to the square metre
+     * reading as one flat felt. A quarter of them are green. */
+    const green = Math.pow(rng(), 2.6);
+    const lift = 0.82 + rng() * 0.36;
+    const mixc = (dry, wet) => dry.map((v, i) => (v + (wet[i] - v) * green) * lift);
+    const root = mixc([0.115, 0.120, 0.052], [0.070, 0.115, 0.038]);
+    const mid = mixc([0.310, 0.262, 0.104], [0.135, 0.215, 0.070]);
+    const tip = mixc([0.520, 0.450, 0.222], [0.235, 0.345, 0.125]);
+
+    const SEG = 3;
+    let prev = null;
+    for (let k = 0; k <= SEG; k++) {
+      const u = k / SEG;
+      /* Arched, not straight: a blade leaves the ground vertically and falls
+       * away, and it is the arch that makes a field of them close over. */
+      const reach = lean * (u * u * 0.75 + u * 0.25);
+      const y = h * (u + 0.20 * Math.sin(Math.PI * u) - 0.42 * u * u) * (1 / 0.78);
+      const ww = w * (1 - u * 0.80);
+      const c = u < 0.18 ? root : (u < 0.55 ? mid : tip);
+      const cx = bx + dx * reach * h, cz = bz + dz * reach * h;
+      const a = push(cx - dz * ww, y, cz + dx * ww, c);
+      const bvx = push(cx + dz * ww, y, cz - dx * ww, c);
+      if (prev) ix.push(prev[0], prev[1], a, prev[1], bvx, a);
+      prev = [a, bvx];
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(ix);
+  g.computeVertexNormals();
+  return g;
+}
+
+function buildSward(owner, terrain, tier, dummy) {
+  const trail = terrain.trail;
+  /* Patches per square metre. One, because a patch *is* a square metre — the
+   * scatter below jitters them so the lattice never shows. */
+  const OUTER = tier === 'low' ? 16 : tier === 'medium' ? 24 : 34;
+  const INNER = ROAD_SHOULDER + 0.35;
+  const rng = random(0x5ea77);
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, vertexColors: true, roughness: .98, metalness: 0,
+    side: THREE.DoubleSide,
+  });
+  /* Faded on the same idea as everything else in this level: a blade is 8 mm
+   * wide and stops resolving long before the cull distance, so the mat sinks
+   * into the scanned ground rather than popping out of it. */
+  const U = { uTurfTime: { value: 0 }, uTurfFade: { value: new THREE.Vector2(26, 46) } };
+  mat.userData.uniforms = U;
+  mat.customProgramCacheKey = () => 'lake-sward-v1';
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U);
+    mat.userData.shader = sh;
+    sh.vertexShader = `uniform float uTurfTime; uniform vec2 uTurfFade;\n` + sh.vertexShader
+      .replace('#include <beginnormal_vertex>',
+        '#include <beginnormal_vertex>\nobjectNormal = normalize(mix(objectNormal, vec3(0.0,1.0,0.0), 0.80));')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        float ph = instanceMatrix[3].x * 0.21 + instanceMatrix[3].z * 0.17;
+        float flex = smoothstep(0.01, 0.22, position.y);
+        transformed.x += sin(uTurfTime * 1.35 + ph) * 0.020 * flex;
+        transformed.z += cos(uTurfTime * 1.05 + ph * 1.4) * 0.014 * flex;
+        vec4 wp = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
+        float fade = 1.0 - smoothstep(uTurfFade.x, uTurfFade.y, length(cameraPosition - wp.xyz));
+        transformed.y *= fade;`);
+    /* Light every blade as though it faces the sky.
+     *
+     * These meshes are double-sided, and three flips the normal on a back
+     * face — so the far side of every arched blade ends up pointing downward
+     * and is lit by the hemisphere light's GROUND term, which in this level is
+     * a dark olive (0x526d38). With a hundred blades to the square metre, half
+     * of them facing away at any moment, that is what turned an ochre sward
+     * into a carpet of dark moss: the vertex colours were never the problem.
+     *
+     * A blade of grass is a thin translucent strip; its two faces are not
+     * meaningfully different, and every renderer that draws grass well cheats
+     * the normal toward the surface it grows on for exactly this reason. */
+    sh.fragmentShader = sh.fragmentShader.replace(
+      '#include <normal_fragment_begin>',
+      `#include <normal_fragment_begin>
+       normal = normalize(mix(normal,
+         normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz), 0.88));`
+    );
+  };
+  owner.materials.push(mat);
+
+  const variants = [0, 1, 2].map((v) => grassPatchGeometry(v, random(0x2f10 + v * 811)));
+  owner.geometries?.push?.(...variants);
+
+  const P = new THREE.Vector3(), T = new THREE.Vector3();
+  const L = trail.length;
+  const CHUNK_M = 60;
+  const chunks = Math.ceil(L / CHUNK_M);
+
+  for (let c = 0; c < chunks; c++) {
+    const lists = [[], [], []];
+    for (let m = c * CHUNK_M; m < Math.min(L, (c + 1) * CHUNK_M); m += 1.0) {
+      trail.pointAt(m / L, P); trail.tangentAt(m / L, T);
+      const nx = T.z, nz = -T.x;
+      for (let o = INNER; o < OUTER; o += 1.0) {
+        for (const side of [-1, 1]) {
+          const jx = o + (rng() - 0.5) * 0.9;
+          const x = P.x + nx * jx * side + T.x * (rng() - 0.5) * 0.9;
+          const z = P.z + nz * jx * side + T.z * (rng() - 0.5) * 0.9;
+          const y = terrain.height(x, z);
+          if (y < LAKE_Y + 0.55) continue;
+          lists[(rng() * 3) | 0].push({ x, y, z, yaw: rng() * 6.283, s: 0.92 + rng() * 0.30 });
+        }
+      }
+    }
+    lists.forEach((list, v) => {
+      if (!list.length) return;
+      const mesh = new THREE.InstancedMesh(variants[v], mat, list.length);
+      mesh.name = `flora:sward:${c}:${v}`;
+      list.forEach((q, i) => {
+        dummy.position.set(q.x, q.y - 0.015, q.z);
+        dummy.rotation.set(0, q.yaw, 0);
+        dummy.scale.set(q.s, q.s * (0.85 + (i % 4) * 0.09), q.s);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.castShadow = false;
+      /* Not receiving, either, and that is what was making the whole mat read
+       * as dark moss rather than as dry grass.
+       *
+       * The cascade is 170 m across a 2048 map, so a texel is 83 mm on the
+       * ground. A blade is 8 mm wide and 200 mm tall — an order of magnitude
+       * under one texel — so every one of them samples a depth value that
+       * belongs to something else and comes back shadowed. A hundred thousand
+       * patches of self-shadowing acne is a dark green carpet, which is
+       * exactly what was on screen while the vertex colours said ochre.
+       *
+       * Something this far below the shadow map's resolution cannot be shaded
+       * by it correctly, and the honest thing is not to try: the mat's contact
+       * with the ground is carried by the ground's own shadow underneath it. */
+      mesh.receiveShadow = false;
+      mesh.computeBoundingSphere();
+      owner.root.add(mesh);
+      owner.meshes.push(mesh);
+    });
+  }
+}
+
 function tuftGeometry(variant, rng) {
   const p = [], ix = [], col = [];
   const blades = 11 + variant * 3;
@@ -617,8 +832,11 @@ function tuftGeometry(variant, rng) {
      * as a crop — which is what the first version of this looked like. A
      * tussock is a fountain: the outer blades arch out almost as far as they
      * go up, and that is what makes neighbouring clumps touch. */
-    const lean = 0.26 + rng() * 0.70;
-    const h = 0.26 + rng() * 0.40;
+    const lean = 0.26 + rng() * 0.62;
+    /* Smaller than they were. These are stools standing out of a sward now,
+     * not the ground cover, and at the old size a single one filled a metre of
+     * frame and the mat underneath was invisible behind them. */
+    const h = 0.20 + rng() * 0.30;
     const w = 0.020 + rng() * 0.016;
     /* Straw at the tip, olive at the root: the two ends of a dry tussock
      * blade, and the same ramp the ground shader uses for its sward. */
@@ -628,7 +846,10 @@ function tuftGeometry(variant, rng) {
      * clump read as an object dropped on the ground rather than as the ground
      * being grassy. Paler and warmer, with the tip lighter than the root
      * because that is the part that died back first. */
-    const root = [0.205, 0.180, 0.092], tip = [0.435, 0.378, 0.190];
+    /* Brighter, now that these are the taller stools standing out of a sward
+     * rather than the ground cover itself: a tussock catches the sun on its
+     * arching outer blades and is the *lightest* thing on a dry hillside. */
+    const root = [0.235, 0.205, 0.102], tip = [0.540, 0.462, 0.225];
     let prev = null;
     for (let s = 0; s <= 3; s++) {
       const u = s / 3;
@@ -665,7 +886,11 @@ function buildRoadsideTurf(owner, terrain, tier, dummy) {
    * touch at their edges, which is what short tussock does, and there is the
    * frame budget for it: the layer lives in a 120 m corridor and the whole
    * scene was drawing at 620 fps. */
-  const PER_M2 = tier === 'low' ? 0.8 : tier === 'medium' ? 1.5 : 2.6;
+  /* Fewer than before, because these are no longer doing the job of the
+   * ground cover — buildSward() lays a continuous mat underneath and these are
+   * the taller stools that stand out of it, which is what a tussock flat
+   * actually is. */
+  const PER_M2 = tier === 'low' ? 0.30 : tier === 'medium' ? 0.55 : 0.95;
   /* Out to 60 m, not 26. A corridor that stops has a visible edge: the ground
    * went from grassland to swept dirt at a fixed distance from the road, which
    * is a line no landscape has. The band is wider than the eye can resolve
@@ -699,6 +924,24 @@ function buildRoadsideTurf(owner, terrain, tier, dummy) {
         vec4 wp = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
         float fade = 1.0 - smoothstep(uTurfFade.x, uTurfFade.y, length(cameraPosition - wp.xyz));
         transformed.y *= fade;`);
+    /* Same correction as the sward — see buildSward(). Light every blade as though it faces the sky.
+     *
+     * These meshes are double-sided, and three flips the normal on a back
+     * face — so the far side of every arched blade ends up pointing downward
+     * and is lit by the hemisphere light's GROUND term, which in this level is
+     * a dark olive (0x526d38). With a hundred blades to the square metre, half
+     * of them facing away at any moment, that is what turned an ochre sward
+     * into a carpet of dark moss: the vertex colours were never the problem.
+     *
+     * A blade of grass is a thin translucent strip; its two faces are not
+     * meaningfully different, and every renderer that draws grass well cheats
+     * the normal toward the surface it grows on for exactly this reason. */
+    sh.fragmentShader = sh.fragmentShader.replace(
+      '#include <normal_fragment_begin>',
+      `#include <normal_fragment_begin>
+       normal = normalize(mix(normal,
+         normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz), 0.88));`
+    );
   };
   owner.materials.push(mat);
 
@@ -743,7 +986,7 @@ function buildRoadsideTurf(owner, terrain, tier, dummy) {
           const x = sx + Math.cos(a) * r, z = sz + Math.sin(a) * r;
           const y = terrain.height(x, z);
           if (y < LAKE_Y + 0.55) continue;         // not in the lake or the swash
-          const s = (big ? 1.15 : 0.62) + Math.pow(rng(), 1.7) * (big ? 0.85 : 0.55);
+          const s = (big ? 0.92 : 0.54) + Math.pow(rng(), 1.7) * (big ? 0.60 : 0.38);
           lists[(rng() * 3) | 0].push({ x, y, z, s, yaw: rng() * 6.283 });
         }
       }
@@ -761,7 +1004,11 @@ function buildRoadsideTurf(owner, terrain, tier, dummy) {
       });
       mesh.instanceMatrix.needsUpdate = true;
       mesh.castShadow = false;      // 42 triangles do not earn a shadow pass
-      mesh.receiveShadow = true;
+      /* Nor received. Same reason as the sward: a 20 mm blade is a quarter of
+       * a shadow texel at this cascade's 83 mm resolution, so every stool came
+       * back self-shadowed and the whole layer read as a dark olive mat lying
+       * over the grass rather than as tussock standing in it. */
+      mesh.receiveShadow = false;
       mesh.computeBoundingSphere();
       owner.root.add(mesh);
       owner.meshes.push(mesh);
@@ -869,6 +1116,7 @@ function plantGeometry(id,kind,variant,hex){
 
 export class LakeFlora{
  constructor(terrain,tier='high',renderer=null,options={}){this.root=new THREE.Group();this.root.name='lake-native-flora';this.materials=[];this.textures=[];this.species=SPECIES.map(s=>s[0]);this.notable=Object.create(null);this.meshes=[];const dummy=new THREE.Object3D();this.plumeTexture=renderer?bakeImage(renderer,PLUME_FRAG,{size:512,colorSpace:THREE.SRGBColorSpace,coverageMips:.30}):null;if(this.plumeTexture)this.textures.push(this.plumeTexture);if(renderer&&options.groundCover!==false)buildGroundCover(this,terrain,renderer,dummy);
+  buildSward(this,terrain,tier,dummy);
   buildRoadsideTurf(this,terrain,tier,dummy);
   buildLupinDrifts(this,terrain,tier,dummy);
   SPECIES.forEach(([id,habitat,color,kind],si)=>{const rng=random(0x51a7+si*7919),pts=[],q={},parents=[],target=Math.max(24,Math.round(POPULATION[id]*(NOTEBOOK_SPECIES.has(id)?.62:.20)*AREA_SCALE));
