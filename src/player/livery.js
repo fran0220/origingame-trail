@@ -23,44 +23,12 @@
  * procedural car — a graphic stays put when the body sections are retuned,
  * which a hand-placed decal would not.
  */
-export const LIVERY_PARS = /* glsl */ `
+import { DIGIT_GLSL } from '../render/digits.js';
+
+export const LIVERY_PARS = DIGIT_GLSL + /* glsl */ `
   varying vec3 vCarLocal;
   varying vec3 vCarNrm;
 
-  /* A blocky competition numeral. Rally numbers are stencils, so a
-   * seven-segment construction is not a compromise here — it is close to what
-   * is actually on the door. p is in "digit space": 0..1 across, 0..1 up. */
-  float segBar(vec2 p, vec2 c, vec2 h) {
-    vec2 d = abs(p - c) - h;
-    return (max(d.x, d.y) < 0.0) ? 1.0 : 0.0;
-  }
-  float digit(vec2 p, int n) {
-    if (p.x < -0.05 || p.x > 1.05 || p.y < -0.05 || p.y > 1.05) return 0.0;
-    float t = 0.115;                 // stroke half-thickness
-    float a = segBar(p, vec2(0.50, 1.00 - t), vec2(0.38, t));   // top
-    float b = segBar(p, vec2(0.88, 0.75), vec2(t, 0.25));       // upper right
-    float c = segBar(p, vec2(0.88, 0.25), vec2(t, 0.25));       // lower right
-    float d = segBar(p, vec2(0.50, t), vec2(0.38, t));          // bottom
-    float e = segBar(p, vec2(0.12, 0.25), vec2(t, 0.25));       // lower left
-    float f = segBar(p, vec2(0.12, 0.75), vec2(t, 0.25));       // upper left
-    float g = segBar(p, vec2(0.50, 0.50), vec2(0.38, t));       // middle
-    if (n == 0) return max(max(max(a,b),max(c,d)),max(e,f));
-    if (n == 1) return max(b, c);
-    if (n == 2) return max(max(max(a,b),max(g,e)), d);
-    if (n == 3) return max(max(max(a,b),max(g,c)), d);
-    if (n == 4) return max(max(f,b), max(g,c));
-    if (n == 5) return max(max(max(a,f),max(g,c)), d);
-    if (n == 6) return max(max(max(a,f),max(g,c)), max(d,e));
-    if (n == 7) return max(a, max(b, c));
-    if (n == 8) return max(max(max(a,b),max(c,d)),max(max(e,f),g));
-    return max(max(max(a,b),max(c,d)),max(max(f,g),g));
-  }
-
-  /* A rounded rectangle, used for sponsor blocks. */
-  float panel(vec2 p, vec2 c, vec2 h, float r) {
-    vec2 d = abs(p - c) - h + r;
-    return 1.0 - step(0.0, length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r);
-  }
 `;
 
 export const LIVERY_BODY = /* glsl */ `
