@@ -215,6 +215,9 @@ export class Driver {
     this._tmp = new THREE.Vector3();
     this._q = {};
     this._wheelY = [0, 0, 0, 0];
+    /* Front-left, front-right, rear-left, rear-right — world position and how
+     * far off the seal each one is. Read by the dust. */
+    this.wheels = [0, 1, 2, 3].map(() => ({ x: 0, y: 0, z: 0, off: 0 }));
 
     this.placeAt(0.02);
   }
@@ -503,6 +506,18 @@ export class Driver {
       mu += s.mu * 0.25;
       off += s.off * 0.25;
       this._wheelY[i] = this.terrain.height(corners[i][0], corners[i][1]);
+      /* Published per wheel, not just averaged.
+       *
+       * The average is what the physics wants — one grip figure for the
+       * chassis. It is the wrong thing for anything that has to know WHICH
+       * wheel is where: dropping the two left wheels onto the shoulder and
+       * straddling the centreline both give off = 0.5, and a dust plume that
+       * comes off the middle of the car in the first case is obviously
+       * wrong. */
+      this.wheels[i].x = corners[i][0];
+      this.wheels[i].z = corners[i][1];
+      this.wheels[i].y = this._wheelY[i];
+      this.wheels[i].off = s.off;
     }
     this.offRoad = off;
     this.surface = off < 0.2 ? 'seal' : off < 0.7 ? 'gravel' : 'off';

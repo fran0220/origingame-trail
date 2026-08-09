@@ -39,6 +39,7 @@ import { LakeRoadside } from './roadside.js';
 import { LakeStructures } from './structures.js';
 import { LakeRock } from './rock.js';
 import { LakeWayside } from './wayside.js';
+import { WheelDust } from '../../player/dust.js';
 import { LakeFauna } from './fauna.js';
 import { LakeAmbience } from './audio.js';
 
@@ -227,6 +228,7 @@ class LakeLevel {
     this.rock = new LakeRock(this.terrain, tier); scene.add(this.rock.root);
     await step(0.74, '铺出观景台');
     this.wayside = new LakeWayside(this.terrain, tier); scene.add(this.wayside.root);
+    this.dust = new WheelDust({ tier }); scene.add(this.dust.root);
     this.fauna = new LakeFauna(this.trail, this.terrain, tier); scene.add(this.fauna.root);
     await step(0.72, '抬升南阿尔卑斯');
     this.distance = new LakeDistance(); this.distance.setTier(tier); scene.add(this.distance.root);
@@ -272,6 +274,12 @@ class LakeLevel {
     this.fauna.update(dt);
     this.farm?.update(dt);
     this.shelter?.update(dt);
+    /* The dust is driven by the car, so it needs the walker rather than the
+     * camera. It is deliberately NOT in materials(): it is unlit by design —
+     * a puff of dust in bright sun is its own light source as far as the eye
+     * is concerned, and running it through the canopy patch would tint it
+     * with a forest term that does not exist in this level. */
+    this.dust?.update(dt, host.walker, host.renderer?.domElement?.height);
     this.veg.update(this.water.time);
     this.veg.cullAround(host.camera.position.x, host.camera.position.z);
     this.props?.cullAround(host.camera.position.x, host.camera.position.z);
@@ -291,7 +299,7 @@ class LakeLevel {
 
   setViewportHeight() {}
 
-  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), farm:this.farm?.stats(), roadside:this.roadside?.stats(), structures:this.structures?.stats(), rock:this.rock?.stats(), wayside:this.wayside?.stats(), fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
+  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), farm:this.farm?.stats(), roadside:this.roadside?.stats(), structures:this.structures?.stats(), rock:this.rock?.stats(), wayside:this.wayside?.stats(), dust:this.dust?.stats(), fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
 
   dispose() {
     this.road?.dispose();
@@ -305,6 +313,7 @@ class LakeLevel {
     this.structures?.dispose();
     this.rock?.dispose();
     this.wayside?.dispose();
+    this.dust?.dispose();
     this.fauna?.dispose();
     this.distance?.dispose();
     new Set(this.terrainMat?.userData.groundTextures || []).forEach((texture) => texture.dispose());
