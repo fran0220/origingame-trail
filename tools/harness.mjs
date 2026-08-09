@@ -52,8 +52,12 @@ const COMMON = [
 const GPU_ARGS = [
   ...COMMON,
   // Headless Chromium defaults to SwiftShader even when a GPU is present; each
-  // of these is needed to get it onto the real adapter.
-  '--use-angle=d3d11',
+  // of these is needed to get it onto the real adapter. ANGLE's native backend
+  // is platform-specific: asking macOS for D3D11 silently fell back to
+  // SwiftShader and turned every visual iteration into a multi-minute CPU
+  // render. Metal keeps the capture path on the same physical GPU as the app.
+  '--use-gl=angle',
+  process.platform === 'darwin' ? '--use-angle=metal' : '--use-angle=d3d11',
   '--enable-gpu-rasterization',
   '--ignore-gpu-blocklist',
   '--enable-zero-copy',
@@ -70,7 +74,8 @@ export function serve(root = ROOT) {
   const TYPES = {
     '.html': 'text/html; charset=utf-8', '.js': 'text/javascript',
     '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
-    '.png': 'image/png',
+    '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+    '.gltf': 'model/gltf+json', '.bin': 'application/octet-stream',
   };
   return http.createServer((rq, rs) => {
     const rel = decodeURI(rq.url.split('?')[0].split('#')[0]);
@@ -162,16 +167,13 @@ export async function run(opts, body) {
     /* Poll `errs` rather than listening for the next 'pageerror': a module
      * that fails to parse throws during goto(), so by the time a fresh
      * listener is attached the only event has already been and gone. */
-    await Promise.race([
-      page.waitForFunction(() => !!window.__game, null, { timeout }),
-      (async () => {
-        for (let i = 0; i < timeout / 250; i++) {
-          await new Promise(r => setTimeout(r, 250));
-          const fatal = errs.find(e => e.startsWith('[pageerror]') || e.startsWith('[crash]'));
-          if (fatal) throw new Error('page threw during boot: ' + fatal.slice(0, 300));
-        }
-      })(),
-    ]);
+    const deadline = Date.now() + timeout;
+    while (!await page.evaluate(() => !!window.__game)) {
+      const fatal = errs.find(e => e.startsWith('[pageerror]') || e.startsWith('[crash]'));
+      if (fatal) throw new Error('page threw during boot: ' + fatal.slice(0, 300));
+      if (Date.now() >= deadline) throw new Error(`world did not become ready within ${timeout} ms`);
+      await new Promise(r => setTimeout(r, 250));
+    }
 
     gl = await page.evaluate(() => {
       const c = document.createElement('canvas');

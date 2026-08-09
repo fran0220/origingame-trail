@@ -2,11 +2,11 @@
 
 [Play on OriginGame](https://play.origingame.dev/yupadwblpc/)
 
-A first-person walk down a winding jungle trail into overgrown stone ruins with a
-waterfall, built in Three.js with zero external art assets — and, on top of that
-walk, a small exploration game: twelve carved inscriptions to find and take
-rubbings of, twelve subjects to photograph, and a sun that moves from morning to
-evening as the notebook fills.
+Two first-person field walks built in Three.js with zero external art assets:
+the original winding jungle trail into overgrown stone ruins and a waterfall,
+and an open high-country route along the turquoise shore of Lake Pukaki toward
+the Southern Alps. Each is a small exploration game recorded through the same
+field notebook.
 
 Every texture, mesh and sound in the scene is generated procedurally in code.
 There are no image files, no models, no audio recordings and no material
@@ -27,7 +27,8 @@ cd origingame-trail
 npm run serve
 ```
 
-Then open `http://localhost:8099/`. Any other static server works equally well;
+Then open `http://localhost:8099/` and choose a scene. Deep links are
+`#level=jungle` and `#level=lake`. Any other static server works equally well;
 opening `index.html` from the filesystem does not, because ES modules and workers
 need a real origin.
 
@@ -59,8 +60,11 @@ standing in it.
 
 ## The game
 
-Two things to collect, and neither is on the trail's critical path — the walk to
-the falls works exactly as it did before.
+The Jungle notebook has twelve inscriptions and twelve photographs, neither on
+the trail's critical path — the walk to the falls works exactly as it did
+before. Lake Pukaki has no artificial tablets: it completes through twenty
+photographs of native flora, fauna, the glacial shore and the Southern Alps.
+The two runs share one versioned save envelope but retain independent progress.
 
 **Inscriptions.** Twelve carved tablets stand along the route, six within a
 couple of metres of the tread and six far enough off it that they can only be
@@ -231,6 +235,9 @@ start.
 ```
 npm run serve &      # the tests drive a real page
 npm test             # smoke + movement + full journey + save round-trip
+npm run test:lake    # Lake habitat, shoreline and 20/20 photo reachability
+npm run test:picker  # picker, deep links and flush-before-navigation
+npm run test:cold    # repeated fresh-context starts for both levels
 npm run shots        # visual acceptance captures into media/game/
 ```
 

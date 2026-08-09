@@ -10,6 +10,7 @@
  *
  *   node tools/atlas.mjs leafMap [--size 1024] [--alpha] [--rgb]
  *   node tools/atlas.mjs terrain.litter.map
+ *   node tools/atlas.mjs shingle --level lake
  *
  * `--rgb` ignores the alpha channel entirely and shows what colour is actually
  * stored in the transparent region. That is not idle curiosity: bilinear taps
@@ -38,7 +39,10 @@ const SIZE = +flag('size', 1024);
 const SHOW_ALPHA = args.includes('--alpha');
 const SHOW_RGB = args.includes('--rgb');
 
-await run({ width: 640, height: 400, hash: 'manual&tier=high' }, async ({ page }) => {
+const LEVEL = flag('level', '');
+
+await run({ width: 640, height: 400,
+            hash: 'manual&tier=high' + (LEVEL ? '&level=' + LEVEL : '') }, async ({ page }) => {
   const res = await page.evaluate(([which, showAlpha, size, showRgb]) => {
     const g = window.__game, THREE = window.THREE;
     const dig = (root) => which.split('.').reduce((o, k) => o && o[k], root);
@@ -91,7 +95,33 @@ await run({ width: 640, height: 400, hash: 'manual&tier=high' }, async ({ page }
       img.data.set(buf.subarray(s, s + size * 4), d);
     }
     ctx.putImageData(img, 0, 0);
-    return { url: cv.toDataURL('image/png') };
+
+    /* Mean and spread of the map, in linear light.
+     *
+     * Two numbers this project has repeatedly needed and repeatedly guessed at.
+     * The mean is what a distance fade has to converge to: the basin fades the
+     * shingle to a flat colour past the point where the texture aliases, and if
+     * that constant is not the map's own mean the ground changes value as the
+     * camera moves. The spread is the flat-bake alarm — the first version of
+     * this file baked a literally uniform grey because every feature was gated
+     * above the range its noise could reach, and a printed sigma of 0.00 would
+     * have caught it before a gallery render did.
+     *
+     * Linear, not sRGB: the fade constant is consumed by the shader, which
+     * works in linear light, and averaging sRGB values is meaningless anyway. */
+    const s2l = (u) => { const c = u / 255;
+      return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    const lut = new Float64Array(256);
+    for (let i = 0; i < 256; i++) lut[i] = s2l(i);
+    const sum = [0, 0, 0], sq = [0, 0, 0], n = size * size;
+    for (let i = 0; i < buf.length; i += 4)
+      for (let c = 0; c < 3; c++) {
+        const v = lut[buf[i + c]];
+        sum[c] += v; sq[c] += v * v;
+      }
+    const mean = sum.map((s) => s / n);
+    const sigma = sq.map((s, c) => Math.sqrt(Math.max(0, s / n - mean[c] * mean[c])));
+    return { url: cv.toDataURL('image/png'), mean, sigma };
   }, [which, SHOW_ALPHA, SIZE, SHOW_RGB]);
 
   if (res.err) { console.error(res.err); process.exitCode = 1; return; }
@@ -99,6 +129,12 @@ await run({ width: 640, height: 400, hash: 'manual&tier=high' }, async ({ page }
     `atlas-${which}${SHOW_ALPHA ? '-a' : SHOW_RGB ? '-rgb' : ''}.png`);
   fs.writeFileSync(out, Buffer.from(res.url.split(',')[1], 'base64'));
   console.log('  → ' + path.relative(ROOT, out));
+  if (res.mean) {
+    const f = (a) => '[' + a.map((v) => v.toFixed(4)).join(', ') + ']';
+    console.log('  linear mean  ' + f(res.mean));
+    console.log('  linear sigma ' + f(res.sigma)
+      + (Math.max(...res.sigma) < 0.01 ? '   <-- FLAT: the map carries no detail' : ''));
+  }
 });
 
 finish(process.exitCode || 0);

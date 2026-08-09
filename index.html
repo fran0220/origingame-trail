@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Jungle Trail — 丛林记录</title>
+<title>Field Notes</title>
 <style>
   :root {
     color-scheme: dark;
@@ -96,6 +96,27 @@
     font-size: 11px; letter-spacing: .22em; color: var(--faint);
     text-transform: uppercase; min-height: 1.4em;
   }
+
+  /* -------------------------------------------------------- scene picker */
+  #levelPicker {
+    position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
+    background: #070a0d; color: var(--ink); font: var(--ui);
+  }
+  #levelPicker[hidden] { display: none; }
+  #levelPicker .pick-inner { width: min(760px, 84vw); }
+  #levelPicker .pick-cap { color: var(--faint); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; }
+  #levelPicker h1 { margin: 12px 0 40px; font-size: clamp(25px, 4vw, 42px); font-weight: 300; letter-spacing: .16em; }
+  #levelPicker .pick-list { display: grid; gap: 1px; background: rgba(220,230,220,.14); }
+  #levelPicker button {
+    position: relative; min-height: 128px; padding: 25px 30px; border: 0;
+    color: inherit; text-align: left; cursor: pointer; overflow: hidden;
+    background: #101713; font: inherit;
+  }
+  #levelPicker button[data-level="jungle"] { background: linear-gradient(100deg, #0b1811, #263b25); }
+  #levelPicker button[data-level="lake"] { background: linear-gradient(100deg, #121b25, #668299); }
+  #levelPicker button:hover, #levelPicker button:focus-visible { outline: 1px solid var(--gold); outline-offset: -5px; }
+  #levelPicker strong { display: block; font-size: 20px; font-weight: 400; letter-spacing: .18em; }
+  #levelPicker small { display: block; margin-top: 10px; color: rgba(235,240,230,.72); font-size: 12px; letter-spacing: .1em; }
 
   /* ------------------------------------------------------------ reticle */
   #reticle {
@@ -411,6 +432,12 @@
     color: #0d100c; background: var(--gold); border-color: var(--gold);
   }
   #pause .qn { margin-top: 13px; font-size: 10px; letter-spacing: .1em; color: var(--dim); min-height: 1.4em; }
+  #pauseLevels {
+    pointer-events: auto; margin-top: 22px; padding: 9px 20px; cursor: pointer;
+    border: 1px solid var(--line); background: transparent; color: var(--dim);
+    font: var(--ui); letter-spacing: .18em;
+  }
+  #pauseLevels:hover { color: var(--gold); border-color: var(--gold); }
 
   /* ------------------------------------------------------------- finale */
   #finale {
@@ -463,6 +490,17 @@
 </head>
 <body>
 <canvas id="view"></canvas>
+
+<main id="levelPicker" hidden aria-labelledby="pickTitle">
+  <div class="pick-inner">
+    <div class="pick-cap">Field Notes · 选择场景</div>
+    <h1 id="pickTitle">去往一片风景</h1>
+    <div class="pick-list">
+      <button type="button" data-level="jungle"><strong>Jungle · 雨林小径</strong><small>闭合林冠下，循水声走向遗迹与瀑布</small></button>
+      <button type="button" data-level="lake"><strong>Lake Pukaki · 普卡基湖</strong><small>南岛高地，沿冰川湖岸望向雪山</small></button>
+    </div>
+  </div>
+</main>
 
 <div id="hud" class="hidden">
   <div id="reticle"></div>
@@ -563,6 +601,7 @@
         </div>
         <div class="qn" id="qNote"></div>
       </div>
+      <button id="pauseLevels" type="button">选择场景</button>
     </div>
   </div>
 
@@ -574,7 +613,7 @@
       <div class="lb" id="finLb"></div>
       <div class="act">
         <button id="finBook">查看手记</button>
-        <button id="finBack">回到小径</button>
+        <button id="finBack">选择场景</button>
       </div>
     </div>
   </div>

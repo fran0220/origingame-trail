@@ -13,6 +13,7 @@ import { chromium } from 'playwright';
 
 const URL_BASE = process.env.SMOKE_URL || 'http://localhost:8099/';
 const TIMEOUT = Number(process.env.SMOKE_TIMEOUT || 120_000);
+const LEVEL = process.env.SMOKE_LEVEL || 'jungle';
 
 const browser = await chromium.launch({
   args: [
@@ -30,7 +31,7 @@ page.on('console', (m) => {
 });
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 
-await page.goto(`${URL_BASE}#manual`, { waitUntil: 'domcontentloaded' });
+await page.goto(`${URL_BASE}#manual&level=${encodeURIComponent(LEVEL)}`, { waitUntil: 'domcontentloaded' });
 
 try {
   await page.waitForFunction(() => !!window.__game, null, { timeout: TIMEOUT });

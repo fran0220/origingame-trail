@@ -10,7 +10,8 @@ const PORT = +(process.argv[2] || 8099);
 const ROOT = path.resolve('.');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript',
                 '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
-                '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
+                '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+                '.webp': 'image/webp', '.gltf': 'model/gltf+json', '.bin': 'application/octet-stream' };
 
 http.createServer((rq, rs) => {
   const rel = decodeURI(rq.url.split('?')[0]);
