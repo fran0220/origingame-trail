@@ -2,6 +2,7 @@
  * first gesture; the three beds deliberately use incommensurate durations. */
 import { shoreX } from './basin.js';
 import { CarAudio } from './carAudio.js';
+import { renderFlockBank } from '../../audio/sheep.js';
 
 const MASTER = 0.58;
 const smooth = (p, value, now, tau = 0.18) => {
@@ -19,6 +20,10 @@ export class LakeAmbience {
     this._unlocking = false;
     this._time = 0;
     this._nextBird = 13;
+    this._nextBleat = 6;
+    this._flocks = [];
+    this._bleatBank = null;
+    this._bleatBuffers = null;
     this._sources = [];
 
     const prevStep = walker.onStep, prevLand = walker.onLand;
@@ -73,6 +78,16 @@ export class LakeAmbience {
     return b;
   }
 
+  /**
+   * Hand the soundscape the real flock positions.
+   *
+   * Called by the level once LakeFarm exists. Without this the bleats would
+   * have to be scattered at random, and a sheep heard where there is visibly
+   * no sheep is worse than silence — the ear is very good at noticing that a
+   * sound has no source, and it undermines every other sound in the mix.
+   */
+  setFlocks(flocks) { this._flocks = flocks || []; }
+
   _build() {
     const ctx = this.ctx;
     this.master = ctx.createGain(); this.master.gain.value = MASTER; this.master.connect(ctx.destination);
@@ -86,6 +101,16 @@ export class LakeAmbience {
       else g.connect(this.master);
       src.start(0, (seconds * .37) % seconds); this._sources.push(src); this.beds[name] = { source: src, gain: g, filter: f };
     };
+    /* The flock bank is rendered once, here, at the device's real sample
+     * rate. Synthesising a bleat costs about a millisecond, which is fine
+     * once and an audible hitch if done per call. */
+    this._bleatBank = renderFlockBank(ctx.sampleRate, 12);
+    this._bleatBuffers = this._bleatBank.map(({ data }) => {
+      const b = ctx.createBuffer(1, data.length, ctx.sampleRate);
+      b.copyToChannel ? b.copyToChannel(data, 0) : b.getChannelData(0).set(data);
+      return b;
+    });
+
     bed('wind', 11.3, 'lowpass', 1050, .16, -.12);
     bed('tussock', 7.7, 'bandpass', 3100, .055, .28);
     bed('shore', 13.9, 'lowpass', 720, .08, -.38);
@@ -106,6 +131,62 @@ export class LakeAmbience {
     const shoreDistance = Math.abs(x - shoreX(z));
     smooth(this.beds.shore.gain.gain, .025 + .18 / (1 + shoreDistance * .12), now, .35);
     if (this._time >= this._nextBird) { this._bird(now); this._nextBird += 19 + ((this._nextBird * 1.618) % 23); }
+    if (this._time >= this._nextBleat) {
+      this._bleat(now, x, z);
+      /* Irregular. Stock call in bursts with long gaps, and anything close to
+       * a fixed interval is heard as a machine within about three repeats. */
+      this._nextBleat += 4.5 + ((this._nextBleat * 2.399) % 11);
+    }
+  }
+
+  /**
+   * One bleat, from the nearest flock that is actually within earshot.
+   *
+   * Distance does two things, and only doing the first is the usual mistake:
+   * it makes the sound quieter, AND it takes the top off it. Air absorbs high
+   * frequencies far faster than low ones, so a sheep at three hundred metres
+   * is not a quiet sheep — it is a dull one. A distant call that keeps its
+   * formants sounds like it is being played through a speaker beside you at
+   * low volume, which is exactly what it is.
+   */
+  _bleat(now, x, z) {
+    const ctx = this.ctx;
+    if (!ctx.createBufferSource || !this._bleatBuffers || !this._flocks.length) return;
+    let best = null, bestD = Infinity;
+    for (const f of this._flocks) {
+      const d = Math.hypot(f.x - x, f.z - z);
+      if (d < bestD) { bestD = d; best = f; }
+    }
+    /* Out of earshot: stay silent rather than move the sheep to the listener.
+     * A flock that is always audible no matter where you are is a flock that
+     * is nowhere. */
+    if (!best || bestD > 340) return;
+
+    const i = (Math.abs(Math.round(this._time * 37)) % this._bleatBuffers.length);
+    const src = ctx.createBufferSource();
+    src.buffer = this._bleatBuffers[i];
+    /* Bigger animals sound lower AND slower. Detuning by playback rate alone
+     * is the cheap way and it is the right one here, because it moves the
+     * formants with the pitch exactly as a larger vocal tract does. */
+    src.playbackRate.value = 0.86 + ((i * 0.137) % 0.30);
+
+    const g = ctx.createGain();
+    g.gain.value = 0.30 / (1 + bestD * 0.055);
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    /* 9 kHz next to you, down to about 700 Hz at the far edge of earshot. */
+    lp.frequency.value = Math.max(650, 9000 * Math.exp(-bestD / 120));
+
+    src.connect(lp); lp.connect(g);
+    if (ctx.createStereoPanner) {
+      const pan = ctx.createStereoPanner();
+      /* Which side of the road the flock is on. Not a true HRTF, but the only
+       * cue that matters at this distance in a car doing 130. */
+      pan.pan.value = Math.max(-0.85, Math.min(0.85, (best.x - x) / 70));
+      g.connect(pan); pan.connect(this.master);
+    } else g.connect(this.master);
+    src.start(now);
   }
 
   _bird(now) {

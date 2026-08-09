@@ -231,7 +231,14 @@ class LakeLevel {
 
   materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.veg.materials, ...this.props.materials, ...this.shelter.materials, ...this.fences.materials, ...this.farm.materials, ...this.roadside.materials, ...this.structures.materials, ...this.rock.materials, ...this.fauna.materials, ...this.distance.materials]; }
 
-  makeAmbience({ camera, walker }) { return new LakeAmbience({ camera, walker }); }
+  makeAmbience({ camera, walker }) {
+    const amb = new LakeAmbience({ camera, walker });
+    /* The flocks are placed by LakeFarm from the terrain, so the soundscape
+     * has to be told where they ended up rather than guessing. A bleat from
+     * an empty paddock is worse than silence. */
+    amb.setFlocks(this.farm?.flocks ?? []);
+    return amb;
+  }
 
   attachAtmosphere(atmos) {
     // Open, dry alpine air: retain only a light bright veil, never jungle mist.
