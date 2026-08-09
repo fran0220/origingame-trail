@@ -155,6 +155,45 @@ export function bedProfile(off) {
   return -Math.min(shelf, deep);
 }
 
+/**
+ * The groove a fan's stream cut in it, as a 0..1 mask.
+ *
+ * Factored out because TWO functions need it and they must not disagree:
+ * evalHeight cuts the ground with it, and evalChannels makes the bed bare with
+ * it. The first version computed it in evalHeight, stashed it on the shared `q`
+ * and read it back in evalChannels — which quietly did nothing, because
+ * evalChannels is called with a `q` from its own sampleField and never saw the
+ * value. The channel was cut 3.4 m deep and then carpeted in sward, and the
+ * gravel reading at the bed was 0.12: exactly the pre-existing fan term, which
+ * is how I knew my contribution was zero rather than merely weak.
+ *
+ * One function, two callers, no shared mutable state to get out of step.
+ */
+export function channelMask(x, z, fromShore, roadDist) {
+  let m = 0;
+  for (const [fu, , fw] of FANS) {
+    const fz = BOUNDS.z0 - fu * VALLEY;
+    const fr = 2.4 * fw;
+    const r = Math.hypot((z - fz) * 1.5, Math.max(0, fromShore + 10)) / fr;
+    if (r >= 1) continue;
+    const sinuous = Math.sin(fromShore * 0.055) * 5.0
+                  + Math.sin(fromShore * 0.021 + fu * 9.1) * 8.5;
+    const across = (z - (fz + sinuous)) * 1.35;
+    /* Two threads: a fan channel braids rather than meanders. */
+    const g1 = Math.exp(-((across / 3.6) ** 2));
+    const g2 = 0.55 * Math.exp(-(((across - 9.5) / 2.6) ** 2));
+    const groove = Math.min(1, g1 + g2);
+    const onFan = Math.max(0, 1 - r) ** 0.75;
+    /* Dies out at the road: water crosses the formation through the culverts
+     * built for it, and cutting a gully through the carriageway would
+     * contradict them. */
+    const offRoad = smoothstep(ROAD_BATTER + 2.5, ROAD_BATTER + 16, roadDist);
+    const offShore = smoothstep(4, 26, fromShore);
+    m = Math.max(m, groove * onFan * offRoad * offShore);
+  }
+  return m;
+}
+
 export class Basin extends Heightfield {
   constructor(trail, seed = 20260901) {
     /* Lake bed chunks remain visible through clear shallow water, including
@@ -371,6 +410,7 @@ export class Basin extends Heightfield {
         if (r < 1) {
           const cone = (1 - r) ** 1.6 * fh;
           y = Math.max(y, cone + 0.9 * n.fbm(x * 0.06, z * 0.06, 3, 0.5) * (1 - r));
+
         }
       }
 
@@ -545,6 +585,20 @@ export class Basin extends Heightfield {
       const r = Math.hypot((z - fz) * 1.5, Math.max(0, fromShore + 10)) / fr;
       shingle = Math.max(shingle, (1 - clamp(r, 0, 1)) * 0.42);
     }
+    /* The channel bed is BARE, and that is the whole point of cutting it.
+     *
+     * Incising the fans gave 4.5 m of relief that was then carpeted in sward,
+     * so it read as a soft green dip rather than as a watercourse. A braided
+     * shingle channel is bare stone: the flood scours it out often enough that
+     * nothing establishes, and the pale gravel against the surrounding grass
+     * is what makes it legible as a channel at all rather than as a fold in
+     * the ground. The landform without the material is only half the feature.
+     *
+     * `q.channel` is written by evalHeight from the same groove function that
+     * did the cutting, so the two cannot disagree — the bed is bare exactly
+     * where it is low, by construction rather than by a second guess. */
+    const chan = channelMask(x, z, fromShore, q.dist);
+    if (chan > 0) shingle = Math.max(shingle, Math.min(1, chan * 2.6));
     /* Crushed gravel, with a living edge. The old mask faded from the exact
      * centreline to one perfectly smooth width, so every route view exposed a
      * dark computer-drawn ribbon. Hold a readable tread through the centre and
