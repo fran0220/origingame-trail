@@ -49,6 +49,22 @@
  * offset to remember and no offset to get wrong.
  */
 import * as THREE from 'three';
+import { LIVERY_PARS, LIVERY_BODY } from './livery.js';
+
+/* Paint the competition livery on. See livery.js — it is a two-plane
+ * projection in object space, so it needs no UV map and survives the body
+ * sections being retuned. */
+function liveryPaint(material) {
+  material.onBeforeCompile = (sh) => {
+    sh.vertexShader = 'varying vec3 vCarLocal;\nvarying vec3 vCarNrm;\n' +
+      sh.vertexShader.replace('#include <begin_vertex>',
+        '#include <begin_vertex>\n  vCarLocal = position;\n  vCarNrm = normal;');
+    sh.fragmentShader = LIVERY_PARS + sh.fragmentShader.replace(
+      '#include <color_fragment>', '#include <color_fragment>\n' + LIVERY_BODY);
+  };
+  material.customProgramCacheKey = () => 'car-livery-v1';
+  return material;
+}
 import { bakeSurface } from '../gfx/bake.js';
 
 /** Front to rear axle, in metres. Group B homologation hatch territory. */
@@ -891,14 +907,14 @@ export class CarMesh {
      * in the scene with a chroma above about 0.2.
      */
     this.mat = {
-      paint: keep(new THREE.MeshStandardMaterial({
+      paint: keep(liveryPaint(new THREE.MeshStandardMaterial({
         name: 'car-paint',
         color: new THREE.Color(0x1d47c8),
         roughness: 0.25,
         metalness: 0.0,
         envMapIntensity: 1.15,
         dithering: true,
-      })),
+      }))),
 
       /* Everything moulded rather than pressed: bumper skins, grille, splitter,
        * arch liners. Unpainted textured polypropylene is very rough and never
@@ -1100,6 +1116,7 @@ export class CarMesh {
     paint.add(this._loftGeometry());
     for (const g of this._archGeometries()) paint.add(g);
     this._addBodywork(paint, trim, lampC, lampR);
+    this._addRallyKit(paint, trim, lampC);
     this._addShutLines(trim);
     this._addGlazing(glass);
     this._addCabin(cabin, cage);
@@ -1364,6 +1381,79 @@ export class CarMesh {
    * in car coordinates against the station table above, so they follow the
    * body if the roofline is ever retuned.
    */
+  /* ── rally hardware ────────────────────────────────────────────────────
+   *
+   * A liveried shell with a wing is a touring car. Three things are what make
+   * a rally car recognisable at a glance from the side of a stage, and none of
+   * them is aerodynamic:
+   *
+   *   THE LIGHT POD. Four spotlamps on a bar across the nose is the single
+   *   most identifying object on a rally car, because it exists for a reason
+   *   no circuit car has — the stage is a public road at night, in a forest,
+   *   with no lighting of any kind.
+   *
+   *   MUD FLAPS. Big, square, hanging almost to the ground behind every wheel.
+   *   They are there because the surface is loose and the car behind is
+   *   fifteen seconds back, and they are the detail that says "this car
+   *   expects to be on gravel" more clearly than any amount of ride height.
+   *
+   *   THE SUMP GUARD, visible under the nose. A circuit car has a splitter
+   *   scraping the tarmac; a rally car has a steel plate protecting the engine
+   *   from the rock it is about to land on.
+   */
+  _addRallyKit(paint, trim, lampC) {
+    const box = (batch, w, h, d, r, seg, x, y, z, rx = 0, ry = 0) =>
+      batch.add(place(roundedBox(w, h, d, r, seg), x, y, z, rx, ry, 0));
+
+    /* ── light pod ────────────────────────────────────────────────────────
+     * Mounted on the bonnet leading edge, not the bumper: a bumper-mounted bar
+     * is a road-car accessory, and every works car puts them high so the beam
+     * clears the crest the car is about to go over. */
+    const podZ = 3.16, podY = 1.02;
+    /* The bar itself, and two stays down to the bonnet. */
+    box(trim, 1.06, 0.048, 0.055, 0.018, 1, 0, podY - 0.115, podZ);
+    for (const s of [-1, 1]) {
+      box(trim, 0.05, 0.16, 0.05, 0.015, 1, s * 0.40, podY - 0.20, podZ - 0.02);
+    }
+    /* Four lamps: the outer pair spread wider and canted out, which is how
+     * they are actually aimed — the inners light the road, the outers light
+     * the ditch you are trying not to be in. */
+    /* FOUR LAMPS HAVE TO READ AS FOUR. The first spacing put 0.25 m lenses
+     * 0.25 m apart, so they touched edge to edge and the pod rendered as a
+     * single pale slab across the bonnet — which is exactly what a light pod
+     * must not look like, since the whole visual signature is the repetition.
+     * Smaller lenses, wider spacing, and a gap you can see daylight through. */
+    const lamps = [[-0.435, 0.105], [-0.145, 0.118], [0.145, 0.118], [0.435, 0.105]];
+    for (const [lx, lr] of lamps) {
+      /* Housing, then the lens standing proud of it. The housing is a little
+       * deeper than it is wide, because a spotlamp is a can. */
+      box(trim, lr * 2.10, lr * 2.10, 0.135, lr * 0.92, 3, lx, podY, podZ - 0.03);
+      box(lampC, lr * 1.80, lr * 1.80, 0.040, lr * 0.85, 3, lx, podY, podZ + 0.052);
+    }
+
+    /* ── mud flaps ────────────────────────────────────────────────────────
+     * Behind each wheel, hanging to within 90 mm of the ground. They are
+     * mounted with a slight rearward rake because that is what air does to a
+     * sheet of rubber at speed, and a flap standing exactly vertical is the
+     * tell of one that has never moved. */
+    const flapAt = (z, s) => {
+      box(trim, 0.030, 0.30, 0.245, 0.012, 1, s * 0.86, 0.255, z, -0.16, 0);
+    };
+    flapAt(2.04, -1); flapAt(2.04, 1);          // behind the front wheels
+    flapAt(-0.40, -1); flapAt(-0.40, 1);        // behind the rears
+
+    /* ── sump guard ───────────────────────────────────────────────────────
+     * A plate under the nose, canted up at its leading edge so it rides over
+     * what it hits instead of digging in. Aluminium rather than moulded trim:
+     * this is the one part of the car that is meant to be scraped. */
+    paint.add(place(roundedBox(1.02, 0.035, 0.86, 0.02, 1), 0, 0.225, 2.72, -0.10, 0));
+
+    /* ── roof vent ────────────────────────────────────────────────────────
+     * A forward-facing scoop over the cabin. With the windows taped shut and a
+     * cage inside, it is the only ventilation the crew has. */
+    box(trim, 0.30, 0.085, 0.34, 0.03, 1, 0, 1.47, 1.62, 0.14, 0);
+  }
+
   _addBodywork(paint, trim, lampC, lampR) {
     const b = this._detail.box;
     const box = (batch, w, h, d, r, seg, x, y, z, rx = 0, ry = 0) =>
