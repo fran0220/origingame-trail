@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BOUNDS, shoreX } from './basin.js';
+import { BOUNDS, shoreX, ROAD_SHOULDER } from './basin.js';
 import { bakeImage } from '../../gfx/bake.js';
 
 /* Three crossed cards render each sub-metre sward crown. The baked texture is
@@ -40,10 +40,17 @@ void main(){
   * floor sitting on top of a tawny PBR ground and under tawny hero tussocks.
   * A short-tussock sward is straw with green only at the base of the blade,
   * so the ramp runs from a shaded olive root to a sun-bleached straw tip. */
- vec3 col=mix(vec3(.055,.075,.030),vec3(.245,.205,.082),tint*.44+.14);
- /* And the blade is paler at the tip for the same reason: that is the part
-  * that died back first and the part the sun reaches. */
- col*=.72+.34*vUv.y;
+ /* Close to the ground's own tawny mean, not darker than it.
+  * The first cut of this ramp started at (.055,.075,.030) — about a third of
+  * the ground's value — so every tuft read as a dark speck dropped on a pale
+  * surface, and a verge of them read as gravel or litter rather than as grass.
+  * A tuft of dry grass standing in dry grass is very nearly the same colour as
+  * what it stands in; what makes it visible is silhouette and self-shadow, not
+  * a value difference. */
+ vec3 col=mix(vec3(.135,.120,.058),vec3(.300,.255,.112),tint*.44+.14);
+ /* Paler at the tip, because that is the part that died back first and the
+  * part the sun reaches — but only slightly, for the same reason. */
+ col*=.86+.20*vUv.y;
  gl_FragColor=vec4(col,alpha);
 }`;
 
@@ -266,9 +273,9 @@ function buildGroundCover(owner,terrain,renderer,dummy){
  owner.textures.push(map);
  const makeCoverMat=(wind,key)=>{
   const mat=new THREE.MeshStandardMaterial({map,color:0xffffff,vertexColors:false,roughness:.96,metalness:0,alphaTest:coverAlphaTest,alphaToCoverage:true,side:THREE.DoubleSide,envMapIntensity:.25});
-  const U={uFloraTime:{value:0},uFloraWind:{value:new THREE.Vector2(...wind)},uFloraFeather:{value:0},uFloraCushion:{value:0},uCoverFade:{value:new THREE.Vector2(44,102)}};
+  const U={uFloraTime:{value:0},uFloraWind:{value:new THREE.Vector2(...wind)},uFloraFeather:{value:0},uFloraCushion:{value:0},uCoverFade:{value:new THREE.Vector2(16,32)}};
   mat.userData.uniforms=U;mat.customProgramCacheKey=()=>key;
-  mat.onBeforeCompile=shader=>{Object.assign(shader.uniforms,U);mat.userData.shader=shader;shader.vertexShader=`uniform float uFloraTime;uniform vec2 uFloraWind;varying float vAlpineDry;\n`+shader.vertexShader.replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>\nobjectNormal=normalize(mix(objectNormal,vec3(0.0,1.0,0.0),.86));`).replace('#include <begin_vertex>',`#include <begin_vertex>\nfloat ix=instanceMatrix[3].x,iz=instanceMatrix[3].z;float ph=ix*.13+iz*.17;vAlpineDry=clamp(.5+.34*sin(ix*.013+iz*.007+sin(iz*.009)*1.7)+.16*sin(iz*.031-ix*.004),0.0,1.0);float flex=smoothstep(.02,.58,position.y);transformed.x+=sin(uFloraTime*uFloraWind.y+ph)*uFloraWind.x*flex*flex;`);shader.fragmentShader=`varying float vAlpineDry;uniform vec2 uCoverFade;float coverHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}\n`+shader.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP\nvec4 sampledDiffuseColor=texture2D(map,vMapUv);\ndiffuseColor*=sampledDiffuseColor;\nfloat dry=smoothstep(.58,.94,vAlpineDry);\nvec3 alpineBlade=mix(vec3(.07,.22,.04),vec3(.22,.31,.08),dry*.24);\ndiffuseColor.rgb*=mix(vec3(1.0),alpineBlade,.28);\n#endif`).replace('#include <alphatest_fragment>',`#include <alphatest_fragment>\nfloat coverFade=1.0-smoothstep(uCoverFade.x,uCoverFade.y,length(vViewPosition));\nif(coverHash(gl_FragCoord.xy)>coverFade)discard;`).replace('#include <lights_fragment_begin>',`#include <lights_fragment_begin>\nfloat back=max(0.0,dot(normalize(vViewPosition),-geometryNormal));reflectedLight.directDiffuse+=diffuseColor.rgb*back*.055;reflectedLight.indirectDiffuse+=diffuseColor.rgb*.22;`);};
+  mat.onBeforeCompile=shader=>{Object.assign(shader.uniforms,U);mat.userData.shader=shader;shader.vertexShader=`uniform float uFloraTime;uniform vec2 uFloraWind;varying float vAlpineDry;\n`+shader.vertexShader.replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>\nobjectNormal=normalize(mix(objectNormal,vec3(0.0,1.0,0.0),.86));`).replace('#include <begin_vertex>',`#include <begin_vertex>\nfloat ix=instanceMatrix[3].x,iz=instanceMatrix[3].z;float ph=ix*.13+iz*.17;vAlpineDry=clamp(.5+.34*sin(ix*.013+iz*.007+sin(iz*.009)*1.7)+.16*sin(iz*.031-ix*.004),0.0,1.0);float flex=smoothstep(.02,.58,position.y);transformed.x+=sin(uFloraTime*uFloraWind.y+ph)*uFloraWind.x*flex*flex;`);shader.fragmentShader=`varying float vAlpineDry;uniform vec2 uCoverFade;float coverHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}\n`+shader.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP\nvec4 sampledDiffuseColor=texture2D(map,vMapUv);\ndiffuseColor*=sampledDiffuseColor;\nfloat dry=smoothstep(.58,.94,vAlpineDry);\nvec3 alpineBlade=mix(vec3(.62,.58,.40),vec3(.86,.76,.46),dry*.44);\ndiffuseColor.rgb*=mix(vec3(1.0),alpineBlade,.22);\n#endif`).replace('#include <alphatest_fragment>',`#include <alphatest_fragment>\nfloat coverFade=1.0-smoothstep(uCoverFade.x,uCoverFade.y,length(vViewPosition));\nif(coverHash(gl_FragCoord.xy)>coverFade)discard;`).replace('#include <lights_fragment_begin>',`#include <lights_fragment_begin>\nfloat back=max(0.0,dot(normalize(vViewPosition),-geometryNormal));reflectedLight.directDiffuse+=diffuseColor.rgb*back*.055;reflectedLight.indirectDiffuse+=diffuseColor.rgb*.22;`);};
   owner.materials.push(mat);return mat;
  };
  /* One genuinely low storey closes the first few metres. Mid-height clumps are
@@ -283,11 +290,21 @@ function buildGroundCover(owner,terrain,renderer,dummy){
    const zb=THREE.MathUtils.lerp(BOUNDS.z0,BOUNDS.z1,(chunk+1)/6);
    const list=[];
    for(let z=zb+step*.55;z<za;z+=step)for(let d=d0;d<d1;d+=step){
-    const jz=z+(rng()-.5)*step*.92,jd=d+(rng()-.5)*step*.92;
+    /* Jitter over a whole cell, plus a decorrelated second offset.
+     * +/-0.46 of a cell cannot break a 0.30 m lattice: every tuft still sits
+     * within half a step of a grid node, and the eye reads the grid long
+     * before it reads the jitter. What arrives is a stamped lattice of
+     * identical marks, which is the failure this layer was switched off for
+     * twice before. */
+    const jz=z+(rng()-.5)*step*1.9,jd=d+(rng()-.5)*step*1.9;
     const x=shoreX(jz)+jd;if(x>BOUNDS.x1-2)continue;
     terrain.sampleField(x,jz,q);
-    /* Hard path only — no multi-metre mown verge. */
-    if(q.dist<terrain.trail.widthAt(q.t)+1.1)continue;
+    /* Clear of the whole road formation, not just the seal.
+     * `widthAt` is the sealed half-width, so a +1.1 m margin put tufts on the
+     * gravel shoulder and, where the field's bilinear distance rounded in,
+     * on the seal itself — grass growing out of a state highway. The formation
+     * is ROAD_SHOULDER wide and its batter runs on past that. */
+    if(q.dist<ROAD_SHOULDER+0.8)continue;
     const mass=.5+.5*Math.sin(x*.037+jz*.023+1.4*Math.sin(jz*.009));
     const shore=THREE.MathUtils.smoothstep(d,2.4,11);
     /* Occasional wind-scald keeps the carpet from looking stamped. */
@@ -297,7 +314,10 @@ function buildGroundCover(owner,terrain,renderer,dummy){
     const y=terrain.height(x,jz);
     const e=.7,dx=(terrain.height(x+e,jz)-terrain.height(x-e,jz))/(2*e),dz=(terrain.height(x,jz+e)-terrain.height(x,jz-e))/(2*e);
     if(Math.hypot(dx,dz)>.40)continue;
-    list.push({x,y,z:jz,s:THREE.MathUtils.lerp(sizeLo,sizeHi,Math.pow(rng(),.55)),yaw:rng()*6.283,t:rng()});
+    /* Size varies over more than two to one. A lattice survives jitter if
+     * every mark is the same size, because the repeat is then carried by the
+     * marks rather than by their positions. */
+    list.push({x,y,z:jz,s:THREE.MathUtils.lerp(sizeLo,sizeHi,Math.pow(rng(),1.6)),yaw:rng()*6.283,t:rng()});
    }
    if(!list.length)continue;
    const mesh=new THREE.InstancedMesh(geo,mat,list.length);
@@ -313,8 +333,31 @@ function buildGroundCover(owner,terrain,renderer,dummy){
    owner.root.add(mesh);owner.meshes.push(mesh);
   }
  };
- /* Fine enough to overlap at eye height, low enough not to become a crop. */
- placeLayer('sward',geoSward,matSward,.34,1.8,154,.46,.82,.95,false);
+ /* Near-field only, and that restriction is the whole reason this layer is
+  * back after being switched off.
+  *
+  * Every previous attempt at ground cover on this level — scanned blades,
+  * coverage cards, short opaque ribbons — was refuted the same way: at
+  * landscape scale it became either a field of wires or a repeated crop, and
+  * it did that because it was asked to cover the whole basin out to 154 m.
+  * That is a job a card layer cannot do, and the conclusion drawn at the time
+  * was that the PBR ground should own the cover outright.
+  *
+  * That conclusion was right about the distance and wrong about the near
+  * field. With the ground alone, the first ten metres either side of the road
+  * is a photograph of grass painted onto a smooth surface, with nothing
+  * standing up out of it — and on a driven level that band is most of what the
+  * eye has time to read. The failures were never about those ten metres; they
+  * were about the ninety behind them.
+  *
+  * So the placement stops at 34 m instead of 154 m and the material fades out
+  * from 16 m, which is inside the range where a card still has enough pixels
+  * to read as a tuft. Past that the scanned ground takes over exactly as it
+  * does now. This cannot become the basin-wide crop that was refuted, because
+  * it does not reach the basin — and the instance count falls with the square
+  * of the range, so the near field gets denser while the layer as a whole gets
+  * cheaper than the one that was rejected. */
+ placeLayer('sward',geoSward,matSward,.30,1.5,34,.52,.94,.97,false);
 }
 
 function plantGeometry(id,kind,variant,hex){

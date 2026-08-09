@@ -171,6 +171,17 @@ class LakeLevel {
      * authored hero silhouettes and notable points without laying a uniform
      * card carpet over it: R21's bent cards became a mint crop, while R22's
      * upright revision became a field of black V-shaped marks. */
+    /* Ground cover stays off, and this is the third time it has been switched
+     * off rather than the first time it was never tried. See the refutation in
+     * docs/experiments.md: restricting the card layer to the near field fixed
+     * the two failures that killed it before — it no longer tiles the basin
+     * and no longer forms a lattice — and it still does not read as cover.
+     * At the density that closes the ground it is a crop; at the density that
+     * is not a crop it is speckle, and speckle on tawny ground is
+     * indistinguishable from the scattered stones already there.
+     *
+     * What was actually making the near field look bare is in the ground
+     * shader, not missing from it. */
     this.veg = new LakeFlora(this.terrain, tier, renderer, { groundCover: false }); this.notable = this.veg.notable; scene.add(this.veg.root);
     await step(0.64, '铺陈岸线器物');
     /* Driftwood, erratics, lichen slabs, thatch mats, fan rills — the non-plant

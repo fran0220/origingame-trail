@@ -201,12 +201,31 @@ export function makeBasinMaterial(renderer, meadowAssets = null) {
        * toward its measured middle value over distance, and flatten the normal
        * below by the same amount, so the far basin carries landform and macro
        * colour rather than sub-pixel gravel. */
-      /* Pulled in from 55..210 m when tuv went from a 4 m period to a 1.18 m
-       * one: the distance at which a texel goes sub-pixel scales with the
-       * texture's world period, so a 3.4x finer surface starts aliasing 3.4x
-       * closer. Leaving the old range in place put the screen-door pattern
-       * right back on the mid-distance basin. */
-      float farDetail = sstep(22.0, 150.0, distance(cameraPosition, vWPos));
+      /* Faded on the pixel's footprint, not on its distance.
+       *
+       * This was 22..150 m, pulled in from 55..210 m when the uv scale went
+       * from a 4 m period to a 1.18 m one — correct reasoning, since the
+       * distance at which a texel goes sub-pixel scales with the texture's
+       * world period. But distance is only a proxy for footprint, and on this
+       * level it is a bad one: the ground is a basin seen at a shallow angle,
+       * so a hillside 40 m away across the valley has a far smaller footprint
+       * per pixel than the verge 25 m ahead down the road. Fading on distance
+       * therefore washed the texture off ground that could still resolve it,
+       * and the whole mid-distance basin read as smooth brown paper — which is
+       * what made the near field look bare enough to want a grass layer over
+       * it. It did not need one; it needed its own texture back.
+       *
+       * fwidth() of world position is the footprint directly, and the
+       * geometric mean of the two derivatives is what an anisotropic filter
+       * with a capped sample ratio actually resolves — the same correction,
+       * and for the same reason, as the chipseal in road.js. The tussock tap
+       * has a 1.18 m period over a 1K map, so a texel is about 1.2 mm and the
+       * two-tap blend starts breaking up once a pixel spans a few centimetres
+       * of ground. Distance is kept only as a far backstop for the kilometre
+       * scales where the derivative itself becomes unreliable. */
+      float gpx = sqrt(max(fwidth(vWPos.x), 1e-5) * max(fwidth(vWPos.z), 1e-5));
+      float farDetail = max(sstep(0.018, 0.075, gpx),
+                            sstep(260.0, 700.0, distance(cameraPosition, vWPos)));
       float grv = clamp(vSplat.x, 0.0, 1.0);
       float wet = clamp(vSplat.y, 0.0, 1.0);
       float hol = clamp(vSplat.z, 0.0, 1.0);

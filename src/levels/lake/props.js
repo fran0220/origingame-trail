@@ -382,12 +382,24 @@ export class LakeProps {
         rx: (rng() - 0.5) * 0.5,
         rz: (rng() - 0.5) * 0.5,
         sx: s * (0.9 + rng() * 0.5),
-        sy: s * (0.35 + rng() * 0.35),
+        /* Standing proud, not pressed into the ground. At 0.35-0.70 of their
+         * own width these were discs, and a disc lying flat on a hillside
+         * catches no side light and casts almost no shadow — which is why
+         * eighty ice-left boulders read as dark flat smudges scattered on the
+         * slope rather than as rock. An erratic is a lump the ice dropped; it
+         * sits on the ground with its own shadow under it. */
+        sy: s * (0.62 + rng() * 0.38),
         sz: s * (0.85 + rng() * 0.45),
+        /* Greywacke, in mountain sun, weathering pale with lichen. The old
+         * 0.14-0.26 linear is the value of a wet stone in shade, and under
+         * this level's exposure it is a hole. Real greywacke is a mid
+         * blue-grey and the whole point of it in this frame is that it is
+         * *lighter* than the tussock it sits in, which is what gives a
+         * moraine slope its speckle. */
         color: new THREE.Color().setRGB(
-          0.14 + rng() * 0.12,
-          0.15 + rng() * 0.11,
-          0.15 + rng() * 0.11,
+          0.255 + rng() * 0.150,
+          0.262 + rng() * 0.148,
+          0.268 + rng() * 0.142,
         ),
       });
     }

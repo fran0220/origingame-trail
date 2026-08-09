@@ -372,7 +372,13 @@ function shorelineStones(terrain) {
   /* The scan in the ground shader owns gravel-size structure. Geometry begins
    * at hand-sized cobbles and occurs in storm/deposit patches; thousands of
    * evenly bright pebbles across meadow and path were reading as white confetti. */
-  const count = 2700, shoreCount = 1200, pathCount = 420, rng = random(0x70a1c), dummy = new THREE.Object3D();
+  /* 1200 shore stones over 1.3 km of waterline is roughly one per metre of
+   * beach, which is why the margin reads as sand with a few pebbles dropped on
+   * it: a greywacke foreshore is *made* of stones, and the eye needs enough of
+   * them that they overlap in the near field. Trebled on the shore only — the
+   * path and fan populations were already right and are what the "white
+   * confetti" note above was about. */
+  const count = 5400, shoreCount = 3600, pathCount = 420, rng = random(0x70a1c), dummy = new THREE.Object3D();
   const geometry = new THREE.IcosahedronGeometry(1, 2);
   const pos=geometry.getAttribute('position');
   for(let i=0;i<pos.count;i++){
@@ -390,8 +396,16 @@ function shorelineStones(terrain) {
     color:0xffffff,roughness:.94,metalness:0,flatShading:false,envMapIntensity:.62,
   });
   const mesh = new THREE.InstancedMesh(geometry, material, count);
+  /* Dry greywacke shingle in mountain sun is a mid blue-grey, not charcoal.
+   * These were 0.06-0.13 linear — the value of a *wet* stone, and applied to
+   * every stone on the beach whether the swash reaches it or not, which is
+   * what made them read as dark litter scattered on pale sand instead of as
+   * the beach itself. The spread matters as much as the level: a real shingle
+   * is sorted by rock type as well as by size, so the pale weathered pieces
+   * and the dark freshly-turned ones sit side by side. */
   const colors = [
-    [.070,.087,.095], [.092,.108,.114], [.128,.136,.133], [.060,.078,.087],
+    [.155,.170,.178], [.225,.238,.240], [.310,.318,.312], [.118,.132,.146],
+    [.265,.262,.244], [.190,.196,.190],
   ].map(x=>new THREE.Color().setRGB(...x));
   const q = {}, pathPoint = new THREE.Vector3(), pathTangent = new THREE.Vector3();
   for (let i = 0, tries = 0; i < count && tries < count * 30; tries++) {
@@ -428,7 +442,10 @@ function shorelineStones(terrain) {
       ? THREE.MathUtils.lerp(shoreStone?.09:.14,shoreStone?.20:.32,rng())
       : pathStone
         ? THREE.MathUtils.lerp(.018,.065,Math.pow(rng(),1.8))
-        : THREE.MathUtils.lerp(shoreStone?.038:.06,shoreStone?.18:.28,rng());
+        /* Hand-sized and up. 38 mm was below the scale the scanned ground
+         * already draws, so the smallest half of the shore population was
+         * competing with the texture rather than adding to it. */
+        : THREE.MathUtils.lerp(shoreStone?.065:.06,shoreStone?.26:.28,rng());
     dummy.position.set(x,terrain.height(x,z)+s*.13,z);
     dummy.rotation.set((rng()-.5)*.8,rng()*6.283,(rng()-.5)*.8);
     dummy.scale.set(s*THREE.MathUtils.lerp(.9,1.65,rng()),s*THREE.MathUtils.lerp(.22,.42,rng()),s*THREE.MathUtils.lerp(.85,1.25,rng()));

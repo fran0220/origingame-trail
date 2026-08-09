@@ -651,3 +651,93 @@ past 150 m while the ground underfoot is tawny, and `distance.js`'s foreland
 palette, which was authored green on the same assumption. A viewer cannot judge the
 absolute colour of a hill eight kilometres away and will instantly see a seam where
 tawny foreground meets green middle distance.
+
+---
+
+## Card ground cover, restricted to the near field
+
+**Hypothesis.** Card-based ground cover has been switched off on this level
+twice, both times because it became a field of wires or a repeated crop at
+landscape scale. Both failures are failures *of distance*: the layer was asked
+to cover the basin out to 154 m. Restricted to the first thirty metres — the
+band a driver actually reads — neither failure can occur, and the near field
+stops being a photograph of grass painted on a smooth surface.
+
+**Measured.** The two named failures did not recur. Placement to 34 m with the
+material fading from 16 m does not tile the basin, and the lattice that the
+first cut showed was removed by jittering over a whole cell instead of half of
+one and by widening the size distribution past two to one. It also found a real
+bug on the way: the exclusion zone was `widthAt + 1.1`, which is the *sealed*
+half-width, so tufts were growing out of the gravel shoulder and, where the
+distance field's bilinear rounding went the wrong way, out of the seal itself.
+
+And it still does not read as ground cover. At a density that closes the
+surface it is the crop again; at a density that is not a crop it is speckle,
+and speckle the same value as the ground is indistinguishable from the
+scattered stones already on it. In the driving view — the one that ships — the
+tufts and the shore cobbles could not be told apart.
+
+**Verdict.** Refuted, for the third time, and now for a reason that is not
+about distance: a two-triangle card at 0.3 m cannot represent a tussock sward
+at any density that also looks like one. Ground cover on this level belongs to
+the scanned PBR surface.
+
+The investigation was not wasted, because the diagnosis was wrong rather than
+the fix. What made the near field look bare was in the ground shader — see
+below — and once that was corrected the reason for wanting a grass layer went
+away.
+
+---
+
+## The ground's own detail was being faded on the wrong variable
+
+**Hypothesis.** The mid-distance basin reads as smooth brown paper because the
+scanned ground genuinely has no detail left at that range, so the fix is to put
+geometry on top of it.
+
+**Measured.** The detail is there and was being thrown away. `farDetail` faded
+the tussock, shingle and rock taps toward their means over 22..150 m of camera
+distance — correctly reasoned when it was set, since the distance at which a
+texel goes sub-pixel does scale with the texture's world period, and this one
+had gone from a 4 m period to a 1.18 m one.
+
+But distance is a proxy for footprint and on this level it is a bad one. The
+basin is seen at a shallow angle from a car: a hillside 40 m away across the
+valley has a far smaller footprint per pixel than the verge 25 m ahead down the
+road. Fading on distance therefore washed the texture off ground that could
+still resolve it, over most of the visible frame.
+
+**Verdict.** Shipped. `fwidth()` of world position measures the footprint
+directly, and the geometric mean of the two derivatives is what an anisotropic
+filter with a capped sample ratio resolves — the same correction, for the same
+reason, as the chipseal in road.js. Distance is kept only as a far backstop
+past 260 m, where the derivative itself stops being reliable. The near and mid
+basin get their grain back, the far basin does not alias, and no geometry was
+added to achieve it.
+
+---
+
+## Dark shore cobbles and flattened erratics
+
+**Hypothesis.** Greywacke is a dark rock, so shore stones and ice-left boulders
+should be dark.
+
+**Measured.** Both were carrying the albedo of a *wet* stone — 0.06-0.13 linear
+for the cobbles and 0.14-0.26 for the erratics — applied to every stone whether
+the swash reached it or not. Under this level's 0.50 exposure that is not a
+dark stone, it is a hole, and the result was dark litter scattered on pale sand
+rather than a beach made of stone. The erratics had a second, geometric fault:
+scaled to 0.35-0.70 of their own width they were discs, and a disc lying flat
+on a hillside catches no side light and casts almost no shadow.
+
+There was also simply not enough of it. 1200 shore stones over 1.3 km of
+waterline is about one stone per metre of beach; a foreshore is *made* of
+stones and the eye needs them to overlap in the near field.
+
+**Verdict.** Shipped. Dry shingle to a mid blue-grey with a wide sort — pale
+weathered pieces beside dark freshly-turned ones, which is what a real graded
+beach looks like — the shore population trebled, the smallest half dropped
+because below about 40 mm it was competing with the scanned ground rather than
+adding to it, and the erratics given back their height. The wet band at the
+waterline was already correct and is now visible, because it finally has dry
+stone to be darker than.
