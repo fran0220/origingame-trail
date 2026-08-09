@@ -734,6 +734,36 @@ export class Vegetation {
     });
     this.woodMat = patchWind(wood, this.uniforms, { wood: true });
 
+    /* SPECULAR ANTIALIASING WAS TRIED HERE AND MEASURED TO DO NOTHING. Do not
+     * add it again without reading this.
+     *
+     * The reasoning was sound: vegetation is 63.7% of a jungle frame, and
+     * counting isolated bright spikes — a pixel more than 55 levels above ALL
+     * eight of its neighbours, which is what aliasing makes and what a real
+     * highlight with any extent does not — gave 100.3 per frame over ten
+     * stations, against the 117 the lake sward measured before render/
+     * specularAA.js fixed it there.
+     *
+     * Applied to leafMat and woodMat it moved the count from 1003 to 1002.
+     *
+     * It was genuinely reaching the shader: forcing the patch to write red
+     * turned the whole understorey red, and the distant trees only looked
+     * untouched because fog had already swallowed them. So the patch worked
+     * and the diagnosis was wrong.
+     *
+     * Splitting the spikes by colour says why. 32% are pale blue — sky through
+     * single-pixel gaps in the canopy. 26% are leaf-green and the rest
+     * neutral, and both are leaf SILHOUETTE edges. All three are GEOMETRIC
+     * aliasing: sub-pixel coverage of alpha-tested cards, not a shading normal
+     * being sampled once from a distribution. Widening roughness cannot touch
+     * coverage. The lake's sward is the opposite case — continuous geometry
+     * with a normal map — which is why the same fix worked there and is why
+     * the precedent misled.
+     *
+     * Anything that fixes this has to be about coverage: more samples per
+     * pixel, or alpha that converges to its own mean as the footprint grows,
+     * the way the road's chip does. */
+
     /* Shadow casters need the wind too. Without this the leaf is displaced in
      * the colour pass but not in the depth pass, so every plant is lit through
      * a shadow of its own resting position and appears to detach from it. */
