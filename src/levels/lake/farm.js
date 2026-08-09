@@ -179,12 +179,25 @@ export class LakeFarm {
       }
       this.flocks.push({ x: x0, z: z0, n });
     }
+    /* Kept so update() can move them. A sheep that never moves is a rock
+     * shaped like a sheep, and the eye works that out within about two
+     * seconds of looking at a paddock. */
+    this._sheep = lists;
+    this._dummy = dummy;
+    this._meshes = [];
+
     variants.forEach((geo, v) => {
       const list = lists[v];
       if (!list.length) return;
       const mesh = new THREE.InstancedMesh(geo, mat, list.length);
       mesh.name = `farm:sheep:${v}`;
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       list.forEach((q, i) => {
+        q.t = rng() * 100;
+        /* Most of the mob has its head down. Grazing is the default state and
+         * a flock where everyone is walking looks spooked. */
+        q.grazing = rng() < 0.72;
+        q.step = 0.10 + rng() * 0.22;
         dummy.position.set(q.x, q.y, q.z);
         dummy.rotation.set(0, q.yaw, 0);
         dummy.scale.setScalar(q.s);
@@ -192,6 +205,7 @@ export class LakeFarm {
         mesh.setMatrixAt(i, dummy.matrix);
       });
       mesh.instanceMatrix.needsUpdate = true;
+      this._meshes.push({ mesh, list: list, cursor: 0 });
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.computeBoundingSphere();
@@ -226,7 +240,48 @@ export class LakeFarm {
     this.sheds = sheds;
   }
 
-  update() {}
+  /**
+   * Drift the flocks.
+   *
+   * Two things make this cheap enough to do at all. Only a slice of each mesh
+   * is touched per frame — a sheep moving at 0.2 m/s does not need its matrix
+   * rewritten sixty times a second, and updating a twelfth of them each frame
+   * costs a twelfth as much while looking identical. And the motion is a
+   * function of time rather than an integration, so nothing accumulates and a
+   * paused game does not drift.
+   *
+   * The walk itself is deliberately unhurried and mostly rotational: a grazing
+   * sheep shuffles a few centimetres and swings its body far more than it
+   * translates, which is why a flock reads as busy without anything visibly
+   * going anywhere.
+   */
+  update(dt) {
+    if (!this._meshes) return;
+    this._t = (this._t || 0) + dt;
+    const d = this._dummy, T = this._t;
+    for (const entry of this._meshes) {
+      const { mesh, list } = entry;
+      const slice = Math.max(1, Math.ceil(list.length / 12));
+      for (let n = 0; n < slice; n++) {
+        const i = (entry.cursor + n) % list.length;
+        const q = list[i];
+        const ph = q.t + T * (q.grazing ? 0.18 : 0.45);
+        const wander = q.step * (q.grazing ? 0.35 : 1.0);
+        const x = q.x + Math.sin(ph * 0.7) * wander;
+        const z = q.z + Math.cos(ph * 0.53) * wander;
+        d.position.set(x, this.terrain.height(x, z), z);
+        d.rotation.set(0, q.yaw + Math.sin(ph * 0.31) * (q.grazing ? 0.5 : 0.22), 0);
+        /* Head down and up again: the body dips as it grazes. */
+        const dip = q.grazing ? 0.030 * (0.5 + 0.5 * Math.sin(ph * 1.9)) : 0;
+        d.scale.set(q.s, q.s * (1 - dip), q.s);
+        d.updateMatrix();
+        mesh.setMatrixAt(i, d.matrix);
+      }
+      entry.cursor = (entry.cursor + slice) % list.length;
+      mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+
   setTier() {}
   cullAround(x, z) {
     this.meshes.forEach((m) => {
