@@ -136,22 +136,37 @@ function makeRng(seed) {
  * long-travel springs, not a tall one.
  */
 const STATIONS = [
-  /* Tail, and the exponent is the whole story back here.
+  /* Tail. Two separate lessons are baked into these five rows.
    *
-   * These three used to close from 0.855 to 0.58 of half-width over 180 mm at
-   * an exponent falling 3.2 -> 2.6, which is a dome in plan and in section at
-   * the same time: the car ended in a rounded blue nose-cone with the tail
-   * lamps stuck on its curve. A hatchback does not end like that. It ends in a
+   * The first is the exponent, and it was already right: a hatchback does not
+   * end in a rounded nose-cone with the lamps stuck on its curve, it ends in a
    * stamped tailgate — a nearly flat panel, nearly full width, with a tight
    * rolled edge all round it — and a superellipse says exactly that with a
    * HIGH exponent, not a low one. So the width and the exponent are both held
-   * up to 45 mm from the end and all of the closing happens in the cap. */
-  { z: -0.780, yB: 0.415, yT: 0.96, wB: 0.40, wMax: 0.52, wTop: 0.40, vBelt: 0.55, n: 2.8 },
-  { z: -0.735, yB: 0.355, yT: 1.22, wB: 0.70, wMax: 0.845, wTop: 0.755, vBelt: 0.55, n: 4.4 },
-  { z: -0.600, yB: 0.255, yT: 1.32, wB: 0.74, wMax: 0.862, wTop: 0.760, vBelt: 0.55, n: 3.9 },
+   * up to 60 mm from the end and all of the closing happens in the cap.
+   *
+   * The second is the ROOFLINE, and it was badly wrong. The roof used to be
+   * held at 1.40 m all the way back to the rear axle and then drop to 1.235 m
+   * at the tail, which is a station wagon: 0.74 m of car behind the C-pillar
+   * with almost no fall in it. Rendered from behind that is an egg, and no
+   * amount of section exponent rescues it, because the shape the eye is
+   * reading is the profile and the profile said van. Worse, it hid the rear
+   * window — a backlight sampled onto a nearly horizontal roof is a skylight,
+   * and the near-vertical surface it should have been on did not exist.
+   *
+   * The roof now falls 1.448 -> 1.330 -> 1.170 -> 1.030 over the same 0.68 m,
+   * which is about 30 degrees and is a fast three-door hatch. Everything the
+   * tail needed follows from that one change: there is now a raked surface for
+   * the backlight to live on, the tailgate below it is short enough to be a
+   * tailgate rather than a wall, and the spoiler has a roof edge to stand off
+   * rather than a plateau to sit on.
+   */
+  { z: -0.790, yB: 0.420, yT: 0.950, wB: 0.545, wMax: 0.618, wTop: 0.535, vBelt: 0.55, n: 3.5 },
+  { z: -0.730, yB: 0.360, yT: 1.030, wB: 0.740, wMax: 0.826, wTop: 0.720, vBelt: 0.55, n: 4.6 },
+  { z: -0.590, yB: 0.265, yT: 1.170, wB: 0.752, wMax: 0.850, wTop: 0.752, vBelt: 0.55, n: 4.2 },
   /* rear quarter over the rear arch */
-  { z: -0.340, yB: 0.175, yT: 1.40, wB: 0.76, wMax: 0.865, wTop: 0.73, vBelt: 0.52, n: 3.7 },
-  { z: -0.050, yB: 0.155, yT: 1.455, wB: 0.78, wMax: 0.865, wTop: 0.69, vBelt: 0.50, n: 3.7 },
+  { z: -0.340, yB: 0.175, yT: 1.330, wB: 0.760, wMax: 0.868, wTop: 0.735, vBelt: 0.52, n: 3.8 },
+  { z: -0.050, yB: 0.155, yT: 1.448, wB: 0.780, wMax: 0.866, wTop: 0.690, vBelt: 0.50, n: 3.7 },
   /* roof: very slightly crowned, because a dead flat roof has no highlight on
    * it at all and reads as a lid.
    *
@@ -176,28 +191,53 @@ const STATIONS = [
    * and the one whose highlight the eye uses to judge whether the whole shape
    * is straight. At 3.2 it was a pillow. */
   { z: 2.720, yB: 0.195, yT: 0.955, wB: 0.77, wMax: 0.855, wTop: 0.81, vBelt: 0.55, n: 4.0 },
-  { z: 3.060, yB: 0.215, yT: 0.925, wB: 0.75, wMax: 0.845, wTop: 0.80, vBelt: 0.55, n: 3.9 },
-  /* The nose keeps a LOW exponent, and this is the one place the tail's
-   * correction does not transfer.
+  { z: 3.090, yB: 0.225, yT: 0.928, wB: 0.755, wMax: 0.852, wTop: 0.815, vBelt: 0.55, n: 4.1 },
+  /* The nose is a FASCIA, not a cone, and this is the single biggest change
+   * to the table.
    *
-   * Holding the width and raising the exponent turns the tail into a flat
-   * stamped panel because all of its closing then happens in the 45 mm cap.
-   * Applied to the nose the same numbers made it worse, not better: a higher
-   * exponent is a *fuller* section, and a fuller section on a front end that
-   * still has to close over 70 mm of overhang is a bigger dome, not a flatter
-   * face. The front came back as a featureless blue pod with the lamps buried
-   * inside it.
+   * The previous numbers closed from 0.790 to 0.600 of half-width across
+   * 120 mm at an exponent falling 3.0 -> 2.6. Read that as a shape rather than
+   * as numbers: falling width plus falling exponent plus falling roof height
+   * is a dome contracting in all three axes at once, and it is exactly what
+   * the render showed — 0.7 m of blue nose-cone with the lamps and the grille
+   * buried somewhere on its curve, none of them able to catch an edge because
+   * there was no edge anywhere on it to catch.
    *
-   * The asymmetry is real rather than a tuning accident. A tailgate is a panel
-   * standing across the end of the car; a nose is a surface that has to fall
-   * from the bonnet to the bumper while narrowing, and that is a rounded form
-   * on every hatchback ever made. What gives a front end its structure is not
-   * the section exponent, it is the grille aperture, the lamp units and the
-   * lower intake — all of which are bolt-ons in _addBodywork() and all of
-   * which were being swallowed by the fuller section. */
-  { z: 3.280, yB: 0.255, yT: 0.850, wB: 0.70, wMax: 0.790, wTop: 0.70, vBelt: 0.55, n: 3.0 },
-  { z: 3.400, yB: 0.335, yT: 0.740, wB: 0.50, wMax: 0.600, wTop: 0.50, vBelt: 0.55, n: 2.6 },
+   * A modern hatchback front end is not that. It is a nearly upright fascia
+   * standing across the end of the car, carrying the grille aperture and the
+   * lamp units, with a tight radius rolling back into the wings and a distinct
+   * crease where the bonnet drops onto it. That is a HIGH exponent held to the
+   * last 76 mm — the same argument the tailgate makes at the other end of the
+   * car, and the earlier note claiming the asymmetry was real had the physics
+   * backwards. A fuller section is only a bigger dome if it is still allowed
+   * to close over 340 mm; held out to 3.320 and then shut in one 76 mm step,
+   * it is a flat face with a rolled corner.
+   *
+   * The height step does the same job vertically: yT falls 0.872 -> 0.782 over
+   * that same 76 mm, which is a 50-degree chamfer and reads as the leading
+   * edge of the bonnet. The end cap, which used to be a vestigial fan hidden
+   * inside a curve, is now a real 1.26 x 0.41 m panel — and having a flat
+   * panel there is what makes it possible for _addBodywork() to cut a grille
+   * into it that actually looks recessed. */
+  { z: 3.320, yB: 0.270, yT: 0.872, wB: 0.725, wMax: 0.822, wTop: 0.770, vBelt: 0.55, n: 4.2 },
+  { z: 3.396, yB: 0.375, yT: 0.782, wB: 0.545, wMax: 0.630, wTop: 0.560, vBelt: 0.55, n: 3.6 },
 ];
+
+/* Metres of car per unit of station index, at a given station.
+ *
+ * The stations are not evenly spaced in z — they are dense through the screen
+ * base and the closing radii and sparse along the roof — so a shut line 14 mm
+ * wide is a different number of station units at the cowl than it is at the
+ * B-pillar. Panel gaps are the one feature on the car where a constant width
+ * genuinely matters, because the eye reads a gap that tapers as a panel that
+ * does not fit. */
+const _dz = {};
+function dzdu(u) {
+  const last = STATIONS.length - 1;
+  const a = stationAt(clamp(u - 0.05, 0, last), _dz).z;
+  const b = stationAt(clamp(u + 0.05, 0, last), _dz).z;
+  return Math.max(0.02, Math.abs(b - a) / 0.1);
+}
 
 /* Named handles into the table, so the glazing and the bolt-on parts can be
  * placed in the loft's own coordinates instead of in numbers copied out of it
@@ -242,6 +282,109 @@ function halfWidth(s, v) {
   return lerp(s.wMax, s.wTop, smooth((v - s.vBelt) / Math.max(1e-4, 1 - s.vBelt)));
 }
 
+/* ── surface development ──────────────────────────────────────────────────
+ *
+ * The station table describes a body that is smooth in every direction, and a
+ * body that is smooth in every direction is a bar of soap. What separates the
+ * flank of a real car from an extruded tube is that a pressed steel panel
+ * cannot be developed into a compound curve without a *line* in it: the press
+ * needs a change of section to stiffen the panel and to control springback,
+ * and the stylist gets that structural necessity for free as the shoulder
+ * line, the feature line and the rocker undercut. Every mass-produced car
+ * since about 1955 has all three.
+ *
+ * They are added here as a fractional modulation of half-width rather than as
+ * separate geometry, for the same reason the arches sample the loft: a crease
+ * that is a function of the same fifteen numbers cannot come adrift from the
+ * body when the roofline is retuned, and the finite-difference normal picks it
+ * up for nothing.
+ *
+ *   SHOULDER_V  the hard one. It runs from the headlamp, over the front wing,
+ *               along the doors under the DLO and into the tail lamp, and it
+ *               is the highlight the eye tracks along the whole length of a
+ *               car. A shoulder is asymmetric in section: the panel swells
+ *               gradually up to the crest over ~200 mm and then falls away
+ *               over ~70 mm into the tumblehome. That asymmetry is the crease.
+ *   LOWER_V     the feature line down the doors, softer and shallower — on a
+ *               modern hatch it is the line that catches the ground bounce and
+ *               stops the lower door being a dead grey field.
+ *   the tuck    below ~0.145 of section height the rocker pulls sharply in.
+ *               Real cars do this so the sill hides in its own shadow, which
+ *               is what makes a car look planted rather than inflated.
+ */
+const SHOULDER_V = 0.560;
+const LOWER_V = 0.262;
+
+/* One crease: full amplitude at `at`, ramping in over `below` and falling off
+ * sharply over `above`. Two smoothsteps, C1 at the crest, zero outside. */
+function crease(v, at, below, above, amp) {
+  if (v <= at) return amp * smooth((v - at + below) / below);
+  return amp * (1 - smooth((v - at) / above));
+}
+
+function relief(z, v) {
+  /* The lines die into the lamp units at both ends rather than fading out in
+   * the middle of a panel, which is what a real one does: the shoulder line on
+   * every hatchback made runs from the outboard corner of the headlamp,
+   * straight down the flank, into the outboard corner of the tail lamp,
+   * because those are the two hard points the panel is stretched between. An
+   * earlier version faded it out 400 mm short of the nose to cure a modelling
+   * problem in the wheel arches, and it left the front wing with a swelling
+   * that went nowhere — a crease that stops in open steel is a dent. The arch
+   * problem is fixed where it belongs, in _archGeometries(). */
+  const run = smooth((z + 0.70) / 0.30) * (1 - smooth((z - 3.02) / 0.34));
+  let r = crease(v, SHOULDER_V, 0.135, 0.042, 0.048);
+  r += crease(v, LOWER_V, 0.095, 0.062, 0.024);
+  r -= 0.070 * (1 - smooth(v / 0.150));
+  return r * run;
+}
+
+/* Where to spend ring vertices.
+ *
+ * The ring used to be sampled uniformly in its own angle, and uniform angle is
+ * the worst possible distribution on a superellipse: the exponent makes the
+ * section nearly flat for most of its angular sweep and then turns the whole
+ * corner in a few hundredths of a radian, so a uniform ring puts most of its
+ * vertices along the roof and the floor and almost none down the flank — which
+ * is precisely where every feature on the car lives. A 40-vertex uniform ring
+ * lands about four vertices across the entire height of a door, and a 25 mm
+ * crease between two of them simply does not exist in the mesh.
+ *
+ * So the ring is laid out in height fraction instead, with the sample density
+ * clustered where the creases are. The mapping v -> angle is angleForV(), the
+ * same inversion the glazing already uses to keep a level beltline. Built by
+ * numerically integrating a density and inverting it, once per distinct ring
+ * count, because writing the knots by hand is how the crease ends up half a
+ * sample off the crest.
+ */
+const _ringCache = new Map();
+function ringV(half) {
+  const hit = _ringCache.get(half);
+  if (hit) return hit;
+  const N = 768;
+  const bump = (v, at, w, k) => k * Math.exp(-(((v - at) / w) ** 2));
+  const density = (v) => 1
+    + bump(v, SHOULDER_V, 0.048, 3.0)     // the shoulder crest and its fall
+    + bump(v, SHOULDER_V + 0.055, 0.030, 1.6)
+    + bump(v, LOWER_V, 0.060, 1.5)        // the feature line
+    + bump(v, 0.130, 0.055, 1.8)          // the rocker tuck
+    + bump(v, 0.985, 0.030, 1.2);         // the roof/tumblehome transition
+  const cdf = [0];
+  for (let i = 0; i < N; i++) cdf.push(cdf[i] + density((i + 0.5) / N));
+  const total = cdf[N];
+  const out = [];
+  let k = 0;
+  for (let i = 0; i <= half; i++) {
+    const target = (i / half) * total;
+    while (k < N - 1 && cdf[k + 1] < target) k++;
+    const span = cdf[k + 1] - cdf[k];
+    out.push(clamp((k + (span > 0 ? (target - cdf[k]) / span : 0)) / N, 0, 1));
+  }
+  out[0] = 0; out[half] = 1;
+  _ringCache.set(half, out);
+  return out;
+}
+
 /* A point on the shell, in the car's own frame.
  *
  * `a` is the ring angle, measured from the bottom centreline: -PI/2 is the
@@ -257,7 +400,7 @@ function shellPoint(u, a, out = new THREE.Vector3(), scratch = {}) {
   const sx = Math.sign(c) * Math.pow(Math.abs(c), e);
   const sy = Math.sign(sn) * Math.pow(Math.abs(sn), e);
   const v = (sy + 1) * 0.5;
-  out.set(halfWidth(s, v) * sx, lerp(s.yB, s.yT, v), s.z);
+  out.set(halfWidth(s, v) * (1 + relief(s.z, v)) * sx, lerp(s.yB, s.yT, v), s.z);
   return out;
 }
 
@@ -498,28 +641,36 @@ void surf(vec2 uv, out vec3 albedo, out float height, out float rough, out float
 
 /* The tyre section, as [distance along the axle, radius] in metres.
  *
- * A 205/65 R15: 205 mm section width, a sidewall 65 percent of that, on a
- * 15 inch rim — the size a gravel car runs, because a tall sidewall is the
- * only suspension component that works at the frequency a rock does.
+ * A 205/55 R17 on a 456 mm rim, up from the 15 inch this table was first
+ * authored with. The overall radius is unchanged — it has to be, the whole
+ * simulation is keyed to WHEEL_R — so the extra 80 mm of rim diameter comes
+ * straight out of the sidewall, and that is the entire point. The old wheel
+ * had 146 mm of black rubber between the rim flange and the tread and it made
+ * the car look like it was riding on doughnuts with small hubcaps on them;
+ * this one has 115 mm, which is what a current homologation car on a sealed
+ * stage actually runs and leaves room inside the barrel for a brake package
+ * the eye can see. A gravel car would run the tall sidewall and be right to,
+ * but a tall sidewall photographs as a soft wheel and this car is judged from
+ * four metres away on a turntable.
  *
  * The order matters as much as the numbers. It is traversed from the inboard
  * bead outwards, which by revolveSided's convention puts every face normal on
  * the outside of the carcass.
  */
 const TYRE_PROFILE = [
-  [-0.078, 0.196],   // inboard bead, on the rim flange
-  [-0.098, 0.225],
-  [-0.1025, 0.268],  // widest point: the sidewall, not the tread
-  [-0.099, 0.305],
-  [-0.085, 0.328],   // shoulder radius begins
-  [-0.048, 0.340],
+  [-0.078, 0.228],   // inboard bead, on the rim flange
+  [-0.096, 0.254],
+  [-0.1025, 0.286],  // widest point: the sidewall, not the tread
+  [-0.099, 0.313],
+  [-0.085, 0.331],   // shoulder radius begins
+  [-0.048, 0.3405],
   [0.000, 0.3425],   // crown, 2.5 mm proud of the stated rolling radius
-  [0.048, 0.340],
-  [0.085, 0.328],
-  [0.099, 0.305],
-  [0.1025, 0.268],
-  [0.098, 0.225],
-  [0.078, 0.196],
+  [0.048, 0.3405],
+  [0.085, 0.331],
+  [0.099, 0.313],
+  [0.1025, 0.286],
+  [0.096, 0.254],
+  [0.078, 0.228],
 ];
 
 /* A revolved profile, mirrored for the right-hand side of the car.
@@ -592,6 +743,49 @@ class Batch {
   }
 }
 
+/* ── the wheel arch section ───────────────────────────────────────────────
+ *
+ * The blister over each wheel used to be an ellipse swept along an arc, and an
+ * ellipse has no edges on it anywhere, so the arches read as four smooth
+ * bulges pushed out of the doors — a bodykit made of Plasticine. A real flared
+ * arch, whether it is a stamped steel wing or a bolted-on homologation
+ * extension, has exactly two hard lines on it and they do all the work:
+ *
+ *   the LIP at the arch opening. The panel turns through nearly 180 degrees
+ *   and returns inboard to a flange, so there is a knife edge running round
+ *   the whole opening with the tyre right behind it. That edge is what puts a
+ *   bright rim of light along the top of every wheel in every photograph of
+ *   every car, and its absence is why an unlipped arch looks soft.
+ *
+ *   the RUN-OUT where the flare meets the bodyside. On a works car this is a
+ *   welded or riveted seam and it is a visible step, not a fade.
+ *
+ * Entries are [outboard offset, radial offset] in metres, relative to the
+ * point on the sweep arc, traversed outboard -> radially outward -> inboard ->
+ * radially inward so the winding matches the old parametrisation. Duplicated
+ * entries are deliberate: two coincident vertex rows give the quad on each
+ * side of them its own normal, which is the only way to get a hard crease out
+ * of computeVertexNormals() on a shared-vertex strip.
+ */
+const ARCH_SECTION = [
+  [0.128, -0.016],   // widest point of the flare, just above the opening
+  [0.120, 0.022],
+  [0.088, 0.056],
+  [0.046, 0.074],
+  [0.046, 0.074],    // run-out crease: the seam onto the bodyside
+  [-0.014, 0.066],   // and inboard from here it is buried in the shell
+  [-0.080, 0.024],
+  [-0.080, -0.046],
+  [-0.020, -0.080],
+  [0.038, -0.094],   // the lip flange, turned back inboard under the opening
+  [0.082, -0.100],
+  [0.082, -0.100],   // lip underside crease
+  [0.122, -0.084],
+  [0.122, -0.084],   // LIP CREST: the knife edge round the arch opening
+  [0.136, -0.050],
+];
+const ARCH_REVERSED = ARCH_SECTION.slice().reverse();
+
 /* ── the car ──────────────────────────────────────────────────────────── */
 
 export class CarMesh {
@@ -608,8 +802,8 @@ export class CarMesh {
      * it is on screen and moving, which costs more in one hitch than the lower
      * tier saves in a minute of frames. */
     this._detail = {
-      ring: low ? 26 : 40,        // vertices around one shell section
-      sub: low ? 2 : 3,           // slices per control station interval
+      ring: low ? 28 : 64,        // vertices around one shell section (even)
+      sub: low ? 2 : 4,           // slices per control station interval
       wheel: low ? 20 : 26,       // segments around a tyre
       hub: low ? 12 : 16,
       panel: low ? 3 : 4,         // grid resolution of one pane of glass
@@ -883,6 +1077,7 @@ export class CarMesh {
     paint.add(this._loftGeometry());
     for (const g of this._archGeometries()) paint.add(g);
     this._addBodywork(paint, trim, lampC, lampR);
+    this._addShutLines(trim);
     this._addGlazing(glass);
     this._addCabin(cabin, cage);
 
@@ -925,13 +1120,24 @@ export class CarMesh {
     const pos = [], nor = [], uv = [], idx = [];   // uv.x can reach 1
     const P = new THREE.Vector3(), N = new THREE.Vector3();
 
+    const half = ring >> 1;
+    const vs = ringV(half);
+    const scratch = {};
     for (let i = 0; i <= slices; i++) {
       const u = (i / slices) * (STATIONS.length - 1);
+      /* The section exponent varies station to station, so the angle that
+       * reaches a given height does too. Resolving it per slice is what keeps
+       * a crease level along the car instead of sagging towards the tail. */
+      const sn = stationAt(u, scratch).n;
       for (let j = 0; j <= ring; j++) {
-        /* The ring angle starts at the underside centreline, so the seam — the
-         * one place where a duplicated vertex row can show as a shading break
-         * — lives under the car where nothing ever sees it. */
-        const a = -Math.PI / 2 + (j / ring) * TAU;
+        /* Half the ring climbs the right flank from the underside centreline
+         * to the roof centreline; the other half comes back down the left.
+         * The seam — the one place where a duplicated vertex row can show as a
+         * shading break — therefore still lives under the car, where nothing
+         * ever sees it. */
+        const up = j <= half;
+        const a0 = angleForV(up ? vs[j] : vs[ring - j], sn);
+        const a = up ? a0 : Math.PI - a0;
         shellPoint(u, a, P);
         shellNormal(u, a, N);
         pos.push(P.x, P.y, P.z);
@@ -994,9 +1200,9 @@ export class CarMesh {
    */
   _archGeometries() {
     const out = [];
-    const R = 0.50, rx = 0.095, ry = 0.064;
-    const na = this._detail.ring >= 40 ? 20 : 14;
-    const np = this._detail.ring >= 40 ? 10 : 8;
+    const R = 0.50;
+    const na = this._detail.ring >= 40 ? 26 : 14;
+    const np = ARCH_SECTION.length - 1;
 
     /* Where the bodyside actually is, at a given height and station.
      *
@@ -1053,30 +1259,63 @@ export class CarMesh {
          * and starts looking like a caricature. */
         const pos = [], uv = [], idx = [];
         /* A little past horizontal at each end so the blister runs out into
-         * the sill and the bumper rather than stopping in mid-air. */
-        const t0 = -0.30, t1 = Math.PI + 0.30;
+         * the sill and the bumper rather than stopping in mid-air. Only a
+         * little: swept far past horizontal the flare becomes a rubbing strip
+         * running most of the length of the door, which in side view is a
+         * teardrop rather than an arch. */
+        const t0 = -0.16, t1 = Math.PI + 0.16;
+
+        /* The sweep's spine, sampled off the loft first and then SMOOTHED.
+         *
+         * The smoothing is not cosmetic. flankXAt() answers "how far out is
+         * the widest part of the bodyside near this height", and once the
+         * flank has a shoulder crease in it that answer is discontinuous: as
+         * the sweep climbs past the crest the sampled width steps out by the
+         * full 25 mm of the crease in a single station, and the arch above the
+         * wheel folded into a crumpled mess of self-intersecting quads on both
+         * front wings. A crease is a feature of the DOOR SKIN; the arch is a
+         * separate pressing laid over it and its own line is smooth. Three
+         * passes of a 1-2-1 kernel is exactly the statement that the arch does
+         * not have to follow every wiggle of the panel it is welded to.
+         */
+        const spine = [];
         for (let i = 0; i <= na; i++) {
           const th = lerp(t0, t1, i / na);
-          const sy = Math.sin(th), sz = Math.cos(th);
-          /* The lip's own centre height and station, used to ask the loft
-           * where the flank is *here* rather than assuming it. */
-          const ly = WHEEL_R + sy * R;
-          const lz = axle + sz * R;
-          /* Buried by 55 mm. Enough that the inboard half of the tube is
+          const ly = WHEEL_R + Math.sin(th) * R;
+          const lz = axle + Math.cos(th) * R;
+          /* Buried by 55 mm. Enough that the inboard half of the section is
            * inside the shell all the way round the sweep even where the
            * sampled width is a little optimistic, and not so much that the
            * blister stops standing proud. */
-          const cx = side * Math.max(0.42, flankXAt(lz, ly) - 0.055);
+          spine.push(Math.max(0.42, flankXAt(lz, ly) - 0.055));
+        }
+        for (let pass = 0; pass < 3; pass++) {
+          const src = spine.slice();
+          for (let i = 1; i < na; i++) spine[i] = (src[i - 1] + 2 * src[i] + src[i + 1]) * 0.25;
+        }
+
+        for (let i = 0; i <= na; i++) {
+          const th = lerp(t0, t1, i / na);
+          const sy = Math.sin(th), sz = Math.cos(th);
+          const cx = side * spine[i];
+          /* The flare stands furthest proud over the crown of the arch and
+           * runs out towards the sill and the bumper at either end, because a
+           * box arch is a blister over the tyre and not a rubbing strip down
+           * the whole car. */
+          const swell = 0.30 + 0.70 * Math.sin(clamp(i / na, 0, 1) * Math.PI) ** 0.5;
+          const prof = side > 0 ? ARCH_SECTION : ARCH_REVERSED;
           for (let j = 0; j <= np; j++) {
-            const q = side * (j / np) * TAU;
+            const [dx, dr] = prof[j];
+            const rr = R + dr;
             pos.push(
-              cx + Math.cos(q) * rx * side,
-              WHEEL_R + sy * (R + Math.sin(q) * ry),
-              axle + sz * (R + Math.sin(q) * ry),
+              cx + dx * swell * side,
+              WHEEL_R + sy * rr,
+              axle + sz * rr,
             );
             uv.push(i / na, j / np);
           }
         }
+
         const row = np + 1;
         for (let i = 0; i < na; i++) {
           for (let j = 0; j < np; j++) {
@@ -1107,25 +1346,73 @@ export class CarMesh {
     const box = (batch, w, h, d, r, seg, x, y, z, rx = 0, ry = 0) =>
       batch.add(place(roundedBox(w, h, d, r, seg), x, y, z, rx, ry, 0));
 
-    /* Bumper skins. Both are separate mouldings on a real car and both are the
-     * parts that get scuffed, so they are trim rather than paint — which also
-     * does the useful compositional job of darkening the two ends of the car
-     * and letting the painted middle carry the silhouette. */
-    box(trim, 1.68, 0.34, 0.42, 0.10, b, 0, 0.42, 3.19);
-    box(trim, 1.56, 0.32, 0.34, 0.10, b, 0, 0.44, -0.72);
+    /* ── the front end ──────────────────────────────────────────────────
+     *
+     * With the last three stations rebuilt (see STATIONS) the car now ends in
+     * a flat fascia at z 3.396 spanning roughly 1.26 m by 0.41 m, instead of
+     * in a dome. That panel is what everything below hangs off, and it changes
+     * how the front has to be built: a grille is no longer a black rectangle
+     * laid on a curve hoping to be read as a hole, it is a dark plate set back
+     * behind a surround that stands proud of the surface. Those two elements
+     * together are the entire trick. A recess reads as a recess because its
+     * edge casts a shadow onto its floor, and to cast a shadow the edge has to
+     * physically stand in front of the floor — 55 mm of it here, which is
+     * about what a real grille surround gives you.
+     */
 
-    /* Splitter and diffuser. On a rally car the splitter is a genuine
-     * aerodynamic device, but the reason it earns its triangles here is that
-     * it is a thin horizontal line right at the bottom of the nose: it reads
-     * the ride height for the eye, which is how a raised car looks raised. */
-    box(trim, 1.74, 0.040, 0.46, 0.020, 2, 0, 0.235, 3.24);
-    box(trim, 1.24, 0.060, 0.30, 0.030, 2, 0, 0.280, -0.72);
+    /* Front bumper skin: the lower moulding only. The old one was 1.68 m wide
+     * and 0.42 m deep at a station where the body is 1.26 m across, so it
+     * projected past the wings in plan and read as a plank bolted to a nose.
+     * A real bumper is inboard of the front wings and wraps back into them at
+     * the corners, which is what the two corner mouldings below do. */
+    box(paint, 1.42, 0.27, 0.30, 0.075, b, 0, 0.335, 3.300);
+    for (const s of [1, -1]) box(paint, 0.22, 0.21, 0.30, 0.080, b, s * 0.672, 0.362, 3.130);
 
-    /* Grille and lower intake. Both matte black, both recessed 20 mm into the
-     * nose so they read as holes rather than as painted rectangles. */
-    box(trim, 1.00, 0.14, 0.06, 0.030, 2, 0, 0.680, 3.325);
-    box(trim, 1.20, 0.20, 0.10, 0.050, 2, 0, 0.440, 3.255);
-    for (const x of [-0.30, 0, 0.30]) box(trim, 0.05, 0.16, 0.09, 0.02, 1, x, 0.680, 3.315);
+    /* Splitter. On a rally car this is a genuine aerodynamic device, but the
+     * reason it earns its triangles is that it is a thin horizontal line right
+     * at the bottom of the nose: it reads the ride height for the eye, which
+     * is how a raised car looks raised. */
+    box(trim, 1.50, 0.040, 0.40, 0.018, 2, 0, 0.200, 3.276);
+
+    /* Grille aperture.
+     *
+     * First attempt at this put the aperture floor 55 mm BEHIND the fascia
+     * plane and the surround flush with it, which is how a real one is built
+     * and is unbuildable here: the loft's end cap is a solid panel across the
+     * whole front of the car, so a plate behind it is simply inside the body
+     * and invisible. Cutting a hole in the cap would mean special-casing the
+     * loft, which is a lot of machinery for one feature.
+     *
+     * So the whole assembly is pushed forward instead and the step is built
+     * out rather than in: a floor standing 26 mm proud of the fascia, and a
+     * surround standing 60 mm proud of it. The eye has no way to tell a 34 mm
+     * recess measured from the fascia from a 34 mm recess measured from a
+     * surround that is itself proud — what it reads is the shadow the surround
+     * edge throws onto the floor, and that shadow is identical either way.
+     */
+    box(trim, 0.68, 0.205, 0.06, 0.012, 2, 0, 0.668, 3.392);
+    box(paint, 0.78, 0.042, 0.075, 0.016, 2, 0, 0.788, 3.418);
+    box(paint, 0.78, 0.040, 0.075, 0.016, 2, 0, 0.550, 3.416);
+    for (const s of [1, -1]) box(paint, 0.044, 0.274, 0.075, 0.016, 2, s * 0.368, 0.668, 3.417);
+    /* Vanes: four uprights on the aperture floor, standing halfway out to the
+     * surround so they are lit on their leading edges and shadowed between.
+     * Four rather than three is an even count, so there is no vane on the
+     * centreline hiding the badge position, which is where every manufacturer
+     * puts the split. */
+    for (const x of [-0.240, -0.080, 0.080, 0.240]) {
+      box(trim, 0.032, 0.190, 0.05, 0.010, 1, x, 0.668, 3.408);
+    }
+
+    /* Lower intake, built into the bumper skin by the same trick: a floor a
+     * little proud of the bumper face and a lip proud of that. This is the
+     * opening that actually feeds the radiator on a modern car — the upper
+     * grille is mostly styling on anything with a bonnet line this low — so it
+     * is the bigger of the two and it gets a horizontal bar across it, which
+     * is where the number plate would be bolted. */
+    box(trim, 1.04, 0.190, 0.06, 0.012, 2, 0, 0.336, 3.416);
+    box(trim, 1.14, 0.032, 0.07, 0.012, 2, 0, 0.448, 3.442);
+    box(trim, 1.12, 0.030, 0.07, 0.012, 2, 0, 0.228, 3.440);
+    box(trim, 1.00, 0.026, 0.05, 0.010, 1, 0, 0.336, 3.432);
 
     /* Bonnet extractor vents: two slots over where the exhaust manifold is,
      * which is where every rally car has them, because the alternative is a
@@ -1133,17 +1420,58 @@ export class CarMesh {
     for (const s of [1, -1]) box(trim, 0.34, 0.030, 0.20, 0.014, 2, s * 0.38, 0.948, 2.74);
 
     for (const s of [1, -1]) {
-      /* Headlamps, angled back at the outboard end to follow the nose. A lamp
-       * left square to the axis is the classic tell of a bolted-on light: the
-       * body is curving away and the lamp is not. */
-      box(lampC, 0.42, 0.16, 0.12, 0.055, b, s * 0.54, 0.755, 3.225, 0, s * 0.20);
-      box(trim, 0.46, 0.20, 0.09, 0.045, 2, s * 0.54, 0.755, 3.190, 0, s * 0.20);
-      /* Auxiliary driving lamps on the bumper. Two extra 74 mm discs is a
-       * disproportionate amount of "rally car" for the triangles. */
-      box(lampC, 0.15, 0.15, 0.09, 0.070, 2, s * 0.46, 0.470, 3.310);
+      /* Headlamps, and this is where the fascia pays for itself.
+       *
+       * A lamp unit on a real car is not a lens stuck on the wing, it is a
+       * moulded housing bonded into an aperture, with the lens set back inside
+       * a painted eyebrow that follows the bonnet shut line above it. Three
+       * pieces, in this order: a dark housing recessed into the fascia, the
+       * lens sitting inside it, and a proud paint bezel around the top and
+       * outboard edges. The bezel is what makes the lamp look inset — without
+       * it the lens is simply a bright patch, and a bright patch on a curve is
+       * the exact failure the old front end had.
+       *
+       * Yawed 0.22 rad outboard because the fascia's corner is already rolling
+       * back into the wing at this station, and a lamp left square to the axis
+       * is the classic tell of a bolted-on light: the body is curving away and
+       * the lamp is not. */
+      box(trim, 0.235, 0.185, 0.115, 0.030, b, s * 0.532, 0.700, 3.392, 0, s * 0.26);
+      box(lampC, 0.205, 0.150, 0.090, 0.026, b, s * 0.534, 0.700, 3.390, 0, s * 0.26);
+      /* Projector bowls: two 66 mm discs of relief inside the lens, because a
+       * headlamp read at 4 m is mostly the two bright rings of its projectors
+       * and not the outline of its glass. Dark surrounds, bright centres — the
+       * same contrast a real reflector bowl has against its bezel. */
+      box(trim, 0.020, 0.150, 0.045, 0.008, 1, s * 0.534, 0.700, 3.432, 0, s * 0.26);
+      for (const k of [-1, 1]) {
+        box(lampC, 0.070, 0.070, 0.05, 0.033, 2,
+          s * (0.534 + k * 0.046), 0.700, 3.436, 0, s * 0.26);
+      }
+      /* The eyebrow: a paint bezel over the top of the aperture, carrying the
+       * bonnet shut line outboard and down the corner of the fascia. Without
+       * it the lens is a bright patch, and a bright patch on a body panel is
+       * exactly the failure the old domed nose had. */
+      box(paint, 0.265, 0.032, 0.085, 0.014, 2, s * 0.532, 0.804, 3.386, 0, s * 0.26);
+      box(paint, 0.032, 0.205, 0.085, 0.014, 2, s * 0.645, 0.700, 3.362, 0, s * 0.26);
 
-      /* Tail lamps, wrapping the same way around the rear quarter. */
-      box(lampR, 0.34, 0.20, 0.09, 0.040, b, s * 0.60, 1.055, -0.730, 0, -s * 0.15);
+      /* Auxiliary driving lamps, outboard and low, where a works car carries
+       * them so they clear the sump guard. Two extra 150 mm discs is a
+       * disproportionate amount of "rally car" for the triangles. */
+      box(trim, 0.170, 0.170, 0.10, 0.078, 2, s * 0.360, 0.478, 3.408);
+      box(lampC, 0.146, 0.146, 0.07, 0.069, 2, s * 0.360, 0.478, 3.436);
+
+      /* Tail lamps: a housing, a lens set inside it and a paint bezel over the
+       * top, built exactly like the headlamps and for the same reason — a lens
+       * laid flat on a panel is a red sticker. They wrap around the corner of
+       * the tail with 0.30 rad of yaw, which is what turns a rear light into
+       * something that is also visible from the side, as the regulations in
+       * every market require it to be. */
+      box(trim, 0.420, 0.215, 0.10, 0.030, b, s * 0.415, 0.700, -0.792, 0, -s * 0.34);
+      box(lampR, 0.385, 0.182, 0.085, 0.026, b, s * 0.415, 0.700, -0.806, 0, -s * 0.34);
+      /* A clear section at the inboard end: reverse lamp on one side, fog on
+       * the other, and on a real car they are the two pale rectangles that
+       * stop a tail light being a solid slab of red. */
+      box(lampC, 0.080, 0.070, 0.06, 0.020, 1, s * 0.312, 0.664, -0.826, 0, -s * 0.34);
+      box(paint, 0.440, 0.030, 0.09, 0.012, 2, s * 0.415, 0.818, -0.774, 0, -s * 0.34);
 
       /* Mirrors. Almost pure silhouette value: they are the two things that
        * break the otherwise unbroken line of the greenhouse, and their shadow
@@ -1157,22 +1485,41 @@ export class CarMesh {
       box(paint, 0.12, 0.032, 0.038, 0.014, 2, s * 0.868, 0.900, 0.720);
       box(paint, 0.12, 0.032, 0.038, 0.014, 2, s * 0.868, 0.900, 1.580);
 
+      /* Side skirt, spanning the two arches. A rally car has one because the
+       * bodyshell needs a jacking rail and the sill needs protecting from
+       * stones, and it earns its place here for a compositional reason: it is
+       * a hard horizontal line at the very bottom of the flank, so the whole
+       * side of the car now reads as three parallel lines — the shoulder, the
+       * feature line and the skirt — instead of one continuous curve. Three
+       * lines is what makes a bodyside look designed. */
+      box(trim, 0.055, 0.105, 2.02, 0.022, 2, s * 0.822, 0.190, 1.310);
+
       /* Mud flaps behind all four wheels: legally required on gravel, and they
        * put a soft dark shape where the tyre throws its spray. */
       for (const axle of [0, WHEELBASE]) {
-        box(trim, 0.30, 0.26, 0.020, 0.010, 1, s * 0.86, 0.150, axle - 0.47);
+        box(trim, 0.24, 0.225, 0.020, 0.010, 1, s * 0.795, 0.148, axle - 0.505);
       }
 
-      /* Spoiler stanchions and end plates. */
-      box(paint, 0.06, 0.11, 0.12, 0.025, 2, s * 0.40, 1.450, -0.400);
-      box(paint, 0.022, 0.13, 0.30, 0.010, 2, s * 0.62, 1.480, -0.420);
+      /* Spoiler stanchions and end plates. The plates are deep and the blade
+       * is set well clear of the roof: what a roof extension does aerodynamically
+       * is fix the wake by keeping the flow attached across a gap, so a blade
+       * lying on the roof is decoration and a blade standing off it on stalks
+       * is a component. The end plates are also the only vertical surfaces at
+       * the top of the car and they are what stops the tail reading as a
+       * rounded lump from three-quarter rear. */
+      box(paint, 0.070, 0.200, 0.130, 0.025, 2, s * 0.44, 1.298, -0.400);
+      box(paint, 0.024, 0.190, 0.400, 0.012, 2, s * 0.660, 1.392, -0.435);
     }
 
     /* The blade. Eight degrees of incidence: enough to be visible in profile,
      * and about what a hatchback's roof extension actually runs, since it is
      * working in air that has already separated off the roof and is there to
      * fix the wake rather than to make downforce. */
-    box(paint, 1.30, 0.050, 0.28, 0.022, b, 0, 1.505, -0.420, 0.14);
+    box(paint, 1.36, 0.052, 0.360, 0.020, b, 0, 1.404, -0.430, 0.15);
+    /* Gurney flap: a 22 mm lip turned up at the trailing edge. On a real wing
+     * it is worth a surprising amount of downforce for its size; here it is
+     * worth a hard bright line along the top of the car's highest edge. */
+    box(paint, 1.34, 0.028, 0.030, 0.008, 1, 0, 1.448, -0.596);
 
     /* No roof scoop. It was here to break up the largest unbroken painted area
      * on the car, which is a real problem and this was the wrong answer to it:
@@ -1181,6 +1528,20 @@ export class CarMesh {
      * light bar and a luggage rack, which is a service vehicle rather than a
      * rally car. The roof now carries the backlight instead, which breaks it
      * up with something the car is supposed to have. */
+
+    /* Rear furniture, all of it hung on the tailgate.
+     *
+     * A number plate recess, a high-level brake light under the spoiler and a
+     * single rear wiper. None of these is a shape anyone would design; all
+     * three are legally mandated, and that is exactly why they read. The eye
+     * has never seen a road car without them, so their absence is felt as
+     * "model" long before their presence is noticed as detail. */
+    box(trim, 0.40, 0.125, 0.05, 0.012, 2, -0.02, 0.540, -0.814);
+    box(paint, 0.46, 0.024, 0.06, 0.010, 1, -0.02, 0.610, -0.826);
+    box(paint, 0.46, 0.024, 0.06, 0.010, 1, -0.02, 0.470, -0.824);
+    box(lampR, 0.44, 0.034, 0.05, 0.014, 2, 0, 1.276, -0.348);
+    trim.add(place(roundedBox(0.020, 0.016, 0.30, 0.008, 1),
+      0.07, 0.930, -0.706, 0.62, 0.14));
 
     /* Wipers, parked at the base of the screen. Two 26 mm cylinders' worth of
      * geometry for a detail the eye specifically looks for on glass. */
@@ -1192,8 +1553,107 @@ export class CarMesh {
     /* Exhaust tip, offset to the near side as a transverse-engined hatchback's
      * always is — a centred tailpipe on a front-wheel-drive car is a detail
      * that is wrong more often than it is right. */
-    trim.add(tube(new THREE.Vector3(0.34, 0.305, -0.94),
-      new THREE.Vector3(0.34, 0.300, -0.66), 0.036, 8));
+    /* Twin exhaust tips, both on the near side as a transverse-engined
+     * hatchback's are — a centred tailpipe on a front-wheel-drive car is a
+     * detail that is wrong more often than it is right. Twin rather than
+     * single because a single 72 mm pipe under a five-strake diffuser is a
+     * mismatch the eye notices without being able to say why: the diffuser
+     * promises a car that was developed, and one pipe says it was not. The
+     * recessed surround is what keeps them from looking like two drainpipes
+     * poking out of the paint. */
+    box(trim, 0.290, 0.130, 0.10, 0.030, 2, 0.335, 0.300, -0.795);
+    for (const x of [0.265, 0.405]) {
+      trim.add(tube(new THREE.Vector3(x, 0.302, -0.990),
+        new THREE.Vector3(x, 0.300, -0.700), 0.040, 10));
+    }
+  }
+
+  /* ── panel gaps ────────────────────────────────────────────────────────
+   *
+   * The most valuable geometry on the whole car per triangle spent, and the
+   * thing whose absence was making a well-shaped body still read as extruded
+   * rather than manufactured.
+   *
+   * A car is not a shape, it is an assembly: six or seven pressings hung on a
+   * welded shell to a build tolerance of about 4 mm, and every one of those
+   * joints is a 3-5 mm gap that sits in its own shadow and is therefore darker
+   * than any painted surface next to it under any lighting. The eye has been
+   * trained on that pattern of dark lines since childhood and uses it, before
+   * anything else, to decide whether it is looking at a vehicle or at a
+   * sculpture of one. A body with no shut lines anywhere is a bar of soap no
+   * matter how well its surfaces are developed.
+   *
+   * Each line is a strip sampled off the loft in exactly the way the glazing
+   * is — same (station, height) coordinates, same surface, 5 mm proud instead
+   * of 12 — in the dark matte trim material. Proud rather than recessed is a
+   * deliberate cheat: a genuinely modelled 4 mm slot would need the shell cut
+   * and would z-fight along its whole length, whereas a 14 mm dark ribbon
+   * standing 5 mm off the paint is indistinguishable from a gap at any range
+   * past about a metre and costs sixteen triangles.
+   *
+   * 14 mm rather than a true 4 mm is the standard game-art exaggeration: at a
+   * 4 m turntable distance and this render resolution a true-scale gap is one
+   * pixel wide and aliases into a dotted line, which reads as a scratch.
+   */
+  _addShutLines(trim) {
+    /* A gap at constant station: the vertical cuts, up the flank. */
+    const cut = (u, v0, v1, side) => {
+      const du = 0.014 / dzdu(u);
+      trim.add(this._panel(u - du * 0.5, u + du * 0.5, v0, v1, true, side,
+        0.005, [1, 12]));
+    };
+    /* A gap at constant height: the long shuts along the bonnet and the sills. */
+    const run = (u0, u1, v, side) => {
+      trim.add(this._panel(u0, u1, v - 0.0055, v + 0.0055, true, side,
+        0.005, [14, 1]));
+    };
+    /* A gap that crosses the centreline over the top of the car: the bonnet
+     * trailing edge and the tailgate's roof cut. Specified in ring angle
+     * because there is no meaningful "height" for a band over the roof. */
+    const over = (u, a0, a1) => {
+      const du = 0.014 / dzdu(u);
+      trim.add(this._panel(u - du * 0.5, u + du * 0.5, a0, a1, false, 1,
+        0.005, [1, 16]));
+    };
+
+    /* The bonnet. Two longitudinal shuts where it meets the front wings, one
+     * across its trailing edge at the cowl, and nothing across its front,
+     * because on a car with a full-width bonnet the front cut is hidden by the
+     * lamp units and the grille surround. v 0.905 is where the top surface has
+     * turned enough to be a wing rather than a bonnet. */
+    for (const side of [1, -1]) run(U.cowlEdge + 0.10, U.nose - 0.15, 0.905, side);
+    over(U.cowlEdge - 0.10, 1.02, Math.PI - 1.02);
+
+    /* The doors. Three vertical cuts a side: the A-pillar shut at the leading
+     * edge of the front door, the B-pillar, and the trailing edge of the rear
+     * door. They stop at the beltline because everything above it is either
+     * glass or a black pillar and a shut line there would be a black line on
+     * black. They stop at the rocker tuck at the bottom for the same reason —
+     * the sill is already in shadow. */
+    for (const side of [1, -1]) {
+      cut(7.92, 0.150, 0.600, side);   // A-pillar / front door leading edge
+      cut(6.55, 0.150, 0.620, side);   // B-pillar
+      cut(4.72, 0.150, 0.610, side);   // rear door trailing edge
+      /* The rocker shut, where the sill panel is welded to the floor. Low and
+       * horizontal, and it is what gives the bottom of the flank a second line
+       * to sit above rather than fading into the shadow under the car. */
+      run(U.rearQuarter + 0.30, U.screenMid - 0.10, 0.128, side);
+    }
+
+    /* The tailgate. A hatchback's cut runs across the roof ahead of the
+     * backlight and then down each C-pillar outboard of the glass, which is
+     * the outline of the single largest panel on the car. The two vertical
+     * cuts are at the rear face rather than at the rear quarter: the tailgate
+     * on a three-door is the whole back of the car, and putting its shut where
+     * the C-pillar is at its widest is what gives the tail a vertical line to
+     * be read against. */
+    over(U.cPillar + 0.30, 1.02, Math.PI - 1.02);
+    for (const side of [1, -1]) cut(U.rearFace + 0.55, 0.300, 0.720, side);
+
+    /* Fuel filler flap, on the left rear quarter — a 160 mm disc that is the
+     * one asymmetric detail on the whole vehicle, and asymmetry is worth
+     * having because a perfectly mirrored car is a rendering, not a machine. */
+    trim.add(this._panel(3.90, 4.24, 0.400, 0.560, true, 1, 0.004, [4, 4]));
   }
 
   /* ── glazing ───────────────────────────────────────────────────────────
@@ -1227,16 +1687,26 @@ export class CarMesh {
      * on the header rail at (+-0.485, 1.363) and on the screen base at the
      * cowl, which is the pair of A-pillars — so that is the band, and the
      * pillar width is now a number that means what it says. */
-    const ROOF_L = 0.95, ROOF_R = Math.PI - 0.95;
-    glass.add(this._panel(U.header - 0.05, U.cowl + 0.35, ROOF_L, ROOF_R, false, 1));
-    /* The backlight, which is the same band across the C-pillars. A hatchback's
-     * is nearly as raked as its screen, so it spans a similar station range. */
-    glass.add(this._panel(U.rearFace + 0.15, U.cPillar + 0.05, ROOF_L, ROOF_R, false, 1));
+    /* Windscreen: bounded at the base of each A-pillar. 0.90 of section height
+     * at the header, opening out to 0.76 at the cowl, which is the taper that
+     * makes an A-pillar an A-pillar rather than a parallel strip. */
+    glass.add(this._panel(U.header - 0.05, U.cowl + 0.40, 0.90, 0.755, 'wrap', 1));
+    /* The backlight. A hatchback's is nearly as raked as its screen and it is
+     * the single most important aperture on the back of the car: without it
+     * the tail is 1.3 square metres of unbroken paint, which is what made this
+     * one read as an egg from directly behind. It has to start almost on the
+     * end cap — station 0.25, not station 1.5 — and that is not a stylistic
+     * choice: the tail rolls closed over the last 60 mm, and a pane placed
+     * ahead of that roll is simply behind the car's own trailing edge and
+     * invisible from directly astern, which is exactly where a rear window is
+     * looked at from. Its lower edge runs at 0.70 of section height at the
+     * tailgate, opening up to 0.93 where the C-pillars close in at the roof. */
+    glass.add(this._panel(U.tailCap + 0.25, U.cPillar + 0.15, 0.700, 0.930, 'wrap', 1));
     for (const side of [1, -1]) {
       /* Front door glass, from the B-pillar forward to the mirror. */
-      glass.add(this._panel(U.roofRear + 0.45, U.header - 0.20, 0.605, 0.895, true, side));
+      glass.add(this._panel(U.roofRear + 0.45, U.header - 0.20, 0.628, 0.895, true, side));
       /* Rear door glass, stopping short of the C-pillar. */
-      glass.add(this._panel(U.rearQuarter + 0.18, U.roofRear + 0.28, 0.605, 0.875, true, side));
+      glass.add(this._panel(U.rearQuarter + 0.18, U.roofRear + 0.28, 0.628, 0.875, true, side));
       /* Mirror faces, which are glass for the same reason the windows are:
        * they are the only two surfaces on the car angled to catch the sky from
        * a camera that is behind it. */
@@ -1252,12 +1722,16 @@ export class CarMesh {
    * @param {number} u1    station index of the front edge
    * @param {number} lo    lower bound, in ring angle or in height fraction
    * @param {number} hi    upper bound, same units
-   * @param {boolean} byV  interpret lo/hi as height fractions
+   * @param {boolean|string} byV  true: lo/hi are height fractions on one
+   *                    flank. 'wrap': lo/hi are the height of the pane's lower
+   *                    edge at its two ends, and it spans over the roof.
    * @param {number} side  +1 for the car's left, -1 for its right
+   * @param {number} [off]  outward offset along the surface normal, in metres
+   * @param {number[]} [res] [along-station, across-section] subdivision
    */
-  _panel(u0, u1, lo, hi, byV, side) {
+  _panel(u0, u1, lo, hi, byV, side, off = 0.012, res = null) {
     const n = this._detail.panel;
-    const nu = n + 2, nv = n;
+    const nu = res ? res[0] : n + 2, nv = res ? res[1] : n;
     const pos = [], nor = [], uv = [], idx = [];
     const P = new THREE.Vector3(), N = new THREE.Vector3();
     const s = {};
@@ -1265,7 +1739,22 @@ export class CarMesh {
     for (let i = 0; i <= nu; i++) {
       const u = lerp(u0, u1, i / nu);
       let a0 = lo, a1 = hi;
-      if (byV) {
+      if (byV === 'wrap') {
+        /* A pane that crosses the centreline: the windscreen and the
+         * backlight. Both are bounded at the SIDES by a height — the base of
+         * the A-pillar, the C-pillar shut — and unbounded over the top, where
+         * they simply meet the roof panel. Specifying them by a fixed pair of
+         * ring angles, as this did originally, only works if the section
+         * exponent is constant along the pane, and it is not: at the tail the
+         * exponent is 4.6, where ring angle 0.95 rad is 0.95 of section
+         * HEIGHT, so the backlight was a 100 mm ribbon lying along the roof
+         * and the car had no rear window at all. Hence the inversion: lo and
+         * hi are the height of the lower edge at the two ends of the pane, and
+         * the band is symmetric about the roof centreline at +PI/2. */
+        stationAt(u, s);
+        a0 = angleForV(lerp(lo, hi, i / nu), s.n);
+        a1 = Math.PI - a0;
+      } else if (byV) {
         /* Height fractions become angles at this station's own exponent, and
          * on the right of the car they become the reflected angles. Ordering
          * them ascending afterwards is what keeps the winding of a mirrored
@@ -1282,7 +1771,7 @@ export class CarMesh {
         const a = lerp(a0, a1, j / nv);
         shellPoint(u, a, P);
         shellNormal(u, a, N);
-        pos.push(P.x + N.x * 0.012, P.y + N.y * 0.012, P.z + N.z * 0.012);
+        pos.push(P.x + N.x * off, P.y + N.y * off, P.z + N.z * off);
         nor.push(N.x, N.y, N.z);
         uv.push(i / nu, j / nv);
       }
@@ -1416,67 +1905,103 @@ export class CarMesh {
      * rigid disc balanced on the ground. */
     rubber.add(revolveSided(TYRE_PROFILE, d.wheel, ob));
 
-    /* Rim barrel and outer flange. Almost all of it is hidden by the tyre; the
-     * part that shows is the flange edge and the well behind the spokes, and
-     * that dark well is what gives the wheel depth. */
+    /* Rim barrel, well and outer flange.
+     *
+     * The profile matters more now that the rim is 17 inch: with a short
+     * sidewall the flange is a genuinely visible band of bright machined
+     * aluminium right at the edge of the tyre, and the well behind it is a
+     * deep dark hole. Those two together — bright ring, black void, bright
+     * spoke face set well inside them — are what "deep dish" means and are
+     * most of why an alloy wheel reads as a machined object rather than as a
+     * disc with lines painted on it.
+     */
     rim.add(revolveSided([
-      [-0.086, 0.196], [-0.076, 0.184], [0.058, 0.184], [0.076, 0.198], [0.082, 0.196],
+      [-0.088, 0.228], [-0.078, 0.214], [0.030, 0.212], [0.058, 0.220],
+      [0.076, 0.232], [0.084, 0.230], [0.080, 0.216],
     ], d.wheel, ob));
 
     /* Centre boss and its cap. */
     rim.add(revolveSided([
-      [0.030, 0.000], [0.062, 0.026], [0.068, 0.048], [0.060, 0.070], [0.030, 0.078],
-      [0.020, 0.062],
+      [0.012, 0.000], [0.044, 0.028], [0.050, 0.052], [0.042, 0.076],
+      [0.014, 0.086], [0.002, 0.068],
     ], d.hub, ob));
 
-    /* Spokes. Five, because an odd count never lines up with itself across the
-     * hub and so never reads as a two-bladed propeller when it stops. Each is
-     * tapered from the hub outward — the load in a spoke is a bending moment
-     * that is largest at the root, so a real cast wheel is thick there and
-     * thin at the rim, and a parallel-sided spoke looks like a spanner. */
+    /* Spokes: five PAIRS, not five singles.
+     *
+     * An odd count of spoke groups never lines up with itself across the hub,
+     * so the wheel never reads as a two-bladed propeller when it stops — that
+     * argument is unchanged. What changes is that a single wide blade at this
+     * rim diameter is a slab: the gap between two adjacent blades gets wider
+     * as the rim grows and a five-spoke on a 17 inch rim has a great deal of
+     * nothing in it. Splitting each blade into a narrow pair keeps the same
+     * five-fold rhythm, doubles the number of lit edges catching the sun, and
+     * costs ten small boxes. It is also simply what a rally wheel looks like.
+     *
+     * Each blade is tapered from the hub outward, because the load in a spoke
+     * is a bending moment that is largest at the root: a real cast wheel is
+     * thick there and thin at the rim, and a parallel-sided spoke looks like a
+     * spanner.
+     */
     const SPOKES = 5;
-    const inner = 0.070, outer = 0.186, faceX = ob * 0.056;
+    const inner = 0.072, outer = 0.212;
+    /* The spoke face sits 54 mm inboard of the flange lip. That gap IS the
+     * dish, and it is the single measurement that separates a modern wheel
+     * from a 1990s one. */
+    const faceX = ob * 0.030;
     for (let k = 0; k < SPOKES; k++) {
-      const g = roundedBox(0.098, 0.040, outer - inner, 0.016, d.spoke);
-      const p = g.attributes.position;
-      const half = (outer - inner) * 0.5;
-      for (let i = 0; i < p.count; i++) {
-        /* Taper in the geometry rather than by scaling the mesh, so the
-         * rounded corners keep their radius instead of being squashed into
-         * ellipses at the thin end. */
-        const t = clamp((p.getZ(i) + half) / (2 * half), 0, 1);
-        const f = lerp(1.0, 0.60, t);
-        p.setXYZ(i, p.getX(i) * f, p.getY(i) * f, p.getZ(i));
+      for (const twin of [-1, 1]) {
+        const g = roundedBox(0.052, 0.036, outer - inner, 0.012, d.spoke);
+        const p = g.attributes.position;
+        const half = (outer - inner) * 0.5;
+        for (let i = 0; i < p.count; i++) {
+          /* Taper in the geometry rather than by scaling the mesh, so the
+           * rounded corners keep their radius instead of being squashed into
+           * ellipses at the thin end. */
+          const t = clamp((p.getZ(i) + half) / (2 * half), 0, 1);
+          const f = lerp(1.0, 0.58, t);
+          p.setXYZ(i, p.getX(i) * f, p.getY(i) * f, p.getZ(i));
+        }
+        g.computeVertexNormals();
+        /* Built lying along +z, translated out to the mid-spoke radius, then
+         * rolled about the axle. The two steps have to be separate: baking the
+         * offset in before the rotation is what makes it a radius rather than
+         * a translation of the whole star. The twin's splay is applied as a
+         * small extra roll, so the pair opens outward towards the rim the way
+         * a cast twin-spoke does. */
+        place(g, 0, 0, 0, Math.PI / 2, 0, 0);
+        place(g, 0, (inner + outer) * 0.5, 0);
+        place(g, faceX, 0, 0, (k / SPOKES) * TAU + 0.31 + twin * 0.115);
+        rim.add(g);
       }
-      g.computeVertexNormals();
-      /* Built lying along +z, translated out to the mid-spoke radius, then
-       * rolled about the axle. The two steps have to be separate: baking the
-       * offset in before the rotation is what makes it a radius rather than a
-       * translation of the whole star. */
-      place(g, 0, 0, 0, Math.PI / 2, 0, 0);
-      place(g, 0, (inner + outer) * 0.5, 0);
-      place(g, faceX, 0, 0, (k / SPOKES) * TAU + 0.31);
-      rim.add(g);
+      /* A short web joining each pair at the rim, which is where a cast wheel
+       * carries the load into the barrel and where the light catches. */
+      const web = roundedBox(0.030, 0.058, 0.046, 0.012, 1);
+      place(web, 0, outer - 0.020, 0);
+      place(web, faceX + ob * 0.012, 0, 0, (k / SPOKES) * TAU + 0.31);
+      rim.add(web);
     }
 
-    /* Wheel nuts, on the same 5-stud pattern the spokes sit between. */
+    /* Wheel nuts, on the same 5-stud pattern the spoke pairs sit between. */
     for (let k = 0; k < SPOKES; k++) {
       const a = ((k + 0.5) / SPOKES) * TAU + 0.31;
       rim.add(place(roundedBox(0.030, 0.030, 0.026, 0.006, 1),
-        ob * 0.066, Math.cos(a) * 0.050, Math.sin(a) * 0.050));
+        ob * 0.042, Math.cos(a) * 0.056, Math.sin(a) * 0.056));
     }
 
-    /* The disc, inboard of the spoke face and 24 mm thick, which is a vented
-     * front disc. It spins with the wheel — discs do — and it is the reason
-     * the space behind the spokes is not simply a hole through the car. */
+    /* The disc: 336 mm across and 26 mm thick, which is a vented front rotor
+     * for a car this light and is only possible at all because the rim grew.
+     * It spins with the wheel — discs do — and it is the reason the space
+     * behind the spokes is not simply a hole through the car. The bell is
+     * stepped down to the hub, as a two-piece rotor's is. */
     brake.add(revolveSided([
-      [-0.012, 0.076], [-0.012, 0.152], [0.012, 0.152], [0.012, 0.076],
+      [-0.013, 0.092], [-0.013, 0.168], [0.013, 0.168], [0.013, 0.104],
+      [0.038, 0.092], [0.038, 0.062],
     ], d.hub + 4, ob));
 
     /* Caliper, at the trailing edge of the disc where a strut car puts it, and
      * mounted to the upright rather than to the wheel. */
-    caliper.add(place(roundedBox(0.062, 0.150, 0.098, 0.018, 2),
-      ob * -0.006, 0.052, -0.140));
+    caliper.add(place(roundedBox(0.070, 0.115, 0.150, 0.020, 2),
+      ob * 0.004, 0.078, -0.158));
 
     for (const b of [rubber, rim, brake]) {
       if (b.empty) continue;
