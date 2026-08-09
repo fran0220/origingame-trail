@@ -100,8 +100,14 @@ export class Race {
   _buildGates() {
     const P = new THREE.Vector3(), T = new THREE.Vector3();
 
-    const poleGeo = new THREE.CylinderGeometry(0.075, 0.09, 4.4, 8);
-    poleGeo.translate(0, 2.2, 0);
+    /* Tall enough to carry the bar at 6.25 m. The first cut used 4.4 m poles
+     * under a banner hung at 3.75 m, which is a gantry that does not reach its
+     * own crossbar — and worse, a 3.75 m banner over a road is at windscreen
+     * height at fifty metres, so it sat on top of the corner the player was
+     * trying to read. */
+    const POLE_H = 6.4;
+    const poleGeo = new THREE.CylinderGeometry(0.075, 0.10, POLE_H, 8);
+    poleGeo.translate(0, POLE_H / 2, 0);
     const poleMat = new THREE.MeshStandardMaterial({
       color: 0xdedcd4, roughness: 0.62, metalness: 0.1,
     });
@@ -132,19 +138,39 @@ export class Race {
         side: THREE.DoubleSide,
       });
       this.materials.push(bannerMat);
-      const banner = new THREE.Mesh(new THREE.PlaneGeometry(span * 2, 1.15), bannerMat);
-      banner.position.set(P.x, this.terrain.height(P.x, P.z) + 3.75, P.z);
+
+      /* Hung from the bar, not floating level with it.
+       *
+       * The first version placed a plane at one height and a cross-bar at
+       * another and left a gap between them, which is exactly how a banner
+       * stops reading as a banner: cloth that is not attached to anything is
+       * a billboard hovering over the road. The geometry below is arranged
+       * around the bar — the bar sits at the *top* edge of the cloth, and the
+       * cloth hangs down from it — so the two are one object.
+       *
+       * The height clears a truck: 5.1 m to the underside of the cloth is
+       * standard for a temporary gantry over a state highway, and it also
+       * keeps the banner out of the driver's sightline to the next corner,
+       * which matters more here than the regulation does. */
+      const groundY = this.terrain.height(P.x, P.z);
+      const CLOTH = 1.15;
+      const barY = groundY + 5.1 + CLOTH;
+
+      const banner = new THREE.Mesh(new THREE.PlaneGeometry(span * 2, CLOTH), bannerMat);
+      banner.position.set(P.x, barY - CLOTH / 2, P.z);
       banner.rotation.y = yaw;
+      /* Cloth is thin and the sun is behind it half the time, so it must not
+       * print a hard black bar across the road; it does receive, because the
+       * gantry's own poles fall across it. */
       banner.castShadow = false;
       banner.receiveShadow = true;
       this.root.add(banner);
-      /* A cross-bar so the banner is hanging from something. Without it the
-       * cloth floats between two poles it is not attached to, which is the
-       * kind of detail that is invisible until it is not. */
+
       const bar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.05, 0.05, span * 2, 6), poleMat);
+        new THREE.CylinderGeometry(0.055, 0.055, span * 2 + 0.3, 8), poleMat);
       bar.rotation.set(0, yaw, Math.PI / 2);
-      bar.position.set(P.x, this.terrain.height(P.x, P.z) + 4.34, P.z);
+      bar.position.set(P.x, barY, P.z);
+      bar.castShadow = true;
       this.root.add(bar);
     });
   }
