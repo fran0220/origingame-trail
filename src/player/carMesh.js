@@ -136,7 +136,23 @@ function makeRng(seed) {
  * long-travel springs, not a tall one.
  */
 const STATIONS = [
-  /* Tail. Two separate lessons are baked into these five rows.
+  /* WIDTHS FIRST, because the whole car used to be one width.
+   *
+   * Every station between the bumpers sat at 0.86 of half-width, so the doors,
+   * the rear quarter and the tail were all exactly as wide as each other — and
+   * as wide as the wheels, whose outer faces are at 0.93. A body the same width
+   * as its own tyres has no arches: the blisters had nothing to stand proud of,
+   * the wheels were swallowed, and the tail read as a pod because there was no
+   * waist anywhere for it to be the end of.
+   *
+   * Real proportions put the greenhouse and the doors well inside the track and
+   * flare the arches out over the wheels. The doors come in to 0.80; the tail
+   * closes from 0.845 over the rear axle to 0.56 at the cap; only the two
+   * stations across the axles keep a haunch, which is what a haunch is for. The
+   * arch section is widened and buried less to match, so its lip now stands
+   * about 90 mm out of a flank that has moved 60 mm in.
+   *
+   * Tail. Two separate lessons are baked into these five rows.
    *
    * The first is the exponent, and it was already right: a hatchback does not
    * end in a rounded nose-cone with the lamps stuck on its curve, it ends in a
@@ -161,12 +177,12 @@ const STATIONS = [
    * tailgate rather than a wall, and the spoiler has a roof edge to stand off
    * rather than a plateau to sit on.
    */
-  { z: -0.790, yB: 0.420, yT: 0.950, wB: 0.545, wMax: 0.618, wTop: 0.535, vBelt: 0.55, n: 3.5 },
-  { z: -0.730, yB: 0.360, yT: 1.030, wB: 0.740, wMax: 0.826, wTop: 0.720, vBelt: 0.55, n: 4.6 },
-  { z: -0.590, yB: 0.265, yT: 1.170, wB: 0.752, wMax: 0.850, wTop: 0.752, vBelt: 0.55, n: 4.2 },
+  { z: -0.790, yB: 0.420, yT: 0.950, wB: 0.495, wMax: 0.560, wTop: 0.480, vBelt: 0.55, n: 3.5 },
+  { z: -0.730, yB: 0.360, yT: 1.030, wB: 0.740, wMax: 0.762, wTop: 0.660, vBelt: 0.55, n: 4.6 },
+  { z: -0.590, yB: 0.265, yT: 1.170, wB: 0.752, wMax: 0.800, wTop: 0.702, vBelt: 0.55, n: 4.2 },
   /* rear quarter over the rear arch */
-  { z: -0.340, yB: 0.175, yT: 1.330, wB: 0.760, wMax: 0.868, wTop: 0.735, vBelt: 0.52, n: 3.8 },
-  { z: -0.050, yB: 0.155, yT: 1.448, wB: 0.780, wMax: 0.866, wTop: 0.690, vBelt: 0.50, n: 3.7 },
+  { z: -0.340, yB: 0.175, yT: 1.330, wB: 0.760, wMax: 0.845, wTop: 0.715, vBelt: 0.52, n: 3.8 },
+  { z: -0.050, yB: 0.155, yT: 1.448, wB: 0.780, wMax: 0.842, wTop: 0.672, vBelt: 0.50, n: 3.7 },
   /* roof: very slightly crowned, because a dead flat roof has no highlight on
    * it at all and reads as a lid.
    *
@@ -175,17 +191,17 @@ const STATIONS = [
    * rounds continuously from sill to roof is a bar of soap. 3.7 puts about
    * 50 mm of radius on the shoulder and leaves the rest of the flank straight,
    * which is what carries a long unbroken highlight down the side of a car. */
-  { z: 0.420, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.865, wTop: 0.67, vBelt: 0.50, n: 3.7 },
-  { z: 1.000, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.860, wTop: 0.66, vBelt: 0.50, n: 3.7 },
-  { z: 1.620, yB: 0.155, yT: 1.452, wB: 0.78, wMax: 0.860, wTop: 0.64, vBelt: 0.50, n: 3.7 },
+  { z: 0.420, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.806, wTop: 0.640, vBelt: 0.50, n: 3.7 },
+  { z: 1.000, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.800, wTop: 0.632, vBelt: 0.50, n: 3.7 },
+  { z: 1.620, yB: 0.155, yT: 1.452, wB: 0.78, wMax: 0.800, wTop: 0.616, vBelt: 0.50, n: 3.7 },
   /* windscreen: 0.435 m of rise over 0.68 m of run is 57 degrees from the
    * vertical, which is where modern screens sit — steep enough to be obviously
    * raked, shallow enough that the wipers still have somewhere to park */
-  { z: 1.980, yB: 0.165, yT: 1.260, wB: 0.78, wMax: 0.860, wTop: 0.69, vBelt: 0.52, n: 3.6 },
-  { z: 2.300, yB: 0.175, yT: 1.020, wB: 0.78, wMax: 0.860, wTop: 0.77, vBelt: 0.55, n: 3.7 },
+  { z: 1.980, yB: 0.165, yT: 1.260, wB: 0.78, wMax: 0.806, wTop: 0.664, vBelt: 0.52, n: 3.6 },
+  { z: 2.300, yB: 0.175, yT: 1.020, wB: 0.78, wMax: 0.826, wTop: 0.742, vBelt: 0.55, n: 3.7 },
   /* the doubled station: 80 mm apart with a 30 mm height step, which is how a
    * Catmull-Rom is told that the cowl is a crease and not a curve */
-  { z: 2.380, yB: 0.175, yT: 0.990, wB: 0.78, wMax: 0.860, wTop: 0.79, vBelt: 0.55, n: 3.9 },
+  { z: 2.380, yB: 0.175, yT: 0.990, wB: 0.78, wMax: 0.834, wTop: 0.762, vBelt: 0.55, n: 3.9 },
   /* Bonnet, falling away over the front axle at 2.62. The exponent is highest
    * here of anywhere on the car: a bonnet is the flattest panel on a vehicle
    * and the one whose highlight the eye uses to judge whether the whole shape
