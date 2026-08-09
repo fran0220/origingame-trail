@@ -31,6 +31,7 @@
  * infinitely tall would block a car driving over the rise it stands behind.
  */
 import * as THREE from 'three';
+import { ROAD_SHOULDER } from './basin.js';
 
 /**
  * Register the lake's solid furniture.
@@ -144,6 +145,50 @@ export function registerLakeColliders(collision, level, terrain) {
   level.farm?.root.traverse((o) => { if (/shed/.test(o.name || '')) solidMesh(o, 'buildings', 0.05); });
   level.structures?.root.traverse((o) => solidMesh(o, 'headwalls', 0.05));
   level.wayside?.root.traverse((o) => solidMesh(o, 'vehicles', 0.05));
+
+  /* ── timing gantry legs ───────────────────────────────────────────────
+   *
+   * Steel columns 7.5 m from the centreline, at six points on the stage. A
+   * car running wide at 130 km/h currently passes through an arch, which is
+   * the most solid-looking object on the whole route.
+   *
+   * The legs are recovered from the instance transforms and the known span
+   * rather than from the merged geometry: the frame builder puts them at
+   * exactly +/- span/2 on the instance's local X, so that is where they are,
+   * and reading it back out of a vertex buffer would be a second way of
+   * knowing one thing. */
+  const GANTRY_HALF_SPAN = ROAD_SHOULDER + 1.6;
+  level.timing?.root.traverse((o) => {
+    if (!o.isInstancedMesh || !/timing:(arch|split)/.test(o.name || '')) return;
+    for (let i = 0; i < o.count; i++) {
+      o.getMatrixAt(i, M);
+      M.decompose(V, Q, S);
+      const yaw = Math.atan2(2 * (Q.w * Q.y + Q.x * Q.z), 1 - 2 * (Q.y * Q.y + Q.x * Q.x));
+      const ax = Math.cos(yaw), az = Math.sin(yaw);
+      for (const s of [-1, 1]) {
+        collision.addCircle({
+          x: V.x + ax * GANTRY_HALF_SPAN * s,
+          z: V.z + az * GANTRY_HALF_SPAN * s,
+          radius: 0.16,
+          minY: V.y - 0.5, maxY: V.y + 6.0,
+          kind: 'gantry',
+        });
+        counts.gantry = (counts.gantry || 0) + 1;
+      }
+    }
+  });
+
+  /* ── the service park ─────────────────────────────────────────────────
+   * Vans, awning legs and tyre stacks. Sixteen metres off the road, so a car
+   * reaching it has already left the stage — but they are solid objects and
+   * driving through a parked truck is worse than hitting one. */
+  level.service?.root.traverse((o) => solidMesh(o, 'service', 0.05));
+
+  /* NOT the distance boards and NOT the spectator flags. Both are light posts
+   * designed to be knocked flat — a highway sign snaps at its base by law and
+   * a flag on a 3 m pole is a stick. Giving frangible objects colliders is the
+   * same error as fencing the road with the wire fence: it turns an excursion
+   * into an instant stop against something that would really have folded. */
 
   /* ── the biggest boulders only ────────────────────────────────────────── */
   level.rock?.root.traverse((o) => {
