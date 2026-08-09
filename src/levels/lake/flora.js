@@ -646,7 +646,11 @@ function grassPatchGeometry(variant, rng) {
    * *occludes* the ground, and that takes roughly a hundred blades per square
    * metre at this blade width — which is also, unsurprisingly, about what a
    * real sward has. */
-  const blades = 118 + variant * 14;
+  /* Up from 118. Reported as still too thin, and the arithmetic agrees: 118
+   * blades of 5 mm over a square metre is under a fifth of that metre actually
+   * covered once they are arched over, so the ground is still doing most of
+   * the work at any grazing angle. */
+  const blades = 172 + variant * 20;
 
   for (let b = 0; b < blades; b++) {
     const bx = (rng() - 0.5) * SIDE, bz = (rng() - 0.5) * SIDE;
@@ -673,17 +677,19 @@ function grassPatchGeometry(variant, rng) {
      * — a hot yellow-brown — with a green cast only in the first centimetre or
      * two that is shaded by everything above it. The bands below are shifted
      * up accordingly so the ochre owns most of the blade. */
-    /* `vigour` runs green-to-gold rather than dark-to-light, because that is
-     * the axis a real sward varies on: most blades are dead straw, a minority
-     * are still growing and markedly greener, and it is that mixture — not a
-     * brightness spread — that stops a hundred blades to the square metre
-     * reading as one flat felt. A quarter of them are green. */
-    const green = Math.pow(rng(), 2.6);
+    /* `vigour` runs green-to-gold, and the weighting has been inverted.
+     *
+     * It used to be a quarter green and three quarters dead straw, on the
+     * reading that this is dry tussock country. The shore benches this road
+     * runs along are grazed pasture and they are green; the straw belongs on
+     * the dry crowns. So most blades are now growing and the gold is the
+     * minority that keeps it from being a lawn. */
+    const green = 1.0 - Math.pow(rng(), 2.2);
     const lift = 0.82 + rng() * 0.36;
     const mixc = (dry, wet) => dry.map((v, i) => (v + (wet[i] - v) * green) * lift);
-    const root = mixc([0.115, 0.120, 0.052], [0.070, 0.115, 0.038]);
-    const mid = mixc([0.310, 0.262, 0.104], [0.135, 0.215, 0.070]);
-    const tip = mixc([0.520, 0.450, 0.222], [0.235, 0.345, 0.125]);
+    const root = mixc([0.115, 0.120, 0.052], [0.052, 0.108, 0.034]);
+    const mid = mixc([0.320, 0.270, 0.108], [0.118, 0.238, 0.070]);
+    const tip = mixc([0.545, 0.470, 0.232], [0.235, 0.400, 0.132]);
 
     const SEG = 3;
     let prev = null;
@@ -714,7 +720,10 @@ function buildSward(owner, terrain, tier, dummy) {
   const trail = terrain.trail;
   /* Patches per square metre. One, because a patch *is* a square metre — the
    * scatter below jitters them so the lattice never shows. */
-  const OUTER = tier === 'low' ? 16 : tier === 'medium' ? 24 : 34;
+  /* The corridor reaches further too — 34 m stopped inside the distance a
+   * driver reads, so the sward ended and the bare terrain began well within
+   * the frame. */
+  const OUTER = tier === 'low' ? 22 : tier === 'medium' ? 34 : 52;
   const INNER = ROAD_SHOULDER + 0.35;
   const rng = random(0x5ea77);
 
@@ -849,7 +858,10 @@ function tuftGeometry(variant, rng) {
     /* Brighter, now that these are the taller stools standing out of a sward
      * rather than the ground cover itself: a tussock catches the sun on its
      * arching outer blades and is the *lightest* thing on a dry hillside. */
-    const root = [0.235, 0.205, 0.102], tip = [0.540, 0.462, 0.225];
+    /* Tussock stays the golden note, because that is genuinely what a stool of
+     * Festuca or Poa is even in green pasture — but less bleached than before,
+     * so it sits in the sward rather than on top of it. */
+    const root = [0.205, 0.192, 0.098], tip = [0.480, 0.430, 0.212];
     let prev = null;
     for (let s = 0; s <= 3; s++) {
       const u = s / 3;

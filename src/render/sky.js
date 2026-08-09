@@ -164,13 +164,35 @@ void main(){
     vec2 cp=dir.xz/max(.16,dir.y+.32)*uCloudScale;
     float broad=skyFbm(cp*.38+vec2(2.7,-4.1));
     float detail=skyFbm(cp*1.12+vec2(-7.4,3.2));
-    float density=sstep(.60,.74,broad*.72+detail*.28+uCloudiness*.08);
+    /* The gate decides whether this is weather or a wash.
+     *
+     * At .60..74 a five-octave fbm almost never crossed it and the sky stayed
+     * clear — reported as "there are no clouds". Dropped to .42..63 it crossed
+     * nearly everywhere and the sky went flat white, which is worse: an
+     * overcast dome has no blue for the clouds to be clouds against, and it
+     * takes all the modelling off the mountains with it.
+     *
+     * Broken cumulus is the target and it is a narrow band: the field has to
+     * clear the threshold over roughly a third of the dome. The gate also no
+     * longer moves with cloudiness — letting the amount slide the threshold
+     * meant turning clouds up made them merge rather than multiply. */
+    float density=sstep(.545,.700,broad*.70+detail*.30);
+    /* Thin the layer hard toward the horizon.
+     *
+     * cp is a plane projection, so at a low elevation the dome samples the
+     * cloud plane almost edge-on and every ray crosses cloud — which is
+     * physically what happens, and on a frame that is mostly horizon it means
+     * a solid grey band across the top of every picture instead of weather.
+     * Real distant cumulus does thin out and merge into haze near the horizon;
+     * this ramps it in from 0.055 as before, then takes it back out again
+     * across the lowest fifth of the dome so there is blue behind the range. */
     density*=sstep(.055,.20,dir.y)*(1.0-sstep(.91,1.0,dir.y));
+    density*=mix(0.30, 1.0, sstep(.10, .42, dir.y));
     float sunSide=max(0.0,dot(normalize(vec3(dir.x,.28,dir.z)),normalize(vec3(sun.x,.28,sun.z))));
     vec3 cloudShade=vec3(.42,.49,.57);
     vec3 cloudLight=vec3(1.30,1.28,1.23)*(1.0+.20*sunSide);
     vec3 cloud=mix(cloudShade,cloudLight,clamp(.30+broad*.52+sunSide*.24,0.0,1.0));
-    col=mix(col,cloud,density*uCloudiness*.86);
+    col=mix(col,cloud,clamp(density*uCloudiness,0.0,0.94));
   }
 
   /* Merge the low sky into the haze.

@@ -105,8 +105,16 @@ export const mood = {
     /* Broken high-country cloud banks supply photographic scale in the empty
      * half of an open frame and, because the sky is also the environment map,
      * give the lake broad reflected value changes without a second camera. */
-    clouds: 0.28,
-    cloudScale: 2.0,
+    /* Real weather, not a hint of it.
+     *
+     * 0.28 through a density function gated at sstep(.60,.74) put the cloud
+     * mix factor under 0.24 at its strongest and left the sky effectively
+     * clear — reported, correctly, as "there are no clouds". A Mackenzie
+     * morning has broken cumulus over the divide and long banks running down
+     * the valley, and they are also the only thing that gives an empty half of
+     * the frame any scale. */
+    clouds: 0.72,
+    cloudScale: 1.35,
   },
   /* Nothing in this basin is under anything. That switches off both halves of
    * the canopy light model — the sunfleck mask, which would otherwise print

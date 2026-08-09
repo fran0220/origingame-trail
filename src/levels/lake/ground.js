@@ -243,8 +243,18 @@ export function makeBasinMaterial(renderer) {
          * hue substitution instead of a brightness change: whatever is
          * selected below, lum * hue has exactly the luminance the scan
          * measured. */
-        const vec3 TAWNY = vec3(1.462, 0.876, 0.412);   // dormant tussock
-        const vec3 SWARD = vec3(0.735, 1.148, 0.520);   // damp valley-floor green
+        /* Green first, gold second — the opposite weighting to before.
+         *
+         * The basin was authored as a rain-shadow tussock flat, all dormant
+         * straw, on the argument that the Mackenzie is dry country. That is
+         * true of the high terraces in late summer and it is not what this
+         * lake looks like from the road: the shore benches and the fans are
+         * grazed pasture and they are green, which is why every photograph of
+         * Tekapo has a green foreground under a snow range. The gold is still
+         * here — it belongs on the dry crowns and the wind-scalded ridges —
+         * but it is now the accent rather than the field. */
+        const TAWNY = vec3(1.462, 0.876, 0.412);   // dry crown, wind-scalded
+        const SWARD = vec3(0.610, 1.235, 0.545);   // grazed pasture green
         vec3 bioA = texture2D(tMacro, vWPos.xz * 0.0055).rgb;
         vec3 bioB = texture2D(tMacro, vWPos.xz * 0.041 + 0.37).rgb;
         /* Dry unless there is a reason to be green. Terraces and crowns dry
@@ -254,11 +264,11 @@ export function makeBasinMaterial(renderer) {
         dry = clamp(dry * (1.0 - wet * 0.85), 0.0, 1.0);
         /* Never fully one or the other. Real grassland at this scale is a
          * mosaic, and a hard 0/1 field paints continents. */
-        vec3 hue = mix(SWARD, TAWNY, mix(0.22, 0.94, dry));
+        vec3 hue = mix(SWARD, TAWNY, mix(0.04, 0.52, dry));
         /* Tussock is also *paler* than pasture as well as warmer — dead leaf
          * reflects more than living leaf — so the luminance is lifted a little
          * where the ground is driest. */
-        cMat = lum * hue * mix(1.0, 1.16, dry);
+        cMat = lum * hue * mix(1.06, 1.16, dry);
       }
       /* These are the *measured* means of each bake, not chosen colours: a fade
        * to anything else makes the surface change value with camera distance,
@@ -269,7 +279,10 @@ export function makeBasinMaterial(renderer) {
        * ground at the player's feet is tawny, which reads as fog with the
        * wrong colour in it. */
       cGrv = mix(cGrv, vec3(0.081, 0.080, 0.075), farDetail);
-      cMat = mix(cMat, vec3(0.171, 0.135, 0.070), farDetail);
+      /* The mean of the recoloured mat, which is now green-dominant. Kept in
+       * step with the biome block above, or every hill past the fade distance
+       * goes a different colour from the ground at the player's feet. */
+      cMat = mix(cMat, vec3(0.106, 0.163, 0.062), farDetail);
       cRok = mix(cRok, vec3(0.380, 0.388, 0.377), farDetail);
 
       vec3 surf = mix(cMat, cGrv, grv);

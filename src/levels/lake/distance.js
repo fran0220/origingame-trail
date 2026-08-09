@@ -472,7 +472,7 @@ function mountainMaterial(spec, layer) {
         * so the warm cast is the grass, not the stone. The previous pair was
         * green-dominant on both ends, which put a fertilised-pasture hue on
         * every foothill in the frame. */
-       vec3 lowerRock = mix(vec3(.085,.080,.062), vec3(.30,.27,.19), coarse);
+       vec3 lowerRock = mix(vec3(.072,.082,.058), vec3(.26,.27,.19), coarse);
        vec3 rock = mix(lowerRock, alpineRock, smoothstep(1.25,1.85,uLayer));
        rock *= mix(.68, 1.22, coarse * .55 + fine * .45);
        float fractureDepth=mix(.18,.45,smoothstep(.75,1.85,uLayer));
@@ -499,11 +499,12 @@ function mountainMaterial(spec, layer) {
         * the absolute colour of a hill eight kilometres away, and will
         * instantly see a seam where a tawny foreground meets a green
         * middle distance. */
-       vec3 meadow=mix(vec3(.052,.046,.024),vec3(.176,.150,.070),coarse*.62+fine*.38);
+       vec3 meadow=mix(vec3(.036,.058,.024),vec3(.128,.186,.078),coarse*.62+fine*.38);
        meadow*=mix(.82,1.08,coarse);
        /* Damp gullies and shaded faces keep some green even here — it is what
         * stops the range reading as a single flat wash of ochre. */
-       meadow=mix(meadow, meadow*vec3(.78,1.06,.72), smoothstep(.55,.95,fine)*.45);
+       /* Dry crowns keep the gold, so the range is not one flat green either. */
+       meadow=mix(meadow, meadow*vec3(1.28,1.02,.62), smoothstep(.58,.96,coarse)*.40);
        surf=mix(surf,meadow,meadowMask);
        /* Accumulation follows gullies and protected faces, while exposed ribs
         * stay dark. R18's .34 minimum coverage made every summit face white and
