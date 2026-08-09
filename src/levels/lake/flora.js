@@ -35,35 +35,65 @@ void main(){
   warm+=blade*r2;weight+=blade;
  }
  float tint=weight>0.0?warm/weight:.5;
- vec3 col=mix(vec3(.045,.17,.028),vec3(.19,.31,.065),tint*.44+.14);
- col*=.76+.22*vUv.y;
+ /* Dry sward, not lawn. These two were (.045,.17,.028) and (.19,.31,.065) —
+  * green-dominant on both ends — which put a green haze over the whole basin
+  * floor sitting on top of a tawny PBR ground and under tawny hero tussocks.
+  * A short-tussock sward is straw with green only at the base of the blade,
+  * so the ramp runs from a shaded olive root to a sun-bleached straw tip. */
+ vec3 col=mix(vec3(.055,.075,.030),vec3(.245,.205,.082),tint*.44+.14);
+ /* And the blade is paler at the tip for the same reason: that is the part
+  * that died back first and the part the sun reaches. */
+ col*=.72+.34*vUv.y;
  gl_FragColor=vec4(col,alpha);
 }`;
 
 /* Mackenzie suite: the twelve natives that write the field notebook, plus
  * three extra habitat fillers so a single terrace / fan / shore no longer
- * collapses to one silhouette class. Assets stay procedural and habitat-bound. */
+ * collapses to one silhouette class. Assets stay procedural and habitat-bound.
+ *
+ * The tussocks are not green, and getting that wrong is the single loudest
+ * botanical error this level can make, because they are also the most numerous
+ * thing in it. They were authored around 0x5f8b36 — a lawn green — at a time
+ * when the ground under them was a pasture scan, so the two at least agreed.
+ * Once the ground was corrected to dry tussock the plants were left as the
+ * only green objects on a tawny hillside, which is worse than either mistake
+ * on its own.
+ *
+ * The real colours, and they are specific rather than a general dulling:
+ * silver tussock (Poa cita) is pale silvery straw; snow tussock (Chionochloa
+ * rigida) is golden-tawny and is what makes a Mackenzie hillside glow against
+ * the light; red tussock (C. rubra) is genuinely copper-brown and is the one
+ * species here that reads warm at any distance; hard tussock (Festuca
+ * novae-zelandiae) is a glaucous grey-buff; blue tussock (Poa colensoi) is
+ * blue-grey. Matagouri is a grey-brown near-leafless thorn, and ozothamnus is
+ * called cottonwood for its grey felt.
+ *
+ * The genuinely green species keep their green — flax, hebe, coprosma, manuka
+ * and the wetland sedges are evergreen shrubs and rushes and are green in
+ * life. The point is not that the palette should be brown, it is that it
+ * should be the palette this place has: dry warm grasses with green confined
+ * to the damp ground and the woody plants. */
 export const SPECIES=[
  /* Tussock / grass floor */
- ['silver-tussock','terrace',0x5f8b36,'tussock'],
- ['snow-tussock','leeward',0x63833b,'tussock'],
- ['red-tussock','wetland',0x587d32,'tussock'],
- ['hard-tussock','terrace',0x4d752d,'tussock'],
- ['blue-tussock','leeward',0x55775c,'tussock'],
+ ['silver-tussock','terrace',0x9b9b76,'tussock'],
+ ['snow-tussock','leeward',0xa8914f,'tussock'],
+ ['red-tussock','wetland',0x9a6a41,'tussock'],
+ ['hard-tussock','terrace',0x8d8a5e,'tussock'],
+ ['blue-tussock','leeward',0x71806f,'tussock'],
  /* Woody shrubs */
- ['matagouri','fan',0x46533b,'thorn'],
+ ['matagouri','fan',0x6b6553,'thorn'],
  ['manuka','terrace',0x3d603d,'branch'],
  ['kanuka','terrace',0x4a6a3d,'branch'],
  ['hebe','leeward',0x55774f,'broad'],
  ['hebe-odora','terrace',0x4f6d4a,'broad'],
  ['coprosma','fan',0x5d6d3d,'broad'],
  ['coprosma-propinqua','fan',0x51623a,'broad'],
- ['ozothamnus','leeward',0x6b7350,'branch'],
- ['dracophyllum','leeward',0x4a5c38,'sword'],
+ ['ozothamnus','leeward',0x8b8a6f,'branch'],
+ ['dracophyllum','leeward',0x6d6444,'sword'],
  /* Wetland / shore */
  ['flax','wetland',0x365c3b,'sword'],
  ['toetoe','wetland',0xb8a66c,'plume'],
- ['sedge','shore',0x71834b,'sedge'],
+ ['sedge','shore',0x7d854f,'sedge'],
  ['jointed-rush','wetland',0x5f6e48,'sedge'],
  ['carex','wetland',0x66784a,'sedge'],
  ['raoulia-cushion','shore',0x839469,'mat'],
