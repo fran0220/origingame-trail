@@ -345,6 +345,15 @@ export class Ambience {
   }
 
   /** System 5 calls this once the real falls mesh exists. */
+  /**
+   * Supply a resolver that maps a proposed bird anchor onto a real one.
+   *
+   * Takes {x,y,z} and returns {x,y,z} or null. Null means "no bird near
+   * enough" and the proposed anchor stands, which is the right answer when
+   * the bout is meant to be a bird too far off to see.
+   */
+  setBirdSource(fn) { this._birdSource = fn; }
+
   setWaterfallPosition(base, lip = null) {
     this.fallsBase = { x: base.x, y: base.y, z: base.z };
     if (lip) this.fallsLip = { x: lip.x, y: lip.y, z: lip.z };
@@ -469,6 +478,20 @@ export class Ambience {
         y: e[13] + ev.elev,
         z: e[14] + Math.cos(ev.az) * ev.dist,
       };
+      /* Snap the bout onto a bird that actually exists.
+       *
+       * The scheduler invents an anchor from an azimuth, a distance and an
+       * elevation, which was correct when nothing in this level had a body.
+       * There are sixty birds in the mid-storey now, and a call coming from
+       * a patch of empty air three metres from a visible, silent bird is a
+       * worse result than either system alone — the ear localises well enough
+       * to notice, and once it does, every other positioned sound in the mix
+       * becomes suspect.
+       *
+       * The hook is optional and the fallback is the old behaviour, so the
+       * audio engine still runs in a level with no birds in it. */
+      const real = this._birdSource?.(p);
+      if (real) { p.x = real.x; p.y = real.y; p.z = real.z; }
       this._boutPos.set(ev.bout, p);
       // Several species can hold live bouts at once, so prune by age
       // rather than clearing — a cleared anchor would make a bird jump to
@@ -477,7 +500,20 @@ export class Ambience {
         this._boutPos.delete(this._boutPos.keys().next().value);
       }
     }
-    this._spawnOneShotAt(this.bank[`bird:${ev.species}:${ev.variant}`], ev, p,
+    /* Re-derive the distance from where the sound ACTUALLY is.
+     *
+     * ev.dist drives both the gain and the air-absorption cutoff, and the
+     * panner drives the direction. Those came from the same number until the
+     * anchor started being snapped onto real birds; leaving ev.dist alone
+     * would give a call that is panned hard left at twenty metres while being
+     * mixed and filtered as though it were four metres away. Distance cues
+     * that disagree with each other are worse than either cue being wrong,
+     * because the ear cannot resolve them and the sound stops having a place
+     * at all. */
+    const dx = p.x - e[12], dy = p.y - e[13], dz = p.z - e[14];
+    const trueDist = Math.hypot(dx, dy, dz);
+    const ev2 = Math.abs(trueDist - ev.dist) > 0.5 ? { ...ev, dist: trueDist } : ev;
+    this._spawnOneShotAt(this.bank[`bird:${ev.species}:${ev.variant}`], ev2, p,
       this._lv('birds'), 8);
   }
 

@@ -192,6 +192,10 @@ class JungleLevel {
      * rumble and the hiss, which is the cue that tells you how tall the thing
      * in front of you is. */
     this.ambience.setWaterfallPosition(IMPACT, LIP);
+    /* Bird calls come from birds. The scheduler invents an anchor from an
+     * azimuth and a distance; this maps it onto an animal that is actually
+     * there, when one is close enough for the difference to be noticeable. */
+    this.ambience.setBirdSource((p) => this.birds?.nearestSinger(p) ?? null);
     return this.ambience;
   }
 
