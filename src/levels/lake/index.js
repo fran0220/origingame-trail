@@ -116,6 +116,10 @@ export const mood = {
    * would be a second copy of the skylight the hemisphere light above already
    * provides. See render/canopy.js. */
   openSky: true,
+  /* See levelShadowReach() in main.js. The jungle's 46 m is derived from its
+   * fog, and this level's air is an order of magnitude clearer; at 150 km/h a
+   * 46 m cascade is a ring of shadow that travels with the car. */
+  shadowReach: 170,
 };
 
 export { content };

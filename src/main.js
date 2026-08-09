@@ -52,6 +52,27 @@ import * as platform from './game/platform.js';
  */
 const SHADOW_REACH = 46;
 
+/* ...for the jungle. An open basin is a different argument entirely.
+ *
+ * The 46 m above was derived from the forest's air: FogExp2 at 0.038 leaves a
+ * surface at 46 m with under 5% of its own colour, so a shadow past that
+ * cannot change the frame, and spending texels beyond it is spending them on
+ * nothing. Lake Tekapo's fog is 0.00135 — an order of magnitude thinner — and
+ * its subject is forty kilometres away. Nothing is hidden at 46 m there.
+ *
+ * It matters more now that the level is driven than it did when it was walked.
+ * At 150 km/h the car covers 46 m in 1.1 seconds, so every shadow in the
+ * landscape appears one second before the car reaches it, which is a moving
+ * ring of darkness travelling with the player — the single most obvious
+ * artefact left in the driving frames.
+ *
+ * A cascade is a fixed number of texels over whatever it covers, so this is
+ * paid for in sharpness: 2048 over 46 m is 2.2 cm, over 170 m it is 8.3 cm.
+ * That is the right trade for a landscape whose shadows are cast by tussock
+ * clumps, roadside posts and moraine hummocks rather than by leaves.
+ */
+const levelShadowReach = (mood) => mood?.shadowReach ?? SHADOW_REACH;
+
 const TIERS = {
   low: { dpr: 0.75, shadow: 1024, aniso: 4 },
   medium: { dpr: 1.0, shadow: 1536, aniso: 8 },
@@ -421,7 +442,7 @@ class Game {
     const t = TIERS[this.tier];
     const s = this.sun.shadow;
     s.mapSize.set(t.shadow, t.shadow);
-    const d = SHADOW_REACH;
+    const d = levelShadowReach(this.levelModule.mood);
     s.camera.left = -d; s.camera.right = d;
     s.camera.top = d; s.camera.bottom = -d;
     s.camera.near = 1; s.camera.far = d * 3.2;
