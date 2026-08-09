@@ -34,6 +34,7 @@ import { JungleLife } from './life.js';
 import { JungleDeadwood } from './deadwood.js';
 import { JungleVines } from './vines.js';
 import { JungleBirds } from './birds.js';
+import { JungleFungi } from './fungi.js';
 import { pick as pickCondition, applyCondition } from './conditions.js';
 import { Ambience } from '../../audio/engine.js';
 import { content } from '../../game/content.js';
@@ -160,6 +161,10 @@ class JungleLevel {
     this.deadwood = new JungleDeadwood(this.terrain, this.trail, tier);
     scene.add(this.deadwood.root);
 
+    await step(0.82, '长出菌菇');
+    this.fungi = new JungleFungi(this.terrain, this.trail, tier);
+    scene.add(this.fungi.root);
+
     await step(0.84, '垂下藤蔓');
     this.vines = new JungleVines(this.terrain, this.trail, tier);
     scene.add(this.vines.root);
@@ -177,7 +182,8 @@ class JungleLevel {
   materials() {
     return [this.terrainMat, this.veg.leafMat, this.veg.woodMat,
             this.ruins.material, ...this.water.materials,
-            ...this.deadwood.materials, ...this.vines.materials, ...this.birds.materials];
+            ...this.deadwood.materials, ...this.vines.materials, ...this.birds.materials,
+            ...this.fungi.materials];
   }
 
   /**
