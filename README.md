@@ -4,7 +4,7 @@
 
 Two first-person field walks built in Three.js with zero external art assets:
 the original winding jungle trail into overgrown stone ruins and a waterfall,
-and an open high-country route along the turquoise shore of Lake Pukaki toward
+and a timed rally stage on State Highway 8 along the turquoise shore of Lake Tekapo toward
 the Southern Alps. Each is a small exploration game recorded through the same
 field notebook.
 
@@ -62,7 +62,7 @@ standing in it.
 
 The Jungle notebook has twelve inscriptions and twelve photographs, neither on
 the trail's critical path — the walk to the falls works exactly as it did
-before. Lake Pukaki has no artificial tablets: it completes through twenty
+before. Lake Tekapo is driven rather than walked and is scored on the clock; it also has no artificial tablets, completing through twenty
 photographs of native flora, fauna, the glacial shore and the Southern Alps.
 The two runs share one versioned save envelope but retain independent progress.
 
@@ -236,6 +236,8 @@ start.
 npm run serve &      # the tests drive a real page
 npm test             # smoke + movement + full journey + save round-trip
 npm run test:lake    # Lake habitat, shoreline and 20/20 photo reachability
+npm run test:road    # The seal lies on its formation, and the grade is drivable
+npm run test:drive   # The stage can be driven, and the clock agrees with the road
 npm run test:picker  # picker, deep links and flush-before-navigation
 npm run test:cold    # repeated fresh-context starts for both levels
 npm run shots        # visual acceptance captures into media/game/

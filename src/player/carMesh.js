@@ -54,8 +54,17 @@ import { bakeSurface } from '../gfx/bake.js';
 /** Front to rear axle, in metres. Group B homologation hatch territory. */
 export const WHEELBASE = 2.62;
 
-/** Left to right wheel centres, in metres. */
-export const TRACK = 1.58;
+/** Left to right wheel centres, in metres.
+ *
+ * Widened from the 1.58 m of the road car it is based on. A rally homologation
+ * car gains track before it gains anything else — wider track is the cheapest
+ * roll-stiffness there is, and it is the reason the works cars need the box
+ * arches in the first place. The number is set against the arch geometry
+ * below: at 1.66 m the outer sidewall lands within about 10 mm of the arch
+ * lip, which is what "the tyre fills the arch" means and is the difference
+ * between a rally car and a hatchback with its wheels tucked under it.
+ */
+export const TRACK = 1.66;
 
 /** Loaded rolling radius, in metres: a 205/65 R15 gravel tyre. */
 export const WHEEL_R = 0.34;
@@ -116,35 +125,42 @@ function makeRng(seed) {
  *            tail round off instead of ending in a chamfered brick.
  *
  * The overall package is 4.18 m long, 1.72 m wide across the doors and 1.48 m
- * tall, which is a current-generation supermini raised on rally springs: the
- * sill is 190 mm off the ground where a road car of this shape sits at 120.
+ * tall, which is a current-generation supermini on rally springs.
+ *
+ * The sill sits at 150 mm, down from the 190 mm this table was first authored
+ * with. 190 mm is defensible for a car built to cross a ford, and it is the
+ * wrong number for the only view that matters here: from a chase camera the
+ * gap between the top of each tyre and the arch above it is the whole reading
+ * of a car's stance, and at 190 mm this one read as a crossover on stilts.
+ * What separates a rally car from a soft-roader is that it is a *low* car with
+ * long-travel springs, not a tall one.
  */
 const STATIONS = [
   /* tail, and its closing station 60 mm behind it */
-  { z: -0.780, yB: 0.46, yT: 0.98, wB: 0.42, wMax: 0.58, wTop: 0.44, vBelt: 0.55, n: 2.6 },
-  { z: -0.720, yB: 0.40, yT: 1.16, wB: 0.62, wMax: 0.80, wTop: 0.68, vBelt: 0.55, n: 3.0 },
-  { z: -0.600, yB: 0.30, yT: 1.31, wB: 0.72, wMax: 0.855, wTop: 0.74, vBelt: 0.55, n: 3.2 },
+  { z: -0.780, yB: 0.415, yT: 0.98, wB: 0.42, wMax: 0.58, wTop: 0.44, vBelt: 0.55, n: 2.6 },
+  { z: -0.720, yB: 0.355, yT: 1.16, wB: 0.62, wMax: 0.80, wTop: 0.68, vBelt: 0.55, n: 3.0 },
+  { z: -0.600, yB: 0.255, yT: 1.31, wB: 0.72, wMax: 0.855, wTop: 0.74, vBelt: 0.55, n: 3.2 },
   /* rear quarter over the rear arch */
-  { z: -0.340, yB: 0.22, yT: 1.40, wB: 0.76, wMax: 0.865, wTop: 0.72, vBelt: 0.52, n: 3.4 },
-  { z: -0.050, yB: 0.20, yT: 1.455, wB: 0.78, wMax: 0.865, wTop: 0.68, vBelt: 0.50, n: 3.4 },
+  { z: -0.340, yB: 0.175, yT: 1.40, wB: 0.76, wMax: 0.865, wTop: 0.72, vBelt: 0.52, n: 3.4 },
+  { z: -0.050, yB: 0.155, yT: 1.455, wB: 0.78, wMax: 0.865, wTop: 0.68, vBelt: 0.50, n: 3.4 },
   /* roof: very slightly crowned, because a dead flat roof has no highlight on
    * it at all and reads as a lid */
-  { z: 0.420, yB: 0.19, yT: 1.478, wB: 0.78, wMax: 0.865, wTop: 0.66, vBelt: 0.50, n: 3.4 },
-  { z: 1.000, yB: 0.19, yT: 1.478, wB: 0.78, wMax: 0.860, wTop: 0.65, vBelt: 0.50, n: 3.4 },
-  { z: 1.620, yB: 0.20, yT: 1.452, wB: 0.78, wMax: 0.860, wTop: 0.63, vBelt: 0.50, n: 3.4 },
+  { z: 0.420, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.865, wTop: 0.66, vBelt: 0.50, n: 3.4 },
+  { z: 1.000, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.860, wTop: 0.65, vBelt: 0.50, n: 3.4 },
+  { z: 1.620, yB: 0.155, yT: 1.452, wB: 0.78, wMax: 0.860, wTop: 0.63, vBelt: 0.50, n: 3.4 },
   /* windscreen: 0.435 m of rise over 0.68 m of run is 57 degrees from the
    * vertical, which is where modern screens sit — steep enough to be obviously
    * raked, shallow enough that the wipers still have somewhere to park */
-  { z: 1.980, yB: 0.21, yT: 1.260, wB: 0.78, wMax: 0.860, wTop: 0.68, vBelt: 0.52, n: 3.3 },
-  { z: 2.300, yB: 0.22, yT: 1.020, wB: 0.78, wMax: 0.860, wTop: 0.76, vBelt: 0.55, n: 3.2 },
+  { z: 1.980, yB: 0.165, yT: 1.260, wB: 0.78, wMax: 0.860, wTop: 0.68, vBelt: 0.52, n: 3.3 },
+  { z: 2.300, yB: 0.175, yT: 1.020, wB: 0.78, wMax: 0.860, wTop: 0.76, vBelt: 0.55, n: 3.2 },
   /* the doubled station: 80 mm apart with a 30 mm height step, which is how a
    * Catmull-Rom is told that the cowl is a crease and not a curve */
-  { z: 2.380, yB: 0.22, yT: 0.990, wB: 0.78, wMax: 0.860, wTop: 0.78, vBelt: 0.55, n: 3.2 },
+  { z: 2.380, yB: 0.175, yT: 0.990, wB: 0.78, wMax: 0.860, wTop: 0.78, vBelt: 0.55, n: 3.2 },
   /* bonnet, falling away over the front axle at 2.62 */
-  { z: 2.720, yB: 0.24, yT: 0.955, wB: 0.77, wMax: 0.855, wTop: 0.80, vBelt: 0.55, n: 3.2 },
-  { z: 3.060, yB: 0.26, yT: 0.920, wB: 0.75, wMax: 0.840, wTop: 0.78, vBelt: 0.55, n: 3.1 },
-  { z: 3.280, yB: 0.30, yT: 0.850, wB: 0.70, wMax: 0.790, wTop: 0.70, vBelt: 0.55, n: 3.0 },
-  { z: 3.400, yB: 0.38, yT: 0.740, wB: 0.50, wMax: 0.600, wTop: 0.50, vBelt: 0.55, n: 2.6 },
+  { z: 2.720, yB: 0.195, yT: 0.955, wB: 0.77, wMax: 0.855, wTop: 0.80, vBelt: 0.55, n: 3.2 },
+  { z: 3.060, yB: 0.215, yT: 0.920, wB: 0.75, wMax: 0.840, wTop: 0.78, vBelt: 0.55, n: 3.1 },
+  { z: 3.280, yB: 0.255, yT: 0.850, wB: 0.70, wMax: 0.790, wTop: 0.70, vBelt: 0.55, n: 3.0 },
+  { z: 3.400, yB: 0.335, yT: 0.740, wB: 0.50, wMax: 0.600, wTop: 0.50, vBelt: 0.55, n: 2.6 },
 ];
 
 /* Named handles into the table, so the glazing and the bolt-on parts can be
@@ -766,7 +782,13 @@ export class CarMesh {
        */
       cage: keep(new THREE.MeshStandardMaterial({
         name: 'car-cage',
-        color: new THREE.Color(0xb9bdc2),
+        /* Darkened from 0xb9bdc2. That was chosen when there was no windscreen
+         * in front of it — see _addGlazing() — so the A-pillar bars were being
+         * read directly against the sky and were the brightest thing on the
+         * car, a pair of white sticks across the front of the cabin. Seen
+         * through tinted glass, as they now are, a cage wants to be darker
+         * than the paint or it is the only thing in the frame. */
+        color: new THREE.Color(0x6e737a),
         roughness: 0.55,
         metalness: 0.15,
         envMapIntensity: 0.7,
@@ -936,9 +958,56 @@ export class CarMesh {
    */
   _archGeometries() {
     const out = [];
-    const R = 0.50, rx = 0.078, ry = 0.058;
+    const R = 0.50, rx = 0.095, ry = 0.064;
     const na = this._detail.ring >= 40 ? 20 : 14;
     const np = this._detail.ring >= 40 ? 10 : 8;
+
+    /* Where the bodyside actually is, at a given height and station.
+     *
+     * This is what makes the blister an arch rather than a hoop. The first two
+     * versions placed the swept tube at a *constant* x — 0.885, then 0.80 —
+     * and a constant offset cannot follow a body that is not a constant width.
+     * The flank has a superellipse section, so it tucks in toward the sill;
+     * it narrows toward the nose over the front axle; and it falls away round
+     * the rear quarter. Anywhere the body had receded from the number, the
+     * tube stood clear of it with daylight behind, and because the tube is a
+     * closed section you saw its inner face — four croquet hoops.
+     *
+     * So ask the loft. The shell is already a parametric surface and this
+     * samples it: convert the arch point's z to a station coordinate, walk the
+     * ring at that station, and take the outermost vertex within a small band
+     * of the target height. Half the tube is then buried at every point around
+     * the sweep rather than only at the one place the constant happened to be
+     * right.
+     */
+    const flankXAt = (z, y) => {
+      /* z to station index. STATIONS is monotonic in z, so this is a walk. */
+      let u = 0;
+      for (let k = 0; k < STATIONS.length - 1; k++) {
+        if (z >= STATIONS[k].z && z <= STATIONS[k + 1].z) {
+          u = k + (z - STATIONS[k].z) / (STATIONS[k + 1].z - STATIONS[k].z);
+          break;
+        }
+        if (z > STATIONS[STATIONS.length - 1].z) u = STATIONS.length - 1;
+      }
+      const P = new THREE.Vector3();
+      let best = 0, bestDy = Infinity;
+      /* Only the +x half of the ring: the arch is mirrored by the caller, and
+       * sampling the far side would return the width at the wrong flank on an
+       * asymmetric section. */
+      for (let s = 0; s <= 48; s++) {
+        const a = -Math.PI / 2 + (s / 48) * Math.PI;
+        shellPoint(u, a, P);
+        if (P.x <= 0) continue;
+        const dy = Math.abs(P.y - y);
+        /* Outermost within the band, nearest in height outside it. Taking the
+         * strictly nearest vertex picks a point on the tuck under the sill and
+         * pulls the blister inboard right where it should be widest. */
+        if (dy < 0.045) { if (P.x > best) { best = P.x; bestDy = 0; } }
+        else if (bestDy > 0 && dy < bestDy) { bestDy = dy; best = P.x; }
+      }
+      return best;
+    };
 
     for (const axle of [0, WHEELBASE]) {
       for (const side of [1, -1]) {
@@ -946,7 +1015,6 @@ export class CarMesh {
          * proud of it. Beyond about a metre out the arch would be wider than
          * the mirrors, which is where a wide-arch car stops looking purposeful
          * and starts looking like a caricature. */
-        const cx = side * 0.885;
         const pos = [], uv = [], idx = [];
         /* A little past horizontal at each end so the blister runs out into
          * the sill and the bumper rather than stopping in mid-air. */
@@ -954,6 +1022,15 @@ export class CarMesh {
         for (let i = 0; i <= na; i++) {
           const th = lerp(t0, t1, i / na);
           const sy = Math.sin(th), sz = Math.cos(th);
+          /* The lip's own centre height and station, used to ask the loft
+           * where the flank is *here* rather than assuming it. */
+          const ly = WHEEL_R + sy * R;
+          const lz = axle + sz * R;
+          /* Buried by 55 mm. Enough that the inboard half of the tube is
+           * inside the shell all the way round the sweep even where the
+           * sampled width is a little optimistic, and not so much that the
+           * blister stops standing proud. */
+          const cx = side * Math.max(0.42, flankXAt(lz, ly) - 0.055);
           for (let j = 0; j <= np; j++) {
             const q = side * (j / np) * TAU;
             pos.push(
@@ -1061,11 +1138,13 @@ export class CarMesh {
      * fix the wake rather than to make downforce. */
     box(paint, 1.30, 0.050, 0.28, 0.022, b, 0, 1.505, -0.420, 0.14);
 
-    /* Roof scoop, feeding the cabin. It also breaks up the roof, which is
-     * otherwise the largest unbroken painted area on the car and the one that
-     * most obviously shows a lack of detail from a high camera. */
-    box(paint, 0.40, 0.10, 0.36, 0.050, b, 0, 1.505, 1.300, -0.05);
-    box(trim, 0.34, 0.07, 0.05, 0.020, 2, 0, 1.500, 1.480);
+    /* No roof scoop. It was here to break up the largest unbroken painted area
+     * on the car, which is a real problem and this was the wrong answer to it:
+     * from the chase camera — the one view that is on screen for the whole
+     * stage — a box on the roof and a second smaller box behind it read as a
+     * light bar and a luggage rack, which is a service vehicle rather than a
+     * rally car. The roof now carries the backlight instead, which breaks it
+     * up with something the car is supposed to have. */
 
     /* Wipers, parked at the base of the screen. Two 26 mm cylinders' worth of
      * geometry for a detail the eye specifically looks for on glass. */
@@ -1095,8 +1174,28 @@ export class CarMesh {
    * level beltline down the whole flank the way a real DLO does.
    */
   _addGlazing(glass) {
-    glass.add(this._panel(U.header + 0.05, U.cowl + 0.42, -0.80, 0.80, false, 1));
-    glass.add(this._panel(U.rearFace + 0.12, U.cPillar - 0.10, -0.74, 0.74, false, 1));
+    /* The windscreen and the backlight span the roof, so they run between two
+     * ring angles either side of the roof centreline.
+     *
+     * They were authored as -0.80 to +0.80, which looks like a symmetric band
+     * about the centre and is not one: ring angle 0 is the *right flank at the
+     * beltline*, not the top of the car — the parametrisation starts at the
+     * underside centreline so that its seam hides under the floor. A band from
+     * -0.80 to +0.80 therefore traces the right-hand flank from below the sill
+     * up to the shoulder, at constant station, and never crosses the
+     * centreline at all. The result was a tall dark slab pasted on the right
+     * front wing, and no rear window whatsoever: from directly behind, the car
+     * was a blank painted dome.
+     *
+     * The roof centre is at +PI/2. Sampling the loft, 0.95 and PI - 0.95 land
+     * on the header rail at (+-0.485, 1.363) and on the screen base at the
+     * cowl, which is the pair of A-pillars — so that is the band, and the
+     * pillar width is now a number that means what it says. */
+    const ROOF_L = 0.95, ROOF_R = Math.PI - 0.95;
+    glass.add(this._panel(U.header - 0.05, U.cowl + 0.35, ROOF_L, ROOF_R, false, 1));
+    /* The backlight, which is the same band across the C-pillars. A hatchback's
+     * is nearly as raked as its screen, so it spans a similar station range. */
+    glass.add(this._panel(U.rearFace + 0.15, U.cPillar + 0.05, ROOF_L, ROOF_R, false, 1));
     for (const side of [1, -1]) {
       /* Front door glass, from the B-pillar forward to the mirror. */
       glass.add(this._panel(U.roofRear + 0.45, U.header - 0.20, 0.605, 0.895, true, side));
@@ -1205,7 +1304,14 @@ export class CarMesh {
       cage.add(tube(V(s * 0.70, 1.380, 0.980), V(s * 0.66, 1.390, 1.640), R, seg));
       cage.add(tube(V(s * 0.66, 1.390, 1.640), V(s * 0.74, 0.960, 2.320), R, seg));
       cage.add(tube(V(s * 0.72, 0.640, 1.700), V(s * 0.74, 1.020, 1.060), R, seg));
-      cage.add(tube(V(s * 0.70, 1.360, 0.980), V(s * 0.68, 0.640, -0.180), R, seg));
+      /* Backstay, and its lower end is pulled inboard to x 0.52 from 0.68.
+       * 0.68 at z -0.180 is 0.35 m from the rear axle centre and well inside
+       * the rear wheel well, so with the arch lip now following the real
+       * bodyside the bar was leaving the cabin and spearing out through the
+       * top of the wheel arch. A backstay lands on the inner wheel housing on
+       * a real car, which is inboard of the arch by exactly this kind of
+       * margin. */
+      cage.add(tube(V(s * 0.70, 1.360, 0.980), V(s * 0.52, 0.640, -0.180), R, seg));
     }
     cage.add(tube(V(-0.70, 1.380, 0.980), V(0.70, 1.380, 0.980), R, seg));
     cage.add(tube(V(-0.66, 1.390, 1.640), V(0.66, 1.390, 1.640), R, seg));

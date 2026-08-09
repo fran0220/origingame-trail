@@ -558,3 +558,96 @@ to the player.
 **Verdict.** 46 m stands, now on a measurement rather than only on the fog
 argument that suggested it. 36 m buys nothing at all and costs mid-distance
 shading; below 28 m the trade is real but wrong.
+
+---
+
+## Clamping the road carve to keep it off the causeway
+
+**Hypothesis.** The lake's track carve clamps its correction to ±0.34 m because an
+authored absolute profile drifts from the landform underneath it. Widening that
+track into a road should keep the clamp, since the reason for it has not changed.
+
+**Measured.** It has not changed for a *walker*. A 0.34 m residual is below the
+notice of someone walking on it. Under a car it is the whole problem: the clamp is
+by definition the terrain roughness the carve was not allowed to remove, and at the
+0.35–3 m wavelengths this terrain carries, that is the band a suspension resonates
+with. Sampled along the alignment, the clamped carve left ±0.31 m of residual at a
+mean wavelength near 2.9 m — a bump every few metres at any speed worth having.
+
+**Verdict.** The clamp was treating a symptom. The profile is now *measured* off the
+untouched basin along the alignment with the carve switched off, smoothed over about
+11 m of road, then grade-limited from both ends. Because the line was derived from
+the ground it never departs far from it, so the carve can flatten to it completely
+and the cut and fill either side stay small. Residual on the seal is 2.7 cm, which
+is the deliberate 45 mm lift and the terrain grid's own 0.6 m sampling.
+
+---
+
+## Fading the chipseal on camera distance
+
+**Hypothesis.** Procedural chip has no mip chain, so it must be faded by hand;
+distance from the camera is the obvious variable, and it is what the basin's own
+ground shader already uses.
+
+**Measured.** Refuted by every driving frame. The basin's ground is seen from a
+standing eye at a steepish angle, where distance is a decent proxy for footprint. A
+road is seen almost edge-on — the surface fifteen metres ahead of a windscreen is at
+a few degrees of incidence — so a pixel there covers about 8 mm across the
+carriageway and 300 mm along it while `distance()` still reports "near". At an 11 mm
+chip cell that is four cells per pixel in one direction, and what arrives is not a
+texture but a comb pattern running up the centre of the frame.
+
+**Verdict.** Replaced with `fwidth()` of world position, which is the pixel's actual
+footprint and collapses correctly for distance and grazing angle together. First
+attempt used `max()` of the two derivatives and over-corrected: the near seal went
+completely smooth, because the major axis of a sliver-shaped footprint throws away
+detail the minor axis can still resolve. The geometric mean is what an anisotropic
+filter with a capped sample ratio resolves, and it keeps the chip at the player's
+feet while still killing the comb. Normals fade on the same footprint but harder —
+an unresolved normal averages to a random direction per pixel rather than to its
+mean, which is sparkle.
+
+---
+
+## The first chipseal numbers, both wrong by an order of magnitude
+
+**Hypothesis.** Asphalt is dark and rough, so a low albedo and a strong normal
+perturbation will read as a road.
+
+**Measured.** Both produced the opposite of a road. The normal was a finite
+difference taken half a chip apart at a gain of 24 — an effective slope gain near
+twelve — and the seal came out as black corduroy, every chip a full-contrast facet.
+The albedo at 0.055–0.132 linear is defensible for fresh bitumen and, under this
+level's 0.50 exposure, is a hole in the middle of the frame with no readable surface
+in it.
+
+**Verdict.** Both replaced with derived numbers rather than dialled ones. A grade 3
+chip stands about 4 mm proud over an 11 mm period, which fixes the normal amplitude;
+weathered greywacke chipseal in mountain sun is a mid grey near 0.16–0.20 linear,
+because what the eye sees is the stone and not the binder. "Asphalt is black" is a
+memory of wet hot-mix at night.
+
+---
+
+## Recolouring the ground scan instead of replacing it
+
+**Hypothesis.** The ground cover reads as Irish farmland because the scan
+(Grass004, measured linear mean 0.127, 0.161, 0.034) is northern-hemisphere pasture.
+Replacing the asset is the only honest fix.
+
+**Measured.** The scan's *structure* is right — blade fragments, soil showing
+through, self-shadowing — and only its hue is wrong. Since Mackenzie tussock is
+warm and red-dominant, near (0.14, 0.105, 0.05), the correction is very nearly an
+inversion of the scan's channel order, and a multiply cannot do it: it needs a gain
+above one on a channel that is nearly zero, which amplifies the scan's blue noise
+into mottling. Substituting the chromaticity while keeping luminance preserves every
+measured centimetre and moves the biome.
+
+**Verdict.** Shipped, as a luminance-preserving hue substitution mixed between a dry
+tussock and a damp sward chromaticity on the broad fields the shader already had.
+Two constants had to move with it or the level gains a colour horizon: the ground
+shader's distance-fade mean, which otherwise puts a green band across every hill
+past 150 m while the ground underfoot is tawny, and `distance.js`'s foreland
+palette, which was authored green on the same assumption. A viewer cannot judge the
+absolute colour of a hill eight kilometres away and will instantly see a seam where
+tawny foreground meets green middle distance.
