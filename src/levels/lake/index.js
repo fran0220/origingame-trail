@@ -47,6 +47,7 @@ import { LakeBoards } from './boards.js';
 import { LakeTiming } from './timing.js';
 import { LakeService } from './service.js';
 import { LakeHarvest } from './harvest.js';
+import { LakeGuardrail } from './guardrail.js';
 import { LakeFauna } from './fauna.js';
 import { LakeAmbience } from './audio.js';
 
@@ -255,6 +256,7 @@ class LakeLevel {
     this.timing = new LakeTiming(this.terrain, tier); scene.add(this.timing.root);
     this.service = new LakeService(this.terrain, tier); scene.add(this.service.root);
     this.harvest = new LakeHarvest(this.terrain, tier); scene.add(this.harvest.root);
+    this.guardrail = new LakeGuardrail(this.terrain, tier, this.ctx.collision); scene.add(this.guardrail.root);
 
     this.dust = new WheelDust({ tier }); scene.add(this.dust.root);
 
@@ -267,7 +269,7 @@ class LakeLevel {
     this.distance = new LakeDistance(); this.distance.setTier(tier); scene.add(this.distance.root);
   }
 
-  materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.veg.materials, ...this.props.materials, ...this.shelter.materials, ...this.fences.materials, ...this.farm.materials, ...this.roadside.materials, ...this.structures.materials, ...this.rock.materials, ...this.wayside.materials, ...this.stage.materials, ...this.boards.materials, ...this.timing.materials, ...this.service.materials, ...this.harvest.materials, ...this.fauna.materials, ...this.distance.materials]; }
+  materials() { return [this.terrainMat, ...this.road.materials, ...this.water.standardMaterials, ...this.veg.materials, ...this.props.materials, ...this.shelter.materials, ...this.fences.materials, ...this.farm.materials, ...this.roadside.materials, ...this.structures.materials, ...this.rock.materials, ...this.wayside.materials, ...this.stage.materials, ...this.boards.materials, ...this.timing.materials, ...this.service.materials, ...this.harvest.materials, ...this.guardrail.materials, ...this.fauna.materials, ...this.distance.materials]; }
 
   makeAmbience({ camera, walker }) {
     const amb = new LakeAmbience({ camera, walker });
@@ -342,7 +344,7 @@ class LakeLevel {
 
   setViewportHeight() {}
 
-  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), farm:this.farm?.stats(), roadside:this.roadside?.stats(), structures:this.structures?.stats(), rock:this.rock?.stats(), wayside:this.wayside?.stats(), stage:this.stage?.stats(), boards:this.boards?.stats(), timing:this.timing?.stats(), service:this.service?.stats(), harvest:this.harvest?.stats(), dust:this.dust?.stats(), colliders:this.colliderStats, fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
+  stats() { return { water:this.water?.stats(), flora:this.veg?.stats(), props:this.props?.stats(), shelter:this.shelter?.stats(), fences:this.fences?.stats(), farm:this.farm?.stats(), roadside:this.roadside?.stats(), structures:this.structures?.stats(), rock:this.rock?.stats(), wayside:this.wayside?.stats(), stage:this.stage?.stats(), boards:this.boards?.stats(), timing:this.timing?.stats(), service:this.service?.stats(), harvest:this.harvest?.stats(), guardrail:this.guardrail?.stats(), dust:this.dust?.stats(), colliders:this.colliderStats, fauna:this.fauna?.stats(), distance:this.distance?.stats() }; }
 
   dispose() {
     this.road?.dispose();
@@ -361,6 +363,7 @@ class LakeLevel {
     this.timing?.dispose();
     this.service?.dispose();
     this.harvest?.dispose();
+    this.guardrail?.dispose();
     this.dust?.dispose();
     this.fauna?.dispose();
     this.distance?.dispose();
