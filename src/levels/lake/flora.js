@@ -657,7 +657,15 @@ function buildRoadsideTurf(owner, terrain, tier, dummy) {
   /* Per square metre of the band. 1.2 is the low end of real short tussock and
    * the point at which the ground stops showing between clumps at a driver's
    * eye height. */
-  const PER_M2 = tier === 'low' ? 0.45 : tier === 'medium' ? 0.8 : 1.3;
+  /* Raised from 1.3. At that figure the clumps were distinct and the ground
+   * still showed between them as bare soil, which is what "the ground
+   * vegetation is far too sparse" kept meaning after the count was already
+   * technically right — density that does not close the surface is just
+   * scattered objects. 2.6 per square metre puts the stools close enough to
+   * touch at their edges, which is what short tussock does, and there is the
+   * frame budget for it: the layer lives in a 120 m corridor and the whole
+   * scene was drawing at 620 fps. */
+  const PER_M2 = tier === 'low' ? 0.8 : tier === 'medium' ? 1.5 : 2.6;
   /* Out to 60 m, not 26. A corridor that stops has a visible edge: the ground
    * went from grassland to swept dirt at a fixed distance from the road, which
    * is a line no landscape has. The band is wider than the eye can resolve
