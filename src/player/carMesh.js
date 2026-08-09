@@ -178,8 +178,8 @@ const STATIONS = [
    * rather than a plateau to sit on.
    */
   { z: -0.790, yB: 0.420, yT: 0.950, wB: 0.495, wMax: 0.560, wTop: 0.480, vBelt: 0.55, n: 3.5 },
-  { z: -0.730, yB: 0.360, yT: 1.030, wB: 0.740, wMax: 0.762, wTop: 0.660, vBelt: 0.55, n: 4.6 },
-  { z: -0.590, yB: 0.265, yT: 1.170, wB: 0.752, wMax: 0.800, wTop: 0.702, vBelt: 0.55, n: 4.2 },
+  { z: -0.730, yB: 0.360, yT: 1.030, wB: 0.740, wMax: 0.762, wTop: 0.612, vBelt: 0.55, n: 5.6 },
+  { z: -0.590, yB: 0.265, yT: 1.170, wB: 0.752, wMax: 0.800, wTop: 0.668, vBelt: 0.55, n: 4.9 },
   /* rear quarter over the rear arch */
   { z: -0.340, yB: 0.175, yT: 1.330, wB: 0.760, wMax: 0.845, wTop: 0.715, vBelt: 0.52, n: 3.8 },
   { z: -0.050, yB: 0.155, yT: 1.448, wB: 0.780, wMax: 0.842, wTop: 0.672, vBelt: 0.50, n: 3.7 },
@@ -1518,9 +1518,16 @@ export class CarMesh {
       box(trim, 0.055, 0.105, 2.02, 0.022, 2, s * 0.822, 0.190, 1.310);
 
       /* Mud flaps behind all four wheels: legally required on gravel, and they
-       * put a soft dark shape where the tyre throws its spray. */
+       * put a soft dark shape where the tyre throws its spray.
+       *
+       * Hung 55 mm further in and tucked 60 mm closer to the tyre than they
+       * were. At 0.795 they were outboard of a flank that has since come in to
+       * 0.80 through the doors, so from behind they read as two black
+       * triangles floating in space beside the car — a flap is bolted to the
+       * inside of an arch lip and is always *narrower* than the wheel it
+       * trails. */
       for (const axle of [0, WHEELBASE]) {
-        box(trim, 0.24, 0.225, 0.020, 0.010, 1, s * 0.795, 0.148, axle - 0.505);
+        box(trim, 0.215, 0.215, 0.020, 0.010, 1, s * 0.740, 0.150, axle - 0.445);
       }
 
       /* Spoiler stanchions and end plates. The plates are deep and the blade
