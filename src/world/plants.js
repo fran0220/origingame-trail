@@ -935,7 +935,10 @@ export function fern(rng, scale = 1, lod = 0, vi = 0) {
     for (let i = 0; i < n; i++) {
       const yaw = (i / n) * Math.PI * 2 + (rng() - 0.5) * 1.2;
       const pitch = 0.75 + rng() * 0.62 - leanK * 0.34 * Math.cos(yaw - leanA);
-      const len = (0.42 + rng() * 0.72) * scale;
+      const len = /* Halved. Rangiora is the largest-leaved thing in this
+       * forest and its blade is about 25 cm; at 0.42-1.14 before the instance
+       * scale of up to 1.7 these were metre-and-a-half leaves. */
+      (0.24 + rng() * 0.34) * scale;
       e.set(-pitch, yaw, (rng() - 0.5) * 0.36, 'YXZ');
       m.makeRotationFromEuler(e);
       m.setPosition(Math.cos(yaw) * 0.03 * scale, 0.03 * scale + rng() * 0.05 * scale,
@@ -1097,8 +1100,20 @@ export function broadleaf(rng, scale = 1, lod = 0, vi = 0) {
    * and narrow foliage. Spreading four architectures evenly across it made
    * three quarters of the broadleaves not broad, and the frame lost a whole
    * category of shape. */
-  const form = [FORM.ROSETTE, FORM.CANE, FORM.ROSETTE, FORM.COMPOUND,
-                FORM.STRAP][vi % 5];
+/* WEIGHTED TO COMPOUND, AND NO STRAP AT ALL, BECAUSE THIS IS NEW ZEALAND
+   * BUSH. The mix was two rosettes, a cane, a compound and a strap — an aroid
+   * stool and a banana-leaf strap being the two biggest surfaces in the frame,
+   * and both of them tropical. Rendered, they were the whole reason the forest
+   * read as Borneo.
+   *
+   * A New Zealand understorey is small-leaved and compound: five-finger and
+   * lancewood are palmate, kawakawa's heart is a hand's width, coprosma is
+   * twiggy with leaves under a centimetre. Nothing down there is a metre
+   * across. So the strap is deleted, the aroid stays at one in five because
+   * rangiora and kawakawa do give a broad-leaved note and losing it entirely
+   * would flatten the understorey to one texture, and the rest is compound. */
+  const form = [FORM.COMPOUND, FORM.ROSETTE, FORM.COMPOUND, FORM.CANE,
+                FORM.COMPOUND][vi % 5];
   const leaf = new Builder(), wood = new Builder();
   const m = new THREE.Matrix4(), e = new THREE.Euler(), q = new THREE.Quaternion();
   const leanA = rng() * Math.PI * 2, leanK = 0.3 + rng() * 0.6;
