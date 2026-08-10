@@ -53,6 +53,22 @@ import { trackElevation, STAGES, BOUNDS, DATUM, VERT, crossSection, POOLS } from
 export const EDGE_FALL = 280;
 export const PLATEAU_Y = -25;
 
+/* RED CRATER IS ALREADY HERE, AND CARVING A SECOND ONE DID NOTHING.
+ *
+ * The level is named around that crater and appeared not to have it, so a
+ * 210 m bowl 70 m deep was gouged into the ridge with a dike standing across
+ * it. Measured across the finished terrain, the ground on that side falls
+ * monotonically from 264 m at the track to -25 m at 340 m out and the bowl
+ * left NO trace: crossSection's redRidge case already drops 118 m on the
+ * crater side, and the mountain then keeps falling to the plateau. A 70 m hole
+ * cut inside a 290 m hole is invisible.
+ *
+ * The crater side of the ridge IS the crater. What it was missing was never
+ * the hole — it is colour and a dike, and both belong in the surface and the
+ * rockfield rather than in the heightfield. Removed rather than left in:
+ * geometry that cannot be shown to change a pixel is the irrigator again.
+ */
+
 export const STEP = 1.7;
 export const CHUNK = 40;
 export { BOUNDS };
