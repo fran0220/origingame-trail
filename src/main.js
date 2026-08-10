@@ -82,6 +82,36 @@ const TIERS = {
 };
 const TIER_ORDER = ['low', 'medium', 'high', 'ultra'];
 
+/**
+ * Pick a starting quality tier from what the device will admit to before any
+ * heavy work has been done.
+ */
+function autoTier() {
+  try {
+    const nav = navigator;
+    const touch = (nav.maxTouchPoints || 0) > 1;
+    const small = Math.min(screen.width, screen.height) <= 820;
+    /* Chrome only, and rounded to 0.5/1/2/4/8; absent elsewhere. */
+    const mem = nav.deviceMemory || 0;
+    const cores = nav.hardwareConcurrency || 0;
+
+    /* A phone or tablet: never start above medium whatever it claims. The
+     * limit there is thermal and memory, and neither shows up in these
+     * numbers. */
+    if (touch && small) return (mem && mem <= 4) || (cores && cores <= 4) ? 'low' : 'medium';
+    if (mem && mem <= 2) return 'low';
+    if (mem && mem <= 4) return 'medium';
+    if (cores && cores <= 2) return 'low';
+    if (cores && cores <= 4) return 'medium';
+    return 'high';
+  } catch {
+    /* If the browser will not even answer these, assume it is not a machine
+     * that wants the full load. */
+    return 'medium';
+  }
+}
+
+
 /* The levels this build ships, in the order the picker offers them. */
 export const LEVELS = { jungle, lake };
 
@@ -113,7 +143,22 @@ class Game {
         if (TIER_ORDER.includes(saved)) this.pinnedTier = saved;
       } catch { /* private mode; auto is a fine default */ }
     }
-    this.tier = this.pinnedTier || 'high';
+    /* AUTO TIER, BECAUSE 'high' FOR EVERYBODY IS HOW A PHONE NEVER LOADS.
+     *
+     * This used to be `this.pinnedTier || 'high'`, so every device that had
+     * never opened the pause menu booted into 2048-pixel shadow maps, 16x
+     * anisotropy and the full plant count — on a laptop, on a five-year-old
+     * phone, on anything. A device that cannot do that does not render badly;
+     * it runs out of memory or takes minutes, and because ready() is the last
+     * line of boot the player just watches the portal's progress bar forever.
+     *
+     * The signals below are the ones available BEFORE any of the expensive
+     * work, which is the only kind that helps here — a benchmark that has to
+     * bake fifteen textures first has already lost. They are crude and that is
+     * fine: the cost of guessing one tier too low is a slightly softer image,
+     * and the cost of guessing too high is a game that never starts. The pause
+     * menu and the tier= hash both still win, so anyone can override it. */
+    this.tier = this.pinnedTier || autoTier();
     /* The user of this machine games on it. An uncapped loop on an RTX-class
      * card will happily render this at 300 fps and pull 150 W to do it, for a
      * scene that is a walking pace nature documentary. 60 is the target and
@@ -981,4 +1026,67 @@ async function boot(chosen = undefined) {
   await platform.loading.ready();
 }
 
-void boot();
+/* THE PLAYER MUST NEVER BE STRANDED ON THE LOADING SCREEN.
+ *
+ * `void boot()` used to be the whole of this, and platform.loading.ready() is
+ * the LAST line of boot(). So any failure anywhere in a long, heavy boot —
+ * fifteen GPU bakes, a hundred thousand plants, sixty audio buffers — left
+ * ready() uncalled, and the portal keeps its own loading surface up until it
+ * hears otherwise. The player does not see an error. They see a progress bar
+ * that never finishes, forever, with no way to tell a slow device from a
+ * broken one. There is even an explicit throw above for an empty first frame,
+ * which turned a diagnosable render fault into a permanent spinner.
+ *
+ * Two guarantees now, and they are separate because they fail separately.
+ *
+ * ON FAILURE: report it, then release the loading surface anyway. A readable
+ * message on a black canvas is strictly better than a spinner, because it
+ * tells the player it is over and tells us what happened.
+ *
+ * ON TAKING TOO LONG: release it regardless after 45 seconds. That is far
+ * longer than this game has ever taken to boot on hardware it runs on, so it
+ * never fires for a merely slow device; it fires when something has hung, and
+ * a hang is the case where the player is most stuck.
+ */
+let bootSettled = false;
+const releaseLoading = () => {
+  if (bootSettled) return;
+  bootSettled = true;
+  platform.loading.ready();
+};
+const bootWatchdog = setTimeout(() => {
+  if (bootSettled) return;
+  console.warn('[boot] still not ready after 45s — releasing the loading surface');
+  platform.analytics.track('game.runtime.error', { where: 'boot-timeout' });
+  releaseLoading();
+}, 45_000);
+
+boot().then(() => {
+  clearTimeout(bootWatchdog);
+  bootSettled = true;
+}).catch((err) => {
+  clearTimeout(bootWatchdog);
+  console.error('[boot] failed:', err);
+  try {
+    platform.analytics.track('game.runtime.error', {
+      where: 'boot', message: String(err && err.message || err).slice(0, 200),
+    });
+  } catch { /* analytics must never be the reason an error is swallowed */ }
+  try { hud?.bootFailed?.(err); } catch { /* the HUD may be what failed */ }
+  /* Last resort, so something is on screen even if the HUD is gone. */
+  try {
+    if (!document.querySelector('#bootError')) {
+      const el = document.createElement('div');
+      el.id = 'bootError';
+      el.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;'
+        + 'justify-content:center;padding:6vw;z-index:9999;background:#0d1110;'
+        + 'color:#c8d2c8;font:14px/1.7 system-ui,sans-serif;text-align:center;'
+        + 'white-space:pre-wrap';
+      el.textContent = '加载失败 / Failed to load\n\n'
+        + String(err && err.message || err)
+        + '\n\n请刷新重试 · Please reload';
+      document.body.appendChild(el);
+    }
+  } catch { /* nothing further can be done */ }
+  releaseLoading();
+});
