@@ -21,6 +21,7 @@ import { Terrain, makeTerrainMaterial, DATUM, BOUNDS } from './terrain.js';
 import { Skyline } from './skyline.js';
 import { Lakes } from './lakes.js';
 import { Poles } from './poles.js';
+import { Fumaroles } from './steam.js';
 import { pick, applyCondition } from './conditions.js';
 import { content } from './content.js';
 
@@ -121,13 +122,17 @@ class TongariroLevel {
     await step(0.95, '标出穿越路线');
     this.poles = new Poles(this.terrain, this.trail);
     scene.add(this.poles.root);
+
+    await step(0.97, '打开硫气孔');
+    this.steam = new Fumaroles(this.terrain, this.trail, tier);
+    scene.add(this.steam.root);
   }
 
-  materials() { return [this.terrainMat, ...this.skyline.materials, ...this.lakes.materials, ...this.poles.materials]; }
+  materials() { return [this.terrainMat, ...this.skyline.materials, ...this.lakes.materials, ...this.poles.materials, ...this.steam.materials]; }
 
   makeAmbience() { return null; }
   attachAtmosphere() {}
-  update() {}
+  update(dt, host) { this.steam?.update(dt, host?.camera); }
   cullAround() {}
   envExclude() { return []; }
   setTier() {}
@@ -141,6 +146,7 @@ class TongariroLevel {
       skyline: this.skyline?.stats(),
       lakes: this.lakes?.stats(),
       poles: this.poles?.stats(),
+      steam: this.steam?.stats(),
     };
   }
 }

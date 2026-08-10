@@ -262,3 +262,10 @@
   Hand-authored weights can regress and cannot measure time spent inside a
   synchronous procedural constructor. Call it milestone progress unless work
   units or measured stage durations actually support a percentage.
+
+## A game demo represents the whole shipped game unless scoped otherwise
+
+- When a user asks for a shareable demo of a multi-level game, do not silently
+  choose the most cinematic level and call it the game. Inventory the shipped
+  levels first and cover each one, or explicitly ask whether a single-level
+  teaser is acceptable before spending time recording it.
