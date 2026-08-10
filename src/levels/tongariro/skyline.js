@@ -23,13 +23,14 @@
 import * as THREE from 'three';
 import { Noise2D, clamp, smoothstep, lerp } from '../../world/noise.js';
 import { PLATEAU_Y } from './terrain.js';
+import { BOUNDS } from './route.js';
 
 /* Positions are in the level's own coordinates, chosen so the two that matter
  * sit where they do in life relative to the walk: Ngauruhoe fills the view to
  * the west across South Crater, and Ruapehu is far to the south beyond it. */
 const CONES = [
   {
-    name: 'ngauruhoe', x: -1450, z: -560, base: 40, height: 1180, radius: 1500,
+    name: 'ngauruhoe', x: -2100, z: -1500, base: 40, height: 1180, radius: 1500,
     /* 2291 m, and only 2500 years old — which is why it has no gullies worth
      * the name and a near-perfect profile. The steepness is real: the upper
      * cone is at 33 degrees, the angle loose scoria stands at and no steeper. */
@@ -37,7 +38,7 @@ const CONES = [
     segments: 96,
   },
   {
-    name: 'tongariro-massif', x: 900, z: -1500, base: 20, height: 760, radius: 2100,
+    name: 'tongariro-massif', x: 1900, z: -3100, base: 20, height: 760, radius: 2100,
     /* The old massif is a shield of overlapping craters, not a cone: lower,
      * broader, and cut about by everything that has erupted out of it for
      * 275,000 years. */
@@ -45,7 +46,7 @@ const CONES = [
     segments: 72,
   },
   {
-    name: 'ruapehu', x: -2600, z: -4200, base: 10, height: 1760, radius: 3400,
+    name: 'ruapehu', x: -4200, z: -6400, base: 10, height: 1760, radius: 3400,
     /* 2797 m and permanently snowed: the only one of the three with ice on it
      * all year, and at this distance that white cap is most of what it is. */
     profile: 0.94, gully: 0.44, snowLine: 0.34, rock: 0x3e3630, snow: 0xe2e8ee,
@@ -70,8 +71,16 @@ const CONES = [
  *
  * Half-diagonal of the field from its centre is 537 m, so the apron starts at
  * 600 and the level sits comfortably inside it. */
-const CENTRE = { x: 0, z: -410 };
-const RING = { radius: 5200, height: 120, segments: 128, colour: 0x6b6257, inner: 600 };
+/* DERIVED FROM BOUNDS, NOT TYPED IN. These were literals — centre (0, -410)
+ * and half-extents 258 x 468 — and when the route was lengthened 2.9x to make
+ * it walkable, every one of them silently went stale: the apron was sized for
+ * a level a third the length and simply sat inside it. A constant copied from
+ * another file is a bug with a delay on it. */
+const CENTRE = { x: (BOUNDS.x0 + BOUNDS.x1) / 2, z: (BOUNDS.z0 + BOUNDS.z1) / 2 };
+const HALF_X = (BOUNDS.x1 - BOUNDS.x0) / 2 - 2;
+const HALF_Z = (BOUNDS.z0 - BOUNDS.z1) / 2 - 2;
+const RING = { radius: 9000, height: 120, segments: 128, colour: 0x6b6257, inner: 600 };
+/* Far enough out that the 2.7 km level sits well inside it. */
 
 function coneGeometry(spec, rng) {
   const { segments: S, radius: R, height: H, profile: P, gully: G } = spec;
@@ -161,7 +170,7 @@ function ringGeometry(terrain) {
    * to the RECTANGLE along that bearing, and every ring outside it is a
    * multiple of that distance — the apron is rectangular where it touches and
    * relaxes to a circle by the time it reaches the plateau. */
-  const HX = 258, HZ = 468;
+  const HX = HALF_X, HZ = HALF_Z;
   const FRACS = [1.0, 1.18, 1.6, 2.4, 3.8, 6.0];
   for (let j = 0; j < FRACS.length + 1; j++) {
     for (let s = 0; s <= S; s++) {

@@ -146,9 +146,12 @@ async function loadLevel(id) {
   const entry = LEVELS[id] ?? LEVELS.jungle;
   showLevelLoading(id);
   /* Guarantee the selected level and initial status reach the screen before
-   * evaluating a large procedural module graph. A resolved import promise is
-   * not itself a paint boundary. */
+   * releasing OriginGame's cover and evaluating a large procedural module
+   * graph. A resolved import promise is not itself a paint boundary. From
+   * this point until the first playable frame, the local level loader is the
+   * one loading surface the player sees. */
   await nextFrame();
+  await platform.loading.ready();
   return entry.load();
 }
 
@@ -1001,13 +1004,16 @@ async function boot(chosen = undefined) {
       if (button) void selectLevel(button.dataset.level);
     });
     window.__selectLevel = selectLevel;
+    /* The picker is already an interactive game-owned screen. Release the
+     * host only after it has painted, otherwise the iframe can flash black. */
+    await nextFrame();
+    await platform.loading.ready();
     return;
   }
   const actualLevel = chosen ?? await loadLevel(requestedId ?? 'jungle');
   document.getElementById('levelPicker')?.remove();
   document.title = `${actualLevel.meta.title} — Field Notes`;
   const hud = new Hud(actualLevel.content);
-  if (platform.online) hud.useHostLoading();
 
   const game = new Game(document.getElementById('view'), actualLevel);
   game.hud = hud;
@@ -1055,46 +1061,34 @@ async function boot(chosen = undefined) {
   // The harness calls begin() itself so it can set state before the first frame.
   if (!/(^|[#&])manual(&|$)/.test(location.hash)) game.begin();
 
-  /* Ready means the first playable frame, not the last byte of script. The
-   * portal shows its own loading surface until this resolves, so calling it
-   * early is the difference between a player waiting on a progress bar and a
-   * player staring at a black canvas. */
+  /* Idempotent safety net. The host was normally released when the local
+   * loading UI first painted; if boot was entered with a preloaded module,
+   * this still guarantees OriginGame is released exactly once. */
   await platform.loading.ready();
 }
 
-/* THE PLAYER MUST NEVER BE STRANDED ON THE LOADING SCREEN.
+/* THE PLAYER MUST NEVER BE STRANDED WITHOUT AN EXPLANATION.
  *
- * `void boot()` used to be the whole of this, and platform.loading.ready() is
- * the LAST line of boot(). So any failure anywhere in a long, heavy boot —
- * fifteen GPU bakes, a hundred thousand plants, sixty audio buffers — left
- * ready() uncalled, and the portal keeps its own loading surface up until it
- * hears otherwise. The player does not see an error. They see a progress bar
- * that never finishes, forever, with no way to tell a slow device from a
- * broken one. There is even an explicit throw above for an empty first frame,
- * which turned a diagnosable render fault into a permanent spinner.
- *
- * Two guarantees now, and they are separate because they fail separately.
- *
- * ON FAILURE: report it, then release the loading surface anyway. A readable
- * message on a black canvas is strictly better than a spinner, because it
- * tells the player it is over and tells us what happened.
- *
- * ON TAKING TOO LONG: release it regardless after 45 seconds. That is far
- * longer than this game has ever taken to boot on hardware it runs on, so it
- * never fires for a merely slow device; it fires when something has hung, and
- * a hang is the case where the player is most stuck.
+ * OriginGame is normally released after the game-owned loading UI has painted,
+ * but this remains a last-resort release for failures before that first paint.
+ * Once the local loader owns the screen, a long boot updates its status rather
+ * than silently spinning forever; a hard failure is replaced by the readable
+ * error panel below.
  */
 let bootSettled = false;
-const releaseLoading = () => {
+const releaseHost = () => {
   if (bootSettled) return;
   bootSettled = true;
   platform.loading.ready();
 };
 const bootWatchdog = setTimeout(() => {
   if (bootSettled) return;
-  console.warn('[boot] still not ready after 45s — releasing the loading surface');
+  console.warn('[boot] still building after 45s');
+  const step = document.getElementById('bootStep');
+  if (step) step.textContent = '仍在构建世界 · 当前设备需要更长时间';
   platform.analytics.track('game.runtime.error', { where: 'boot-timeout' });
-  releaseLoading();
+  /* Safety only: normally already resolved and therefore a no-op. */
+  void platform.loading.ready();
 }, 45_000);
 
 boot().then(() => {
@@ -1124,5 +1118,5 @@ boot().then(() => {
       document.body.appendChild(el);
     }
   } catch { /* nothing further can be done */ }
-  releaseLoading();
+  releaseHost();
 });

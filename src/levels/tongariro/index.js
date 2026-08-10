@@ -19,6 +19,8 @@ import { Trail } from '../../world/path.js';
 import { ROUTE, STAGES, trackElevation, stageAt } from './route.js';
 import { Terrain, makeTerrainMaterial, DATUM, BOUNDS } from './terrain.js';
 import { Skyline } from './skyline.js';
+import { Lakes } from './lakes.js';
+import { Poles } from './poles.js';
 import { pick, applyCondition } from './conditions.js';
 import { content } from './content.js';
 
@@ -46,7 +48,7 @@ const BASE_MOOD = {
    * added three mountains and an apron to fix a hole that was being cut by the
    * projection matrix. From a ridge on a clear day you can see Taranaki 130 km
    * off; 12 km is still modest and it is what the geometry needs. */
-  camera: { fov: 62, near: 0.10, far: 12000 },
+  camera: { fov: 62, near: 0.10, far: 22000 },
   sun: { elevation: 24, azimuth: 68 },
   fog: { color: 0x9aa8b4, density: 0.00030 },
   hemi: { sky: 0x9fb6cc, ground: 0x4a3a30, intensity: 1.35 },
@@ -112,10 +114,16 @@ class TongariroLevel {
     this.skyline = new Skyline(this.terrain);
     scene.add(this.skyline.root);
 
+    await step(0.88, '注满翡翠湖');
+    this.lakes = new Lakes(this.terrain, this.trail);
+    scene.add(this.lakes.root);
+
     await step(0.95, '标出穿越路线');
+    this.poles = new Poles(this.terrain, this.trail);
+    scene.add(this.poles.root);
   }
 
-  materials() { return [this.terrainMat, ...this.skyline.materials]; }
+  materials() { return [this.terrainMat, ...this.skyline.materials, ...this.lakes.materials, ...this.poles.materials]; }
 
   makeAmbience() { return null; }
   attachAtmosphere() {}
@@ -131,6 +139,8 @@ class TongariroLevel {
       datum: DATUM,
       summitM: Math.round(trackElevation(0.65)),
       skyline: this.skyline?.stats(),
+      lakes: this.lakes?.stats(),
+      poles: this.poles?.stats(),
     };
   }
 }

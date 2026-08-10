@@ -12,7 +12,7 @@
  *
  *   node tools/tprofile.mjs
  */
-import { trackElevation, stageAt, crossSection } from '../src/levels/tongariro/route.js';
+import { trackElevation, stageAt, crossSection, BOUNDS } from '../src/levels/tongariro/route.js';
 
 const rows = [];
 let maxBoth = 0, maxBothT = 0, maxGrad = 0, maxGradAt = '';
@@ -47,3 +47,22 @@ console.log(`\n  deepest drop on BOTH sides: ${maxBoth.toFixed(1)} m at t=${maxB
 console.log('    for comparison: lake 1.14 m, jungle 0.23 m of notch');
 console.log(`  steepest cross-slope: ${maxGrad.toFixed(2)} rise/run (${(Math.atan(maxGrad) * 57.3).toFixed(0)} deg), ${maxGradAt}`);
 console.log('    a heightfield cell rising more than its own width cannot be drawn as a slope');
+
+/* ALONG-TRAIL GRADIENT — the axis this tool did not check for the whole of the
+ * level's first build. Cross-slope decides whether the mesh can DRAW a face;
+ * this decides whether a person can WALK it, and the level shipped with an
+ * 88 m rise over 18 m of walking because nothing was asking. A tool that
+ * measures one axis of a two-axis problem is not a check, it is a blind spot
+ * with a green tick on it. */
+const LENGTH = Math.hypot(BOUNDS.x1 - BOUNDS.x0, BOUNDS.z0 - BOUNDS.z1) * 0.92;
+let maxWalk = 0, maxWalkAt = '';
+for (let k = 0; k < 1000; k++) {
+  const t = k / 1000, t2 = t + 0.001;
+  const rise = Math.abs(crossSection(t2, 1, 0) - crossSection(t, 1, 0));
+  const run = 0.001 * LENGTH;
+  const g = rise / run;
+  if (g > maxWalk) { maxWalk = g; maxWalkAt = `${stageAt(t)} at t=${t.toFixed(2)}`; }
+}
+console.log(`  steepest ALONG the trail: ${maxWalk.toFixed(2)} rise/run (${(Math.atan(maxWalk) * 57.3).toFixed(0)} deg), ${maxWalkAt}`);
+console.log('    a graded walking track is 12-20 deg; 30 is a scramble, 45 is a climb');
+if (maxWalk > 0.70) { console.log('\n  FAIL — that is not a track, it is a wall.'); process.exitCode = 1; }

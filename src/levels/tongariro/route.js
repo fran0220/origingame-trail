@@ -36,11 +36,25 @@ import { smoothstep, clamp } from '../../world/noise.js';
 /* Hand-placed for the same reason the jungle's are: a generated line wanders
  * without arriving. Each bend here hides the next stage of the climb, and the
  * ridge is not visible from the crater floor until you are on the last rise. */
+/* SCALED OUT 2.9x ALONG THE ROUTE, and the reason is the one number nobody
+ * measured until the level was already shipped: the ALONG-TRAIL gradient.
+ *
+ * tools/tprofile.mjs checked the cross-slope from the first day, because that
+ * is what decides whether a heightfield can draw a face. It never checked the
+ * direction the player actually walks, and on the 900 m route the Red Crater
+ * climb rose 88 m in 18 m of walking — a 79 degree wall. It measured fine, it
+ * rendered as a brown blur, and it was unwalkable.
+ *
+ * A walking track is graded to 12-20 degrees. Lengthening alone could not fix
+ * it — even at 4.2 km the peak was still 48 — so the model is compressed on
+ * BOTH axes, which is what a physical terrain model does and for the same
+ * reason. 2.9x longer and 0.38 vertical brings the worst grade to 27 degrees
+ * on the scree descent and 24 on the Staircase, with South Crater at 1. */
 const CONTROL = [
-  [0, 30], [4, -10], [-6, -60], [2, -110], [14, -160],
-  [6, -215], [-10, -265], [-4, -320], [8, -372], [16, -425],
-  [4, -478], [-12, -530], [-6, -585], [6, -640], [2, -690],
-  [-8, -742], [-2, -795], [4, -845],
+  [0, 30], [5, -86], [-8, -231], [3, -376], [19, -521],
+  [8, -680], [-14, -826], [-5, -985], [11, -1136], [22, -1290],
+  [5, -1443], [-16, -1594], [-8, -1754], [8, -1913], [3, -2058],
+  [-11, -2209], [-3, -2362], [5, -2508],
 ];
 
 /* Stage boundaries in normalised arc length. Named because every instrument,
@@ -48,13 +62,13 @@ const CONTROL = [
  * Crater ends, and three files each holding their own copy of 0.58 is the bug
  * shape this project has hit four times. */
 export const STAGES = {
-  valley:    [0.00, 0.18],
-  soda:      [0.18, 0.26],
-  staircase: [0.26, 0.42],
-  southCrater:[0.42, 0.58],
-  redRidge:  [0.58, 0.72],
-  scree:     [0.72, 0.82],
-  blueLake:  [0.82, 1.00],
+  valley:     [0.00, 0.16],
+  soda:       [0.16, 0.24],
+  staircase:  [0.24, 0.44],
+  southCrater:[0.44, 0.60],
+  redRidge:   [0.60, 0.78],
+  scree:      [0.78, 0.86],
+  blueLake:   [0.86, 1.00],
 };
 
 /* THE ELEVATION PROFILE, IN METRES, AND IT IS THE POINT OF THE LEVEL.
@@ -70,11 +84,16 @@ export const STAGES = {
  * the flat crater floor between two climbs is what makes the ridge feel high,
  * and noise cannot be asked for that. */
 const PROFILE = [
-  [0.00, 1120], [0.10, 1150], [0.18, 1200], [0.26, 1245],
-  [0.34, 1420], [0.42, 1655], [0.50, 1662], [0.58, 1668],
-  [0.65, 1886], [0.72, 1840], [0.78, 1712], [0.82, 1700],
-  [0.90, 1725], [1.00, 1560],
+  [0.00, 1120], [0.16, 1200], [0.24, 1245], [0.44, 1655],
+  [0.60, 1668], [0.76, 1886], [0.84, 1700], [0.92, 1725], [1.00, 1560],
 ];
+
+/* VERTICAL SCALE. The mountain climbs 766 m; the model climbs 291. Compressing
+ * one axis and not the other is what made the first build a wall, and a scale
+ * model that is honest about being one is better than a cliff that claims to
+ * be a track. Signs and the altimeter quote the REAL altitude, because that is
+ * the number that means something; only the geometry is scaled. */
+export const VERT = 0.38;
 
 /** Height of the track surface, in metres above sea level, at arc length t. */
 export function trackElevation(t) {
@@ -158,7 +177,7 @@ export function crossSection(t, side, a) {
     wsum += w;
   }
   const lateral = wsum > 1e-4 ? sum / wsum : stageOffset('valley', side, a);
-  return trackElevation(u) - DATUM + lateral;
+  return (trackElevation(u) - DATUM) * VERT + lateral;
 }
 
 /* What the ground does either side of the track, per stage. Pure, so
@@ -186,4 +205,4 @@ function stageOffset(name, side, a) {
   }
 }
 
-export const BOUNDS = { x0: -260, x1: 260, z0: 60, z1: -880 };
+export const BOUNDS = { x0: -330, x1: 330, z0: 90, z1: -2600 };

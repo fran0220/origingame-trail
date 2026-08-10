@@ -25,15 +25,23 @@ function warn(what, err) {
 /* ------------------------------------------------------------------ loading */
 
 /**
- * OriginGame owns the outer loading surface and exposes one lifecycle edge:
- * ready means the first playable frame exists. Fine-grained world-building
- * progress belongs to the game's own boot screen; trying to mirror it through
- * an optional OG.loading object creates two competing loading protocols and
- * breaks on hosts that only implement the documented ready() contract.
+ * OriginGame only gates the game shell. This game then owns loading because a
+ * player chooses one large procedural level after the shell has opened, and
+ * only the game knows which world-building stage is running.
+ *
+ * Idempotence is important: the picker/deep-link path releases the host as
+ * soon as the local loading UI has painted, while the completed boot calls
+ * ready() again as a safety net. The SDK must still observe exactly one call.
  */
+let readyPromise = null;
 export const loading = {
   async ready() {
-    try { await OG?.ready(); } catch (e) { warn('ready', e); }
+    if (!readyPromise) {
+      readyPromise = (async () => {
+        try { await OG?.ready(); } catch (e) { warn('ready', e); }
+      })();
+    }
+    await readyPromise;
   },
 };
 

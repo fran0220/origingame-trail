@@ -85,6 +85,7 @@ export class Hud {
     this.bookOpen = false;
     this._hintTimer = null;
     this._onBookTab = null;
+    this._bootProgress = 0;
 
     this.el.counters.glyph.style.display = content.GLYPHS.length ? '' : 'none';
     for (const b of document.querySelectorAll('#book .tabs button')) {
@@ -104,22 +105,13 @@ export class Hud {
 
   /* --------------------------------------------------------------- boot */
 
-  /**
-   * Stand down the local boot screen when the platform is drawing its own.
-   *
-   * Loading is platform-owned on a deployed page: the portal holds its cover
-   * and progress bar over the frame until ready() resolves, so a second
-   * full-screen splash underneath it is at best invisible and at worst a
-   * different progress number showing through the seam. Standalone, this is
-   * the only loading surface there is, so it stays.
-   */
-  useHostLoading() {
-    this.el.boot.style.background = 'transparent';
-    this.el.boot.querySelector('.inner').style.display = 'none';
-  }
-
   bootProgress(value, label) {
-    this.el.bootBar.style.width = `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`;
+    /* Stage weights describe completed work before the named synchronous
+     * operation begins. Older levels contain a few out-of-order weights; a
+     * loading bar moving backwards is never truthful, so retain the greatest
+     * completed milestone while still updating the live stage label. */
+    this._bootProgress = Math.max(this._bootProgress, Math.min(1, Math.max(0, value)));
+    this.el.bootBar.style.width = `${Math.round(this._bootProgress * 100)}%`;
     if (label) this.el.bootStep.textContent = label;
   }
 

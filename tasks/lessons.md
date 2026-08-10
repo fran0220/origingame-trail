@@ -250,3 +250,15 @@
 - The same error, twice in one file: mud flaps hung outboard of a flank that had been pulled
   in, so they floated as separate black shapes. Detail parts must be positioned against the
   surface they attach to, not against a number that was right before the surface moved.
+
+## A loading indicator is only useful on the layer the player can see
+
+- Do not claim an in-game progress UI fixes deployed loading without checking
+  the host integration. OriginGame keeps its own cover above the game until
+  `OG.ready()`, while this game hides its local boot details whenever `window.OG`
+  exists; therefore truthful local stage labels are not visible to deployed
+  players at all.
+- A list of named milestones is real *state*, not real percentage completion.
+  Hand-authored weights can regress and cannot measure time spent inside a
+  synchronous procedural constructor. Call it milestone progress unless work
+  units or measured stage durations actually support a percentage.

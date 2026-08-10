@@ -19,7 +19,7 @@
 import * as THREE from 'three';
 import { Noise2D, clamp, smoothstep, lerp } from '../../world/noise.js';
 import { Heightfield } from '../../world/heightfield.js';
-import { trackElevation, STAGES, BOUNDS, DATUM, crossSection } from './route.js';
+import { trackElevation, STAGES, BOUNDS, DATUM, VERT, crossSection } from './route.js';
 
 /* SLOPES ARE CAPPED AT ABOUT 45 DEGREES, and the cap is a property of the
  * MESH, not of the mountain. Worked out before the second render rather than
@@ -40,7 +40,7 @@ import { trackElevation, STAGES, BOUNDS, DATUM, crossSection } from './route.js'
 export const EDGE_FALL = 150;
 export const PLATEAU_Y = -25;
 
-export const STEP = 1.1;
+export const STEP = 1.7;
 export const CHUNK = 40;
 export { BOUNDS };
 
@@ -111,7 +111,19 @@ export class Terrain extends Heightfield {
    * single word of UI. */
   evalChannels(x, z, y, q, out) {
     const slope = this.slopeAt ? this.slopeAt(x, z) : 0;
-    const red = smoothstep(300, 560, y) * lerp(0.35, 1.0, smoothstep(0.10, 0.45, slope));
+    /* KEYED TO REAL ALTITUDE, NOT TO MODEL HEIGHT. These were smoothstep(300,
+     * 560, y) against a field that ran 0 to 766 m. Scaling the model vertically
+     * by 0.38 to make the track walkable capped it at 291 — so the threshold
+     * never fired and the entire level came out grey, losing the one thing it
+     * exists for. Third time this session that correcting one dimension
+     * without re-checking what depended on it has broken something.
+     *
+     * Written as the altitude a walker would read off a map, and converted, so
+     * the next person changing VERT does not have to find this. The scoria
+     * comes in from about 1600 m and owns everything above 1800 — which is
+     * where it is on the mountain. */
+    const realY = y / VERT + DATUM;
+    const red = smoothstep(1600, 1800, realY) * lerp(0.35, 1.0, smoothstep(0.10, 0.45, slope));
     const black = smoothstep(0.44, 0.80, slope);
     const ash = clamp(1 - red - black, 0, 1);
     out[0] = ash;
