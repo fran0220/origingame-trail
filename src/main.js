@@ -7,8 +7,6 @@
  */
 import * as THREE from 'three';
 import { Sky } from './render/sky.js';
-import * as jungle from './levels/jungle/index.js';
-import * as lake from './levels/lake/index.js';
 import { Walker } from './player/controller.js';
 import { Driver } from './player/driver.js';
 import { Intro } from './render/intro.js';
@@ -112,13 +110,53 @@ function autoTier() {
 }
 
 
-/* The levels this build ships, in the order the picker offers them. */
-export const LEVELS = { jungle, lake };
+/* The levels this build ships.
+ *
+ * These must stay as import FUNCTIONS rather than imported modules. A static
+ * import made the browser download and parse every world before it knew which
+ * one the player had chosen. Each level has a large procedural dependency
+ * tree, so that turned a one-level boot into three level boots' worth of JS
+ * startup for no gameplay benefit. */
+export const LEVELS = {
+  jungle: {
+    title: '雨林小径',
+    load: () => import('./levels/jungle/index.js'),
+  },
+  lake: {
+    title: '特卡波湖 · 八号国道',
+    load: () => import('./levels/lake/index.js'),
+  },
+  tongariro: {
+    title: '汤加里罗',
+    load: () => import('./levels/tongariro/index.js'),
+  },
+};
+
+function showLevelLoading(id) {
+  const entry = LEVELS[id];
+  const level = document.getElementById('bootLevel');
+  const step = document.getElementById('bootStep');
+  const bar = document.getElementById('bootBar');
+  if (level) level.textContent = entry?.title ?? '雨林小径';
+  if (step) step.textContent = '正在载入关卡代码';
+  if (bar) bar.style.width = '2%';
+}
+
+async function loadLevel(id) {
+  const entry = LEVELS[id] ?? LEVELS.jungle;
+  showLevelLoading(id);
+  /* Guarantee the selected level and initial status reach the screen before
+   * evaluating a large procedural module graph. A resolved import promise is
+   * not itself a paint boundary. */
+  await nextFrame();
+  return entry.load();
+}
 
 class Game {
   /**
    * @param {HTMLCanvasElement} canvas
-   * @param {object} levelModule one of LEVELS — the world this host will run.
+   * @param {object} levelModule a module loaded from LEVELS — the world this
+   * host will run.
    */
   constructor(canvas, levelModule) {
     this.canvas = canvas;
@@ -921,14 +959,13 @@ function attachDevWarps(game) {
 
 /* Which level to run.
  *
- * A URL fragment for now, and it is deliberately the *only* selector: the
- * picker UI that will replace it has to choose between the same modules
- * through the same door, and a boot path that a probe cannot drive is a boot
- * path that stops being tested. `#level=jungle` is what the tools use.
+ * The URL and picker both resolve through the same lazy registry, so a deep
+ * link and a click pay for exactly one level. `#level=jungle` is what the
+ * tools use.
  */
-export function pickLevel() {
+export function pickLevelId() {
   const m = /(?:^|[#&])level=([a-z0-9-]+)/i.exec(location.hash);
-  return m ? (LEVELS[m[1]] ?? jungle) : null;
+  return m ? (LEVELS[m[1]] ? m[1] : 'jungle') : null;
 }
 
 function shouldShowPicker() {
@@ -938,8 +975,9 @@ function shouldShowPicker() {
 async function selectLevel(id) {
   if (!LEVELS[id]) return;
   history.replaceState(null, '', `#level=${id}`);
+  showLevelLoading(id);
   document.getElementById('levelPicker')?.remove();
-  await boot(LEVELS[id]);
+  await boot(await loadLevel(id));
 }
 
 /* A complete document rebuild is intentional: WebGL resources, pointer-lock
@@ -954,8 +992,8 @@ export async function exitToPicker(state, button) {
 }
 
 async function boot(chosen = undefined) {
-  const levelModule = chosen ?? pickLevel();
-  if (!levelModule && shouldShowPicker()) {
+  const requestedId = chosen?.meta?.id ?? pickLevelId();
+  if (!chosen && !requestedId && shouldShowPicker()) {
     const picker = document.getElementById('levelPicker');
     picker.hidden = false;
     picker.addEventListener('click', (e) => {
@@ -965,12 +1003,11 @@ async function boot(chosen = undefined) {
     window.__selectLevel = selectLevel;
     return;
   }
-  const actualLevel = levelModule ?? jungle;
+  const actualLevel = chosen ?? await loadLevel(requestedId ?? 'jungle');
   document.getElementById('levelPicker')?.remove();
   document.title = `${actualLevel.meta.title} — Field Notes`;
   const hud = new Hud(actualLevel.content);
   if (platform.online) hud.useHostLoading();
-  platform.loading.begin();
 
   const game = new Game(document.getElementById('view'), actualLevel);
   game.hud = hud;
@@ -979,7 +1016,6 @@ async function boot(chosen = undefined) {
   try {
     await game.build((value, label) => {
       hud.bootProgress(value, label);
-      platform.loading.progress(value * 0.97, label);
     });
   } catch (err) {
     hud.bootProgress(1, '加载失败');

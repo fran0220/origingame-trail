@@ -25,19 +25,13 @@ function warn(what, err) {
 /* ------------------------------------------------------------------ loading */
 
 /**
- * The boot of this game is genuinely long — fifteen GPU texture bakes, a
- * hundred thousand plants and sixty audio buffers — so the platform's loading
- * protocol is load-bearing rather than decorative. Without it the portal's
- * automatic fallback reports "ready" at window load, which here is several
- * seconds before the first playable frame.
+ * OriginGame owns the outer loading surface and exposes one lifecycle edge:
+ * ready means the first playable frame exists. Fine-grained world-building
+ * progress belongs to the game's own boot screen; trying to mirror it through
+ * an optional OG.loading object creates two competing loading protocols and
+ * breaks on hosts that only implement the documented ready() contract.
  */
 export const loading = {
-  begin() {
-    try { OG?.loading?.begin(); } catch (e) { warn('loading.begin', e); }
-  },
-  progress(value, label) {
-    try { OG?.loading?.progress(value, label); } catch (e) { warn('loading.progress', e); }
-  },
   async ready() {
     try { await OG?.ready(); } catch (e) { warn('ready', e); }
   },

@@ -1,0 +1,263 @@
+/* The skyline: Ngauruhoe, Tongariro and Ruapehu.
+ *
+ * WHY THIS EXISTS AT ALL. The playable heightfield stops at 260 m either side
+ * of the route, and from a ridge 766 m above the start you can see a very long
+ * way past that. The first three builds rendered the terrain's own edge as a
+ * fluted wall with a brown void beyond it, filling half the frame from the
+ * high point — which is the one place in the level the view is the entire
+ * reward for the climb.
+ *
+ * WHY CONES RATHER THAN A RANGE. The lake's backdrop is a wall of Southern
+ * Alps built as full heightfields with cirques, tributary ridges and glaciers,
+ * and it is 29,000 characters because an alpine range genuinely is that
+ * complicated. A young andesite stratovolcano is the opposite: it is the
+ * simplest large landform there is, a cone at the angle of repose, and the
+ * reason Ngauruhoe is the most photographed mountain in the country is exactly
+ * that it looks like a child's drawing of a volcano. Building it as anything
+ * more elaborate than a cone would be building it wrong.
+ *
+ * So each mountain is a radial heightfield: one profile curve from summit to
+ * base, plus erosion gullies that deepen down the flanks the way real ones do,
+ * plus snow above a line that is lower on the south face than the north.
+ */
+import * as THREE from 'three';
+import { Noise2D, clamp, smoothstep, lerp } from '../../world/noise.js';
+import { PLATEAU_Y } from './terrain.js';
+
+/* Positions are in the level's own coordinates, chosen so the two that matter
+ * sit where they do in life relative to the walk: Ngauruhoe fills the view to
+ * the west across South Crater, and Ruapehu is far to the south beyond it. */
+const CONES = [
+  {
+    name: 'ngauruhoe', x: -1450, z: -560, base: 40, height: 1180, radius: 1500,
+    /* 2291 m, and only 2500 years old — which is why it has no gullies worth
+     * the name and a near-perfect profile. The steepness is real: the upper
+     * cone is at 33 degrees, the angle loose scoria stands at and no steeper. */
+    profile: 1.28, gully: 0.20, snowLine: 0.10, rock: 0x3a2a22, snow: 0xd8dee4,
+    segments: 96,
+  },
+  {
+    name: 'tongariro-massif', x: 900, z: -1500, base: 20, height: 760, radius: 2100,
+    /* The old massif is a shield of overlapping craters, not a cone: lower,
+     * broader, and cut about by everything that has erupted out of it for
+     * 275,000 years. */
+    profile: 0.72, gully: 0.62, snowLine: 0.05, rock: 0x453529, snow: 0xd2d8de,
+    segments: 72,
+  },
+  {
+    name: 'ruapehu', x: -2600, z: -4200, base: 10, height: 1760, radius: 3400,
+    /* 2797 m and permanently snowed: the only one of the three with ice on it
+     * all year, and at this distance that white cap is most of what it is. */
+    profile: 0.94, gully: 0.44, snowLine: 0.34, rock: 0x3e3630, snow: 0xe2e8ee,
+    segments: 88,
+  },
+];
+
+/* A low ring of plateau beyond everything, purely to close the horizon. The
+ * Central Plateau really is a rampart of old ignimbrite in every direction,
+ * so this is not a curtain hiding a hole — it is the thing that is there. */
+/* Centred on the middle of the LEVEL, not on the origin, and starting outside
+ * its far corner. The first apron was a circle of inner radius 300 about the
+ * world origin, while the playable field is a rectangle 520 m wide and 940 m
+ * long running away to z = -880: the ring enclosed almost none of it, cut
+ * through the terrain near the start, and left the far two thirds standing on
+ * nothing. Seen from the ground that is a wall in every direction, which is
+ * what four builds showed and what I blamed in turn on the slope limit, on LOD
+ * stitching, on the stage discontinuity and on the seam height. One oblique
+ * view from above showed the level was a rectangular slab on a plain, and the
+ * cause was legible in a second. LOOK AT THE WHOLE THING BEFORE THE FOURTH
+ * GUESS.
+ *
+ * Half-diagonal of the field from its centre is 537 m, so the apron starts at
+ * 600 and the level sits comfortably inside it. */
+const CENTRE = { x: 0, z: -410 };
+const RING = { radius: 5200, height: 120, segments: 128, colour: 0x6b6257, inner: 600 };
+
+function coneGeometry(spec, rng) {
+  const { segments: S, radius: R, height: H, profile: P, gully: G } = spec;
+  const RINGS = 34;
+  const pos = [], col = [], idx = [];
+  const rock = new THREE.Color(spec.rock);
+  const snow = new THREE.Color(spec.snow);
+  const c = new THREE.Color();
+
+  for (let j = 0; j <= RINGS; j++) {
+    /* u is 0 at the summit and 1 at the base. */
+    const u = j / RINGS;
+    for (let s = 0; s <= S; s++) {
+      const a = (s / S) * Math.PI * 2;
+      /* The profile: a power curve, which is what a cone at the angle of
+       * repose actually is once the summit has been rounded off by its own
+       * crater. P below 1 is a shield, above 1 is a steep young cone. */
+      const r = R * Math.pow(u, P);
+      /* Erosion: radial gullies that are nothing at the summit and deepest at
+       * the base, because that is where the water has had furthest to run. */
+      const gullies = Math.sin(a * 11 + rng * 3.1) * 0.5 + Math.sin(a * 23 + rng) * 0.3;
+      const cut = gullies * G * u * u * H * 0.055;
+      const y = spec.base + H * (1 - u) - cut;
+      pos.push(Math.cos(a) * r, y, Math.sin(a) * r);
+      /* SNOW WHERE u IS SMALL, BECAUSE u IS 0 AT THE SUMMIT. Written the
+       * other way round first and every cone came out 86% white: with
+       * snowLine 0.86 the test passed everywhere below the top sixth, which
+       * is the whole mountain. A snow line is an altitude, and on this
+       * parameterisation altitude runs backwards.
+       *
+       * Lower on the south flank — the side facing away from the sun in this
+       * hemisphere, and the reason every photograph of these three has more
+       * snow on one side than the other. */
+      const south = Math.max(0, -Math.sin(a));
+      const line = spec.snowLine * (1 + south * 0.35);
+      const white = smoothstep(line, line * 0.55, u);
+      c.copy(rock).lerp(snow, clamp(white, 0, 1));
+      /* Gullies hold shadow whatever is in them. */
+      const shade = 1 - clamp(gullies * 0.5 + 0.5, 0, 1) * 0.22 * u;
+      col.push(c.r * shade, c.g * shade, c.b * shade);
+    }
+  }
+  const W = S + 1;
+  for (let j = 0; j < RINGS; j++) {
+    for (let s = 0; s < S; s++) {
+      const a0 = j * W + s, a1 = a0 + 1, b0 = a0 + W, b1 = b0 + 1;
+      idx.push(a0, b0, a1, a1, b0, b1);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  g.computeBoundingSphere();
+  return g;
+}
+
+/* THE APRON, and it is not scenery — it is the floor of the world.
+ *
+ * The playable heightfield stops 260 m either side of the route. Beyond that
+ * there was NOTHING, so from anywhere high the lower half of the frame was the
+ * brown of an empty clear colour, which is what the first four builds showed
+ * and what I twice mistook for a lighting fault. Three cones on the horizon do
+ * not fix it: they close the skyline and leave the ground missing.
+ *
+ * The apron is an annulus from just outside the playable edge out to the ring,
+ * dropping from roughly valley height to the level of the Central Plateau —
+ * which is what is actually down there. From South Crater at 540 m the player
+ * is looking down onto a plain 500 m below, and that is the correct reading of
+ * the real place: the Crossing stands on a plateau, not in a range.
+ */
+function ringGeometry(terrain) {
+  const { radius: R, height: H, segments: S } = RING;
+  const pos = [], col = [], idx = [];
+  const c = new THREE.Color(RING.colour);
+  const n = new Noise2D(0x51a7);
+  /* Radii: inside the bounds corner so there is no seam, then out to the rim. */
+  /* THE APRON STARTS ON THE TERRAIN'S OWN BOUNDARY, WHICH IS A RECTANGLE.
+   *
+   * A circular inner edge cannot meet a rectangular field: set it at the
+   * corner distance and it leaves a 340 m hole along the long sides; set it at
+   * the side distance and it cuts the corners off. Both were tried and both
+   * render as the level standing on a plinth with its cut sides showing.
+   *
+   * So for each bearing the inner edge is the distance from the level's centre
+   * to the RECTANGLE along that bearing, and every ring outside it is a
+   * multiple of that distance — the apron is rectangular where it touches and
+   * relaxes to a circle by the time it reaches the plateau. */
+  const HX = 258, HZ = 468;
+  const FRACS = [1.0, 1.18, 1.6, 2.4, 3.8, 6.0];
+  for (let j = 0; j < FRACS.length + 1; j++) {
+    for (let s = 0; s <= S; s++) {
+      const a = (s / S) * Math.PI * 2;
+      const cx = Math.cos(a), cz = Math.sin(a);
+      /* Distance from the centre to the rectangle edge along this bearing. */
+      const tEdge = Math.min(HX / Math.max(1e-3, Math.abs(cx)),
+                             HZ / Math.max(1e-3, Math.abs(cz)));
+      /* The last ring is the far rim, which is a true circle. */
+      const r = j < FRACS.length ? tEdge * FRACS[j] : R;
+      const wx = CENTRE.x + cx * r, wz = CENTRE.z + cz * r;
+      /* Seam: the terrain height just inside its own edge on this bearing. */
+      /* A CONSTANT, because the terrain now comes down to the plateau at its
+       * own edge (see EDGE_FALL in terrain.js). Sampling a varying seam was
+       * solving a problem that should not have existed. */
+      const seam = PLATEAU_Y;
+      const fall = smoothstep(tEdge, tEdge * 4.0, r);
+      const rise = smoothstep(3900, R, r);
+      const h = lerp(seam, -30, fall) + rise * H
+              + n.n(wx * 0.0016, wz * 0.0016) * 26 * smoothstep(tEdge, tEdge * 2.4, r);
+      pos.push(wx, h, wz);
+      const k = 0.66 + 0.34 * smoothstep(tEdge * 2.0, R, r);
+      col.push(c.r * k, c.g * k, c.b * k);
+    }
+  }
+  const W = S + 1;
+  /* FRACS.length + 1 rings, therefore FRACS.length bands. Written as
+   * `j < RINGS` first, which indexed one ring past the end and left the outer
+   * band referencing vertices that do not exist. */
+  const RINGS = FRACS.length + 1;
+  for (let j = 0; j < RINGS - 1; j++) {
+    for (let s = 0; s < S; s++) {
+      const a0 = j * W + s, a1 = a0 + 1, b0 = a0 + W, b1 = b0 + 1;
+      /* WOUND THE OTHER WAY FROM THE CONES, and it has to be. A cone's rings
+       * run from summit to base so increasing j goes DOWN the outside; the
+       * apron's run outward across a horizontal plane, so the same index order
+       * produces faces pointing at the ground. Sharing a material with the
+       * cones is what made this hard to see — the material was obviously fine
+       * because the mountains drew, so the apron simply rendered nothing and
+       * looked like a missing mesh rather than a backwards one. */
+      idx.push(a0, a1, b0, a1, b1, b0);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  g.computeBoundingSphere();
+  return g;
+}
+
+export class Skyline {
+  constructor(terrain = null) {
+    this.root = new THREE.Group();
+    this.root.name = 'tongariro-skyline';
+    this.materials = [];
+    this.counts = { cones: 0, triangles: 0 };
+
+    const mat = new THREE.MeshStandardMaterial({
+      name: 'skyline', vertexColors: true,
+      roughness: 0.94, metalness: 0.0, envMapIntensity: 0.55,
+      /* Never a shadow caster or receiver: these are kilometres away, the
+       * cascades do not reach them, and asking would only cost a pass. */
+    });
+    this.materials.push(mat);
+
+    CONES.forEach((spec, i) => {
+      const g = coneGeometry(spec, i * 1.7 + 0.4);
+      const m = new THREE.Mesh(g, mat);
+      m.name = `skyline:${spec.name}`;
+      m.position.set(spec.x, 0, spec.z);
+      m.castShadow = false; m.receiveShadow = false;
+      m.renderOrder = -3;
+      this.root.add(m);
+      this.counts.cones++;
+      this.counts.triangles += g.index.count / 3;
+    });
+
+    const rg = ringGeometry(terrain);
+    const rm = new THREE.Mesh(rg, mat);
+    rm.name = 'skyline:plateau-apron';
+    rm.castShadow = false; rm.receiveShadow = false;
+    rm.renderOrder = -4;
+    this.root.add(rm);
+    this.counts.triangles += rg.index.count / 3;
+
+    this.root.traverse((o) => { o.frustumCulled = true; });
+  }
+
+  update() {}
+  setTier() {}
+  cullAround() {}
+  stats() { return this.counts; }
+  dispose() {
+    this.root.traverse((o) => o.geometry?.dispose());
+    this.materials.forEach((m) => m.dispose());
+  }
+}

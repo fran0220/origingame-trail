@@ -15,7 +15,7 @@
  */
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { join, extname } from 'node:path';
 const ROOT = 'dist';
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json',
@@ -36,7 +36,21 @@ const bad = [];
 page.on('requestfailed', r => bad.push('FAILED ' + r.url().replace(`http://localhost:${port}`,'')));
 page.on('response', r => { if (r.status() >= 400) bad.push(r.status() + ' ' + r.url().replace(`http://localhost:${port}`,'')); });
 page.on('pageerror', e => bad.push('pageerror: ' + e.message));
-for (const level of ['lake','jungle']) {
+/* Read from the game rather than repeated here, because a hardcoded pair is a
+ * check that silently stops covering the thing it exists to cover: Tongariro
+ * shipped as a third level and this file went on booting two and reporting
+ * success, which is worse than not testing at all — it is a green tick for an
+ * untested build. */
+/* From the directory rather than by importing main.js — main.js pulls in three
+ * and Node cannot resolve a browser bare specifier. The directory is the same
+ * source of truth for practical purposes: a level is a folder with an
+ * index.js, and one that is not registered will fail this check by not
+ * booting, which is exactly the failure worth catching. */
+const LEVELS = readdirSync(new URL('../src/levels/', import.meta.url))
+  .filter((d) => existsSync(new URL(`../src/levels/${d}/index.js`, import.meta.url)));
+if (LEVELS.length < 2) { console.error('deploy-check: could not read LEVELS'); process.exit(1); }
+console.log(`  checking ${LEVELS.length} levels: ${LEVELS.join(', ')}`);
+for (const level of LEVELS) {
   /* A fresh page per level. Changing only the hash does not re-run the module,
    * so the second level reported the first one's stats and proved nothing. */
   await page.goto('about:blank');
@@ -51,4 +65,4 @@ for (const level of ['lake','jungle']) {
 }
 await browser.close(); server.close();
 if (bad.length) { console.log('\nBROKEN in dist:'); for (const b of [...new Set(bad)].slice(0,15)) console.log('  ' + b); process.exit(1); }
-console.log('\nok — the packed build boots both levels with no missing assets');
+console.log(`\nok — the packed build boots all ${LEVELS.length} levels with no missing assets`);

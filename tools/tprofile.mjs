@@ -12,26 +12,38 @@
  *
  *   node tools/tprofile.mjs
  */
+import { trackElevation, stageAt, crossSection } from '../src/levels/tongariro/route.js';
 
-import { trackElevation, STAGES, stageAt } from '../src/levels/tongariro/route.js';
-import { elevation } from '../src/levels/tongariro/terrain.js';
-/* Walk the route as a straight-ish line for measurement: the topology claim is
- * about the cross-section, which does not depend on the plan curve. */
-const rows=[];
-let maxBoth=0, maxBothT=0;
-for(let k=0;k<=400;k++){
-  const t=k/400;
-  const z=30-910*t, x=0;
-  const on=elevation(x,z,t,0);
-  /* How far does the ground fall away on BOTH sides within 60 m? */
-  let dl=0, dr=0;
-  for(const d of [5,10,18,28,40,55]){
-    dl=Math.max(dl, on-elevation(x+d,z,t,+d));
-    dr=Math.max(dr, on-elevation(x-d,z,t,-d));
+const rows = [];
+let maxBoth = 0, maxBothT = 0, maxGrad = 0, maxGradAt = '';
+for (let k = 0; k <= 400; k++) {
+  const t = k / 400;
+  const on = crossSection(t, 1, 0);
+  let dl = 0, dr = 0;
+  for (const d of [5, 10, 18, 28, 40, 55]) {
+    dl = Math.max(dl, on - crossSection(t, +1, d));
+    dr = Math.max(dr, on - crossSection(t, -1, d));
   }
-  const both=Math.min(dl,dr);
-  if(both>maxBoth){maxBoth=both; maxBothT=t;}
-  if(k%25===0) rows.push({t:+t.toFixed(2), stage:stageAt(t), elev:Math.round(trackElevation(t)),
-                          fallL:+dl.toFixed(1), fallR:+dr.toFixed(1), both:+both.toFixed(1)});
+  const both = Math.min(dl, dr);
+  if (both > maxBoth) { maxBoth = both; maxBothT = t; }
+  /* Steepest cross-slope anywhere, which is the number that decides whether
+   * the mesh can draw it at all. */
+  for (const side of [1, -1]) {
+    for (let d = 2; d < 240; d += 2) {
+      const g = Math.abs(crossSection(t, side, d) - crossSection(t, side, d + 2)) / 2;
+      if (g > maxGrad) { maxGrad = g; maxGradAt = `${stageAt(t)} at ${d} m`; }
+    }
+  }
+  if (k % 25 === 0) rows.push({ t: +t.toFixed(2), stage: stageAt(t),
+    elev: Math.round(trackElevation(t)), fallL: +dl.toFixed(1),
+    fallR: +dr.toFixed(1), both: +both.toFixed(1) });
 }
-console.log(JSON.stringify({rows, maxBoth:+maxBoth.toFixed(1), maxBothT:+maxBothT.toFixed(3)}));
+const pad = (s, n) => String(s).padStart(n);
+console.log('\n   t         stage    elev   fall L  fall R    both');
+for (const r of rows) {
+  console.log(`${pad(r.t, 5)} ${pad(r.stage, 13)} ${pad(r.elev, 6)} ${pad(r.fallL, 8)} ${pad(r.fallR, 7)} ${pad(r.both, 7)}`);
+}
+console.log(`\n  deepest drop on BOTH sides: ${maxBoth.toFixed(1)} m at t=${maxBothT.toFixed(3)}`);
+console.log('    for comparison: lake 1.14 m, jungle 0.23 m of notch');
+console.log(`  steepest cross-slope: ${maxGrad.toFixed(2)} rise/run (${(Math.atan(maxGrad) * 57.3).toFixed(0)} deg), ${maxGradAt}`);
+console.log('    a heightfield cell rising more than its own width cannot be drawn as a slope');

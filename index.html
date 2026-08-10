@@ -135,6 +135,10 @@
     font: var(--ui); font-size: 13px; letter-spacing: .34em;
     text-transform: uppercase; color: var(--dim);
   }
+  #boot .level {
+    margin-top: 10px; color: var(--ink); font-size: 18px;
+    font-weight: 300; letter-spacing: .18em;
+  }
   #boot .bar {
     margin: 22px 0 12px; height: 1px; background: rgba(160,180,150,.16);
     position: relative; overflow: hidden;
@@ -712,9 +716,10 @@
 
 <div id="boot">
   <div class="inner">
-    <div class="title">jungle trail</div>
+    <div class="title">Field Notes · 正在载入关卡</div>
+    <div class="level" id="bootLevel">准备世界</div>
     <div class="bar"><i id="bootBar"></i></div>
-    <div class="step" id="bootStep">正在生成世界</div>
+    <div class="step" id="bootStep" role="status" aria-live="polite">正在载入关卡代码</div>
   </div>
 </div>
 
