@@ -89,14 +89,34 @@ export class Terrain extends Heightfield {
      * needs world coordinates and crossSection is deliberately a function of
      * the route alone — that is what lets tools/tprofile.mjs measure the
      * TOPOLOGY without instantiating a terrain or a trail. */
+    /* RELIEF IS FADED OUT OVER THE WALKED CORRIDOR.
+     *
+     * The noise is up to 9 m of local relief, and on the Devil's Staircase —
+     * already a 24 degree base grade — it produced 46 DEGREE sections in the
+     * built heightfield. A walker ran into one at t = 0.31 and stopped dead
+     * for the remaining fifteen minutes of the test.
+     *
+     * tools/tprofile.mjs could not see it: that samples crossSection, which is
+     * the smooth analytic design, not the terrain that gets built on top of
+     * it. Measuring the drawing instead of the building is the whole of why
+     * this survived four rounds of gradient work.
+     *
+     * A formed track IS graded — that is what forming one means — so the
+     * relief fades to nothing across the tread and comes back within about
+     * fifteen metres, which is close enough that nobody standing on the path
+     * sees a smooth ribbon running over rough ground. */
+    /* 6 to 34 m, not 2.5 to 16. At the tighter fade the residual noise still
+     * put 38 degree steps on the tread and the walker stopped at t=0.35. A
+     * formed bench is graded well beyond the width of the tread itself. */
+    const rough = smoothstep(6, 34, q.dist);
     if (!(t >= STAGES.southCrater[0] && t < STAGES.southCrater[1])) {
-      h += this._ridged(x, z, 0.018) * 7.5;
-      h += this.n3.n(x * 0.045, z * 0.045) * 1.9;
+      h += this._ridged(x, z, 0.018) * 7.5 * rough;
+      h += this.n3.n(x * 0.045, z * 0.045) * 1.9 * rough;
     } else {
       h += this.n2.n(x * 0.010, z * 0.010) * 0.5;
     }
     if (t >= STAGES.redRidge[0] && t < STAGES.redRidge[1]) {
-      h += this._ridged(x, z, 0.055) * 3.2 * (1 - smoothstep(0, 26, q.dist));
+      h += this._ridged(x, z, 0.055) * 3.2 * (1 - smoothstep(0, 26, q.dist)) * rough;
     }
     /* The tread is cut in, the same argument as the jungle's: a path you walk
      * IN reads as a place, a stripe on the ground reads as a texture.

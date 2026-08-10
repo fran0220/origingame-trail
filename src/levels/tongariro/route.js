@@ -63,12 +63,12 @@ const CONTROL = [
  * shape this project has hit four times. */
 export const STAGES = {
   valley:     [0.00, 0.16],
-  soda:       [0.16, 0.24],
-  staircase:  [0.24, 0.44],
-  southCrater:[0.44, 0.60],
-  redRidge:   [0.60, 0.78],
-  scree:      [0.78, 0.86],
-  blueLake:   [0.86, 1.00],
+  soda:       [0.16, 0.22],
+  staircase:  [0.22, 0.48],
+  southCrater:[0.48, 0.62],
+  redRidge:   [0.62, 0.80],
+  scree:      [0.80, 0.92],
+  blueLake:   [0.92, 1.00],
 };
 
 /* THE ELEVATION PROFILE, IN METRES, AND IT IS THE POINT OF THE LEVEL.
@@ -84,8 +84,13 @@ export const STAGES = {
  * the flat crater floor between two climbs is what makes the ridge feel high,
  * and noise cannot be asked for that. */
 const PROFILE = [
-  [0.00, 1120], [0.16, 1200], [0.24, 1245], [0.44, 1655],
-  [0.60, 1668], [0.76, 1886], [0.84, 1700], [0.92, 1725], [1.00, 1560],
+  /* The Staircase re-spanned from 0.24-0.44 to 0.22-0.48, and Red Crater from
+   * 0.60-0.76 to 0.62-0.78. The measured along-trail grade in the BUILT
+   * terrain was 46 degrees where the design said 24, and a walker stopped dead
+   * on it; smoothing the tread got that to 38 and it still stopped. Giving the
+   * two climbs more route to do it in is the other half. */
+  [0.00, 1120], [0.16, 1200], [0.22, 1245], [0.48, 1655],
+  [0.62, 1668], [0.78, 1886], [0.90, 1700], [0.95, 1725], [1.00, 1648],
 ];
 
 /* VERTICAL SCALE. The mountain climbs 766 m; the model climbs 291. Compressing
@@ -241,10 +246,17 @@ function stageOffset(name, side, a) {
  * from the top — which is where a walker coming off Red Crater actually first
  * sees them, and it is the view worth having. */
 export const POOLS = [
-  { t: 0.838, off: -34, r: 25, depth: 7.0, tint: 0x1f8f74, name: 'emerald-1' },
-  { t: 0.856, off: -29, r: 20, depth: 5.5, tint: 0x2f9b62, name: 'emerald-2' },
-  { t: 0.872, off: -37, r: 28, depth: 8.0, tint: 0x18836f, name: 'emerald-3' },
-  { t: 0.930, off: -52, r: 42, depth: 11.0, tint: 0x2a6ea8, name: 'blue-lake' },
+  { t: 0.878, off: -34, r: 25, depth: 7.0, tint: 0x1f8f74, name: 'emerald-1' },
+  { t: 0.895, off: -29, r: 20, depth: 5.5, tint: 0x2f9b62, name: 'emerald-2' },
+  { t: 0.908, off: -37, r: 28, depth: 8.0, tint: 0x18836f, name: 'emerald-3' },
+  { t: 0.955, off: -52, r: 42, depth: 11.0, tint: 0x2a6ea8, name: 'blue-lake' },
 ];
 
-export const BOUNDS = { x0: -330, x1: 330, z0: 90, z1: -2600 };
+/* z1 at -3000, not -2600. The route's last control point is at z = -2507 and
+ * the terrain falls to the plateau over the 280 m inside its own boundary, so
+ * the end of the WALK was inside the falloff: the tail dropped 191 m where the
+ * elevation profile asks for 29, at up to 58 degrees, and the walker stopped
+ * dead at t = 0.945 with the finish in sight. A level needs margin beyond its
+ * own finish line, and the amount is not a matter of taste — it is EDGE_FALL
+ * plus whatever the last stage is doing. */
+export const BOUNDS = { x0: -330, x1: 330, z0: 90, z1: -3000 };

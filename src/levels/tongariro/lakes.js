@@ -70,34 +70,21 @@ export class Lakes {
        *
        * Sampled inside 0.85 of the radius so the rim itself does not set the
        * level — a pond fills to its lip, not to the top of the bank behind it. */
-      /* SAMPLED ONLY WHERE THE BASIN WAS ACTUALLY DUG.
+      /* THE LEVEL COMES FROM THE BASIN, NOT FROM SAMPLING THE GROUND.
        *
-       * The level comes from the highest ground inside the bowl, because water
-       * fills to a level that covers its basin. But the terrain deliberately
-       * does NOT carve within the walking corridor — otherwise the track drops
-       * into a pit — so the un-carved shoulder sits inside the pool disc at
-       * full height, and taking the max over the whole disc set the water to
-       * TRACK level. The result flooded the basin, the path and the walker:
-       * measured, the eye was 2.36 m under water at the first pool while
-       * standing on the track.
+       * Three versions of this sampled the terrain — lowest point, then
+       * highest, then highest excluding the protected corridor — and all three
+       * broke the next time the terrain moved underneath them: buried pools,
+       * then a flooded track, then a sheet cutting across a hillside after the
+       * route was re-spanned. Every one of them was a heuristic trying to
+       * infer a hollow that this file already knows the depth of, because it
+       * asked for it.
        *
-       * Two features that each behave correctly can still be wrong together,
-       * and the coupling is invisible in either file alone. */
-      const q = {};
-      let hi = -Infinity;
-      for (let ring = 1; ring <= 3; ring++) {
-        for (let k = 0; k < 20; k++) {
-          const a = (k / 20) * Math.PI * 2;
-          const rr = spec.r * 0.85 * (ring / 3);
-          const sx = cx + Math.cos(a) * rr, sz = cz + Math.sin(a) * rr;
-          terrain.sampleField(sx, sz, q);
-          /* Skip anything the corridor protected: it is not part of the bowl. */
-          if (q.dist < trail.widthAt(spec.t) + 10) continue;
-          hi = Math.max(hi, terrain.height(sx, sz));
-        }
-      }
-      if (!isFinite(hi)) hi = terrain.height(cx, cz);
-      const y = hi + 0.20;
+       * The basin is carved `depth` metres below its surroundings with the
+       * deepest point at the centre, so the surface is simply the centre plus
+       * a fraction of that depth. It cannot drift when the mountain changes
+       * shape, because it is derived from the same number that shaped it. */
+      const y = terrain.height(cx, cz) + spec.depth * 0.62;
 
       const SEG = 30, RINGS = 5;
       const pos = [], col = [], idx = [];
