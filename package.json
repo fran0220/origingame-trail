@@ -29,7 +29,8 @@
     "test:lap": "node tools/lap-standard.mjs",
     "audit:solidity": "node tools/solidity.mjs lake && node tools/solidity.mjs jungle",
     "audit:frametime": "node tools/frametime.mjs lake && node tools/frametime.mjs jungle",
-    "audit:boot": "node tools/pack.mjs && node tools/bootcheck.mjs dist 20000"
+    "audit:boot": "node tools/pack.mjs && node tools/bootcheck.mjs dist 20000",
+    "audit:click": "node tools/pack.mjs && node tools/click-through.mjs dist"
   },
   "devDependencies": {
     "playwright": "^1.62.0"
