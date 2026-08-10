@@ -205,4 +205,46 @@ function stageOffset(name, side, a) {
   }
 }
 
+/* THE POOLS LIVE HERE, NOT IN lakes.js, BECAUSE THE TERRAIN HAS TO KNOW.
+ *
+ * A crater lake sits in a hollow. Placed as discs on the finished ground they
+ * were buried: measured, the water surface was 0.25 to 8.85 m BELOW the ground
+ * at each pool's own centre, so only the downhill edge showed and what looked
+ * like a lake was the corner of one sticking out of a slope.
+ *
+ * The heightfield can carve a basin, but only if it can see the list — and two
+ * copies of that list is the bug shape this project has hit five times. One
+ * table, read by the terrain that digs the hole and by the water that fills
+ * it. */
+/* OFFSETS CLEAR THE TREAD, and this is the cost of carving basins rather than
+ * laying discs. At 8 to 26 m off, with basins reaching 1.35 of the pool radius,
+ * every one of them dug a hole THROUGH the track — the walk dropped into a pit
+ * at each pool and the water measured 0% of frame at the three stations
+ * standing in it, because the walker was inside the crater looking at its
+ * walls. The approach still measured 9.55%, which is what made it look like
+ * the pools were fine.
+ *
+ * OFFSET IS THE POOL RADIUS PLUS NINE METRES, and there is no way around it:
+ * a disc of water 25 m across sitting 17 m from the centreline covers the
+ * centreline, so the walker was standing 2.41 m UNDER the surface at the first
+ * pool. The terrain's corridor term keeps the BASIN off the track but nothing
+ * stops the water sheet, and water that overlaps a path floods it.
+ *
+ * ALL FOUR ARE ON THE DOWNHILL SIDE, which is the negative offset here. Two
+ * were uphill and the water came out 12.75 m ABOVE the walker's eye — a pond
+ * perched over the path, which is not a thing. Water sits in the low ground;
+ * putting the pools anywhere else was always going to need the terrain to
+ * argue with itself.
+ *
+ * The basins are what make this survivable. Sunk 5 to 11 m into their own
+ * hollows, the pools read from the scree descent above at 8.8% of frame even
+ * from the top — which is where a walker coming off Red Crater actually first
+ * sees them, and it is the view worth having. */
+export const POOLS = [
+  { t: 0.838, off: -34, r: 25, depth: 7.0, tint: 0x1f8f74, name: 'emerald-1' },
+  { t: 0.856, off: -29, r: 20, depth: 5.5, tint: 0x2f9b62, name: 'emerald-2' },
+  { t: 0.872, off: -37, r: 28, depth: 8.0, tint: 0x18836f, name: 'emerald-3' },
+  { t: 0.930, off: -52, r: 42, depth: 11.0, tint: 0x2a6ea8, name: 'blue-lake' },
+];
+
 export const BOUNDS = { x0: -330, x1: 330, z0: 90, z1: -2600 };

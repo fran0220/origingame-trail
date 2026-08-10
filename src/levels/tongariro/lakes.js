@@ -18,28 +18,13 @@
  */
 import * as THREE from 'three';
 import { Noise2D, clamp, smoothstep } from '../../world/noise.js';
-import { STAGES } from './route.js';
+import { STAGES, POOLS } from './route.js';
 
 /* Each pool: t along the route, metres off the centreline, radius, depth of
  * colour, and its own tint. The three Emerald Lakes are genuinely different
  * colours — the smallest is nearly yellow-green and the largest is closer to
  * teal, because they are different depths over different beds. */
-/* CLOSE TO THE TRACK, BECAUSE THE TRACK GOES BETWEEN THEM. Placed 14 to 34 m
- * off first and they measured 0.88% of frame at their best station against a
- * bar of 5 — a walker looking along the route had them at the very edge of the
- * picture or outside it. That is not where they are: coming off Red Crater you
- * descend the scree directly into the basin and the poled route threads
- * between the pools, which is why every photograph of them is taken from about
- * six metres away.
- *
- * Bigger too. The real three are roughly 20 to 50 m across, and at 11 m radius
- * seen from 40 m they were the size of a puddle. */
-const POOLS = [
-  { t: 0.838, off:  12, r: 25, tint: 0x1f8f74, name: 'emerald-1' },
-  { t: 0.854, off:  -8, r: 20, tint: 0x2f9b62, name: 'emerald-2' },
-  { t: 0.868, off:  14, r: 28, tint: 0x18836f, name: 'emerald-3' },
-  { t: 0.930, off: -26, r: 42, tint: 0x2a6ea8, name: 'blue-lake' },
-];
+
 
 export class Lakes {
   constructor(terrain, trail) {
@@ -74,17 +59,45 @@ export class Lakes {
       const nx = T.z, nz = -T.x;
       const cx = P.x + nx * spec.off, cz = P.z + nz * spec.off;
 
-      /* THE POOL SITS AT THE LOWEST GROUND IT COVERS, not at its centre's
-       * height. A disc placed at the centre height on any slope has half of
-       * itself buried and the other half floating, which is the standard way
-       * water is got wrong. */
-      let low = Infinity;
-      for (let k = 0; k < 24; k++) {
-        const a = (k / 24) * Math.PI * 2;
-        low = Math.min(low, terrain.height(cx + Math.cos(a) * spec.r * 0.92,
-                                           cz + Math.sin(a) * spec.r * 0.92));
+      /* WATER FILLS TO A LEVEL THAT COVERS ITS BASIN, so the surface is taken
+       * from the HIGHEST ground inside the bowl, not the lowest.
+       *
+       * Taking the lowest was the obvious thing and it is wrong on any slope:
+       * measured, every pool sat 0.25 to 8.85 m BELOW the ground at its own
+       * centre and only the downhill edge showed. Carving the basin helped and
+       * did not fix it, because the basin's floor is offset downhill from the
+       * disc centre and the lowest rim point is downhill again.
+       *
+       * Sampled inside 0.85 of the radius so the rim itself does not set the
+       * level — a pond fills to its lip, not to the top of the bank behind it. */
+      /* SAMPLED ONLY WHERE THE BASIN WAS ACTUALLY DUG.
+       *
+       * The level comes from the highest ground inside the bowl, because water
+       * fills to a level that covers its basin. But the terrain deliberately
+       * does NOT carve within the walking corridor — otherwise the track drops
+       * into a pit — so the un-carved shoulder sits inside the pool disc at
+       * full height, and taking the max over the whole disc set the water to
+       * TRACK level. The result flooded the basin, the path and the walker:
+       * measured, the eye was 2.36 m under water at the first pool while
+       * standing on the track.
+       *
+       * Two features that each behave correctly can still be wrong together,
+       * and the coupling is invisible in either file alone. */
+      const q = {};
+      let hi = -Infinity;
+      for (let ring = 1; ring <= 3; ring++) {
+        for (let k = 0; k < 20; k++) {
+          const a = (k / 20) * Math.PI * 2;
+          const rr = spec.r * 0.85 * (ring / 3);
+          const sx = cx + Math.cos(a) * rr, sz = cz + Math.sin(a) * rr;
+          terrain.sampleField(sx, sz, q);
+          /* Skip anything the corridor protected: it is not part of the bowl. */
+          if (q.dist < trail.widthAt(spec.t) + 10) continue;
+          hi = Math.max(hi, terrain.height(sx, sz));
+        }
       }
-      const y = low + 0.35;
+      if (!isFinite(hi)) hi = terrain.height(cx, cz);
+      const y = hi + 0.20;
 
       const SEG = 30, RINGS = 5;
       const pos = [], col = [], idx = [];

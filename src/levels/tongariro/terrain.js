@@ -19,7 +19,7 @@
 import * as THREE from 'three';
 import { Noise2D, clamp, smoothstep, lerp } from '../../world/noise.js';
 import { Heightfield } from '../../world/heightfield.js';
-import { trackElevation, STAGES, BOUNDS, DATUM, VERT, crossSection } from './route.js';
+import { trackElevation, STAGES, BOUNDS, DATUM, VERT, crossSection, POOLS } from './route.js';
 
 /* SLOPES ARE CAPPED AT ABOUT 45 DEGREES, and the cap is a property of the
  * MESH, not of the mountain. Worked out before the second render rather than
@@ -49,6 +49,14 @@ export { DATUM };
 export class Terrain extends Heightfield {
   constructor(trail, seed = 20260810) {
     super(trail, BOUNDS, { step: STEP, chunk: CHUNK, lod: [70, 150], skirt: 3.0 });
+    /* Pool centres in world space, resolved once so evalHeight is not doing
+     * curve lookups for four basins at every one of half a million cells. */
+    const P = new THREE.Vector3(), T = new THREE.Vector3();
+    this.basins = POOLS.map((sp) => {
+      trail.pointAt(sp.t, P); trail.tangentAt(sp.t, T);
+      return { x: P.x + T.z * sp.off, z: P.z - T.x * sp.off,
+               r: sp.r, depth: sp.depth, name: sp.name };
+    });
     this.n1 = new Noise2D(seed);
     this.n2 = new Noise2D(seed ^ 0x9e3779b9);
     this.n3 = new Noise2D(seed ^ 0x85ebca6b);
@@ -82,6 +90,27 @@ export class Terrain extends Heightfield {
      * Shallower here because this is rock and scoria, not soft forest floor. */
     const hw = this.trail.widthAt(t);
     h -= (1 - smoothstep(hw * 0.6, hw * 2.4, q.dist)) * 0.45;
+
+    /* CARVE THE CRATER BASINS. Each pool gets a bowl a little wider than the
+     * water so there is a shore, deepest at the centre and flat-bottomed
+     * rather than conical — these are shallow pans of mineral mud, not funnels.
+     * Done in the heightfield rather than by sinking the disc afterwards,
+     * which is the difference between a lake IN the ground and a lake ON it. */
+    for (const b of this.basins) {
+      const d = Math.hypot(x - b.x, z - b.z);
+      if (d > b.r * 1.35) continue;
+      let bowl = 1 - smoothstep(b.r * 0.55, b.r * 1.35, d);
+      /* THE BASIN RESPECTS THE TRACK. Carving without this dug a pit through
+       * the tread at every pool close enough to see — the walk dropped into
+       * the crater and the water measured 0% of frame from inside it. Pushing
+       * the pools far enough out to miss the track instead cost their
+       * visibility: 9.6% became 2.9%. The answer is neither, it is to dig the
+       * hole and leave the path, which is what the ground does on the mountain
+       * because the route was chosen to go between them. */
+      const corridor = this.trail.widthAt(t) + 3.5;
+      bowl *= smoothstep(corridor, corridor + 6, q.dist);
+      h -= bowl * b.depth;
+    }
 
     /* THE MOUNTAIN COMES DOWN TO THE PLATEAU AT ITS OWN EDGE.
      *

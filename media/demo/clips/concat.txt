@@ -1,3 +1,0 @@
-file '/Users/fan/origingame-trail/media/demo/clips/01-jungle.mp4'
-file '/Users/fan/origingame-trail/media/demo/clips/02-lake.mp4'
-file '/Users/fan/origingame-trail/media/demo/clips/03-tongariro.mp4'
