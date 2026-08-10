@@ -34,3 +34,7 @@ media/base-*/*.jpg
 # with `node tools/leveldiff.mjs --save`.
 media/baseline/
 media/leveldiff/
+
+# Demo render frames: 293 MB of intermediate PNGs for the trailer, rebuilt
+# on demand and never shipped. Untracked is not licence to commit.
+media/demo/frames-hq/
