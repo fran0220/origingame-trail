@@ -14,6 +14,20 @@
  * (three runs at one station agree within 2%) and A/B differences are real.
  * Treat it as a comparator, not as the frame rate a player will see.
  *
+ * DO NOT COMPARE TWO RUNS OF THIS TOOL. The absolute number tracks the state
+ * of the machine, not only the state of the code. Identical builds measured
+ * 56, 97 and 80 ms at the same station within a few minutes of each other on
+ * an otherwise idle laptop, and a change that provably REMOVED 26 M triangles
+ * appeared to make the frame 45% slower purely because the run happened later.
+ * The repeatability spread printed below is the warning light: at 0.3 ms the
+ * machine is quiet and the run is internally consistent; at 2 ms or more the
+ * absolute numbers are drifting and only WITHIN-RUN A/B is meaningful.
+ *
+ * For an A/B, flip the thing under test inside one page session and time both
+ * sides before the session ends. Triangle and draw-call counts, printed here
+ * beside the timing, are exact and machine-independent — when the clock is
+ * untrustworthy they are still evidence.
+ *
  *   node tools/frametime.mjs lake
  *   node tools/frametime.mjs jungle --stations 6
  */
@@ -72,6 +86,11 @@ await run({ width: 1280, height: 720, hash, timeout: 900_000 }, async ({ page })
   const sp = Math.max(...r.repeat) - Math.min(...r.repeat);
   console.log(`\n  worst ${worst.ms} ms at t=${worst.t}`);
   console.log(`  repeatability at t=0.35: ${r.repeat.join(', ')} ms (spread ${sp.toFixed(2)})`);
+  if (sp > 2) {
+    console.log('  WARNING — spread over 2 ms: the machine is busy or thermally');
+    console.log('  throttled. Treat the ms column as unusable and compare draw');
+    console.log('  calls and triangles instead, or A/B within a single run.');
+  }
   console.log(`  shader errors: ${shaderErr}`);
   if (shaderErr) { console.log('\n  READINGS INVALID — a shader failed to compile.'); process.exitCode = 1; }
 });

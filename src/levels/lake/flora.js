@@ -1179,7 +1179,21 @@ function plantGeometry(id,kind,variant,hex){
   /* One watertight, low cushion first. Its height and perimeter share several
    * incommensurate waves, so it stays continuous without becoming a perfect
    * dome or a pile of separate beans. */
-  const rings=36,sides=96,rv=[];
+  /* 10 x 24, NOT 36 x 96, AND THE ARITHMETIC IS THE WHOLE ARGUMENT.
+   *
+   * A raoulia cushion is 0.42 m across. At 1280 px over a 60 degree field one
+   * pixel is 0.818 mrad, so the entire plant is 26 PIXELS WIDE AT 20 m and 9
+   * at 60. At 96 sides one facet of it is 1.7 px at 20 m and sub-pixel beyond
+   * 34 m — the tessellation was invisible at every distance this plant is ever
+   * seen from, and there is no viewpoint in the level from which it was not.
+   *
+   * 36 x 96 is 6,912 triangles each. The entire rally car, with its shut
+   * lines, glazing, light pod and cockpit, is 23,080 — so three of these
+   * ground-cover plants cost more than the car the player is driving, and
+   * flora is 145 M of the lake's 166 M triangles per frame.
+   *
+   * 10 x 24 is 480: a 24-gon silhouette on a 26 px object, which is smooth. */
+  const rings=10,sides=24,rv=[];
   rv.push([vert([0,.118,0],[.43,.48,.34])]);
   for(let j=1;j<=rings;j++){const u=j/rings,ring=[];for(let k=0;k<sides;k++){const a=k*Math.PI*2/sides,edge=1+.070*Math.sin(a*5+variant)+.040*Math.sin(a*9+1.2),r=Math.pow(u,.80)*edge,px=Math.cos(a)*rx*r,pz=Math.sin(a)*rz*r,lobes=.010*Math.sin(a*4+variant*.9)+.006*Math.sin(a*7-1.1),y=.002-.016*Math.pow(u,10)+.114*Math.pow(Math.max(0,1-u*u),.64)+lobes*(1-u*.70);ring.push(vert([px,y,pz],[.42,.47,.34]));}rv.push(ring);}
   for(let k=0;k<sides;k++)face(rv[0][0],rv[1][k],rv[1][(k+1)%sides]);for(let j=1;j<rings;j++)for(let k=0;k<sides;k++){const n=(k+1)%sides;face(rv[j][k],rv[j+1][k],rv[j][n]);face(rv[j][n],rv[j+1][k],rv[j+1][n]);}
@@ -1266,7 +1280,27 @@ export class LakeFlora{
     }
    }
   });this.setTier(tier);}
- cullAround(x,z){this.lastCull=[x,z];this.meshes.forEach(m=>{const c=m.boundingSphere?.center,near=!c||Math.hypot(c.x-x,c.z-z)<260+(m.boundingSphere?.radius||0),matches=m.name.startsWith(`flora:${this.debugSpecies}:`);m.visible=this.debugSpecies?matches:near;});}
+ /* SWARD DRAW DISTANCE: 120 m, WAS 260. Measured, not guessed.
+ *
+ * Sweeping the radius and diffing the frame against the 260 m reference at two
+ * stations:
+ *
+ *     radius   frame changes   time saved
+ *      200 m       0.01%        4.7-6.4 ms
+ *      160 m       0.01%        5.6-8.5 ms
+ *      120 m     0.02-0.05%     8.8-12.8 ms
+ *       90 m     0.02-0.05%    11.1-20.0 ms
+ *
+ * Grass beyond about a hundred metres is not visible — a sub-metre crown is
+ * roughly a pixel at that range, and the ground texture underneath already
+ * reads as grass, which is what it is for. The level was drawing it anyway,
+ * and flora was 145 M of the lake's 166 M triangles per frame.
+ *
+ * 120 rather than 90 even though 90 measured equally invisible: two stations
+ * under one condition is not the whole stage, and a 2x margin under the point
+ * where a difference first appears is cheap insurance for the sun angles and
+ * viewpoints that were not sampled. */
+  cullAround(x,z){this.lastCull=[x,z];this.meshes.forEach(m=>{const c=m.boundingSphere?.center,near=!c||Math.hypot(c.x-x,c.z-z)<120+(m.boundingSphere?.radius||0),matches=m.name.startsWith(`flora:${this.debugSpecies}:`);m.visible=this.debugSpecies?matches:near;});}
  setDebug(mode='none'){this.debugSpecies=this.species.includes(mode)?mode:null;if(this.lastCull)this.cullAround(...this.lastCull);}
  /* Materials no longer share one uniform name — the roadside turf has its own
   * wind. Written defensively rather than by branching on the material, because
