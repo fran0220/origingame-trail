@@ -201,7 +201,21 @@ export class Terrain extends Heightfield {
      * comes in from about 1600 m and owns everything above 1800 — which is
      * where it is on the mountain. */
     const realY = y / VERT + DATUM;
-    const red = smoothstep(1600, 1800, realY) * lerp(0.35, 1.0, smoothstep(0.10, 0.45, slope));
+    let red = smoothstep(1600, 1800, realY) * lerp(0.35, 1.0, smoothstep(0.10, 0.45, slope));
+    /* RED CRATER IS RED, and this is where that belongs — not in a carved
+     * hole. The crater side of the ridge already drops 118 m, so the landform
+     * was always there; what was missing is the reason it has a name. The
+     * oxidised scoria on those walls is the most saturated thing on the
+     * mountain and it is confined to the crater itself, so it is keyed to the
+     * stage AND the side rather than to altitude, which cannot tell one flank
+     * from the other. */
+    const t2 = clamp(q.t, 0, 1);
+    if (t2 >= STAGES.redRidge[0] && t2 < STAGES.redRidge[1] && q.side >= 0) {
+      const inCrater = smoothstep(STAGES.redRidge[0], STAGES.redRidge[0] + 0.03, t2)
+                     * (1 - smoothstep(STAGES.redRidge[1] - 0.03, STAGES.redRidge[1], t2))
+                     * smoothstep(4, 40, q.dist);
+      red = clamp(red + inCrater * 0.85, 0, 1);
+    }
     const black = smoothstep(0.44, 0.80, slope);
     const ash = clamp(1 - red - black, 0, 1);
     out[0] = ash;

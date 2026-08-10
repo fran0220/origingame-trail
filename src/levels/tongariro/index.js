@@ -24,6 +24,7 @@ import { Poles } from './poles.js';
 import { Fumaroles } from './steam.js';
 import { Rockfield } from './rocks.js';
 import { Alpine } from './alpine.js';
+import { Dike } from './dike.js';
 import { TongariroAmbience } from './audio.js';
 import { pick, applyCondition } from './conditions.js';
 import { content } from './content.js';
@@ -126,6 +127,10 @@ class TongariroLevel {
     this.alpine = new Alpine(this.terrain, this.trail, tier);
     scene.add(this.alpine.root);
 
+    await step(0.84, '立起红火口的岩脉');
+    this.dike = new Dike(this.terrain, this.trail, tier);
+    scene.add(this.dike.root);
+
     await step(0.88, '注满翡翠湖');
     this.lakes = new Lakes(this.terrain, this.trail);
     scene.add(this.lakes.root);
@@ -139,7 +144,7 @@ class TongariroLevel {
     scene.add(this.steam.root);
   }
 
-  materials() { return [this.terrainMat, ...this.skyline.materials, ...this.lakes.materials, ...this.poles.materials, ...this.steam.materials, ...this.rock.materials, ...this.alpine.materials]; }
+  materials() { return [this.terrainMat, ...this.skyline.materials, ...this.lakes.materials, ...this.poles.materials, ...this.steam.materials, ...this.rock.materials, ...this.alpine.materials, ...this.dike.materials]; }
 
   makeAmbience({ camera, walker }) {
     this.ambience = new TongariroAmbience({ camera, walker, terrain: this.terrain });
@@ -170,6 +175,7 @@ class TongariroLevel {
       steam: this.steam?.stats(),
       rock: this.rock?.stats(),
       alpine: this.alpine?.stats(),
+      dike: this.dike?.stats(),
       audio: this.ambience?.stats?.() ?? null,
     };
   }
