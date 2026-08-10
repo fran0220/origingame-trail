@@ -1,0 +1,40 @@
+[
+  {
+    "id": "jungle",
+    "title": "雨林小径",
+    "en": "THE JUNGLE TRAIL",
+    "sub": "穿过林冠，寻找被森林收回的遗迹",
+    "duration": 13,
+    "at": 0.28,
+    "to": 0.72,
+    "raw": "/Users/fan/origingame-trail/media/demo/raw/jungle-full.webm",
+    "audio": "/Users/fan/origingame-trail/media/demo/raw/jungle-audio.webm",
+    "audioBytes": 260057,
+    "errors": []
+  },
+  {
+    "id": "lake",
+    "title": "特卡波湖",
+    "en": "LAKE TEKAPO · STATE HIGHWAY 8",
+    "sub": "沿冰川湖岸，驶向南阿尔卑斯",
+    "duration": 15,
+    "raw": "/Users/fan/origingame-trail/media/demo/raw/lake-full.webm",
+    "audio": "/Users/fan/origingame-trail/media/demo/raw/lake-audio.webm",
+    "audioBytes": 301885,
+    "errors": []
+  },
+  {
+    "id": "tongariro",
+    "title": "汤加里罗",
+    "en": "TONGARIRO ALPINE CROSSING",
+    "sub": "越过火山鞍部、灰烬与赤色火山渣",
+    "duration": 13,
+    "at": 0.3,
+    "to": 0.78,
+    "final": true,
+    "raw": "/Users/fan/origingame-trail/media/demo/raw/tongariro-full.webm",
+    "audio": "/Users/fan/origingame-trail/media/demo/raw/tongariro-audio.webm",
+    "audioBytes": 0,
+    "errors": []
+  }
+]

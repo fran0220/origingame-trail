@@ -22,6 +22,7 @@ import { Skyline } from './skyline.js';
 import { Lakes } from './lakes.js';
 import { Poles } from './poles.js';
 import { Fumaroles } from './steam.js';
+import { TongariroAmbience } from './audio.js';
 import { pick, applyCondition } from './conditions.js';
 import { content } from './content.js';
 
@@ -130,9 +131,15 @@ class TongariroLevel {
 
   materials() { return [this.terrainMat, ...this.skyline.materials, ...this.lakes.materials, ...this.poles.materials, ...this.steam.materials]; }
 
-  makeAmbience() { return null; }
+  makeAmbience({ camera, walker }) {
+    this.ambience = new TongariroAmbience({ camera, walker, terrain: this.terrain });
+    return this.ambience;
+  }
   attachAtmosphere() {}
-  update(dt, host) { this.steam?.update(dt, host?.camera); }
+  update(dt, host) {
+    this.steam?.update(dt, host?.camera);
+    this.ambience?.update(dt);
+  }
   cullAround() {}
   envExclude() { return []; }
   setTier() {}
@@ -147,6 +154,7 @@ class TongariroLevel {
       lakes: this.lakes?.stats(),
       poles: this.poles?.stats(),
       steam: this.steam?.stats(),
+      audio: this.ambience?.stats?.() ?? null,
     };
   }
 }
