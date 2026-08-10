@@ -1329,12 +1329,31 @@ export function broadleaf(rng, scale = 1, lod = 0, vi = 0) {
 
 /** Understory palm: slim trunk, crown of arching fronds — feather or fan. */
 export function palm(rng, scale = 1, lod = 0, vi = 0) {
-  /* Half the palms are fan palms now. A feather palm and a fan palm are the
-   * two silhouettes anyone can tell apart at a hundred metres — one is a
-   * cluster of long arcs, the other a set of discs on sticks — and having
-   * only the first meant every palm in every frame agreed about what a palm
-   * looks like, which is precisely the small-kit read. */
-  const fan = (vi % 2) === 1;
+  /* NIKAU, AND NOTHING ELSE, BECAUSE THIS IS NEW ZEALAND.
+   *
+   * The two habits here used to be a feather palm and a fan palm, chosen
+   * because they are the two silhouettes anyone can tell apart at a hundred
+   * metres. They are also both wrong for this forest: a fan palm is Asian or
+   * American, and there is exactly ONE native palm in New Zealand.
+   *
+   * The nikau is the southernmost palm in the world and it does not look like
+   * a coconut. Three things carry it, and none of them is the frond:
+   *
+   *   THE CROWNSHAFT. A smooth, swollen, bright green column where the leaf
+   *   bases wrap the stem — a metre of it, distinctly fatter and a completely
+   *   different colour from the trunk below. No other palm in cultivation here
+   *   has one that pronounced, and it is what people actually recognise.
+   *
+   *   THE RINGS. The trunk is grey and banded with evenly spaced leaf scars
+   *   the whole way up, close enough to count from the track.
+   *
+   *   THE STIFFNESS. Six to twelve fronds, held up and out rather than
+   *   drooping in an arc, so the crown is a shuttlecock rather than an
+   *   umbrella. A nikau in wind barely moves.
+   *
+   * The fan branch is gone rather than retuned: variety that is wrong is worse
+   * than less variety, and the understorey has tree ferns for contrast. */
+  const fan = false;
   const leaf = new Builder(), wood = new Builder();
   const h = (1.5 + rng() * 2.8) * scale;
   const lean = (rng() - 0.5) * 0.6;
@@ -1345,25 +1364,51 @@ export function palm(rng, scale = 1, lod = 0, vi = 0) {
     pts.push(new THREE.Vector3(
       lean * h * s * s, h * s,
       lean * 0.4 * h * s * s * Math.sin(s * 3.0)));
-    radii.push((0.055 + 0.030 * (1 - s)) * scale);
+    /* The crownshaft: the top fifth swells to nearly twice the stem before
+     * pinching in right at the crown. That bulge is the single most
+     * recognisable thing about a nikau, and it is one line of profile. */
+    const shaft = smooth01((s - 0.78) / 0.16) * (1 - smooth01((s - 0.955) / 0.045));
+    radii.push((0.055 + 0.030 * (1 - s) + 0.048 * shaft) * scale);
   }
   // Leaf scars ring a palm stem every few centimetres, so the profile is
   // nearly round but the bark map has to run fast along it.
   addTube(wood, pts, radii, 7, Math.max(3, Math.round(h / 0.55)), 0.75,
           { u0: 0, v0: 0 }, 1, {
-            occ: (a, s) => 0.34 + 0.66 * smooth01(s * 6),
-            moss: (a, s) => smooth01((0.22 - s) / 0.22) * 0.35 * Math.max(0, Math.sin(a * 2.0)),
+            /* LEAF-SCAR RINGS, close enough to count. A nikau lays down one
+             * ring per frond it drops, evenly, the whole length of the stem,
+             * and on a grey trunk in flat forest light those bands are most of
+             * what makes it read as a palm rather than as a pole. Darkened in
+             * the groove and left pale on the band between. */
+            occ: (a, s) => (0.34 + 0.66 * smooth01(s * 6))
+                         * (1 - 0.42 * Math.pow(Math.abs(Math.sin(s * h * 7.5)), 6)),
+            /* THE CROWNSHAFT IS GREEN, and the green channel is how it gets
+             * there. This callback exists to paint moss on a wet trunk base,
+             * and it is the only per-vertex tint a tube has — so it does both
+             * jobs: a little moss low down, and the crownshaft up top, which
+             * on a nikau is not bark at all but the wrapped bases of the
+             * living leaves and is the colour of a leaf. Without it the shaft
+             * is a grey bulge and reads as a swelling in a pole. */
+            moss: (a, s) => Math.max(
+              smooth01((0.18 - s) / 0.18) * 0.28 * Math.max(0, Math.sin(a * 2.0)),
+              smooth01((s - 0.76) / 0.14) * (1 - smooth01((s - 0.96) / 0.04)) * 0.95,
+            ),
           });
 
   const crown = pts[seg];
-  const n = 7 + Math.floor(rng() * 8);
+  /* Six to eleven, not seven to fourteen. A nikau carries few fronds and
+   * sheds them cleanly; a crown of fourteen is a coconut palm. */
+  const n = 8 + Math.floor(rng() * 5);
   const m = new THREE.Matrix4(), e = new THREE.Euler();
   for (let i = 0; i < n; i++) {
     const yaw = (i / n) * Math.PI * 2 + (rng() - 0.5) * 1.3;
     // Older fronds sit lower and droop harder; new ones stand near vertical.
     const age = i / n;
-    const pitch = -0.55 + age * 1.9 + (rng() - 0.5) * 0.6;
-    const len = (1.1 + rng() * 1.7) * scale;
+    /* HELD UP, NOT DROOPING. The old range ran from slightly above horizontal
+     * to well below it, which is a coconut palm's umbrella. A nikau's fronds
+     * leave the crownshaft steeply and only the oldest fall to horizontal, so
+     * the crown reads as a shuttlecock. */
+    const pitch = -1.05 + age * 1.55 + (rng() - 0.5) * 0.35;
+    const len = (1.5 + rng() * 1.8) * scale;
     e.set(-pitch, yaw, (rng() - 0.5) * 0.4, 'YXZ');
     m.makeRotationFromEuler(e);
     m.setPosition(crown.x, crown.y - 0.05 * scale, crown.z);
@@ -1417,7 +1462,9 @@ export function palm(rng, scale = 1, lod = 0, vi = 0) {
        * amount plus a small jitter, so every palm in frame was the same
        * umbrella at a different size — which is precisely the repeat the eye
        * locks onto across a hundred metres of understory. */
-      bend: 0.9 + age * 1.5 + rng() * 1.0,
+      /* Stiff. A nikau frond is a rigid arch, not a hanging rope — half the
+       * bend of the tropical palm this used to be. */
+      bend: 0.45 + age * 0.85 + rng() * 0.5,
       twist: (rng() - 0.5) * 0.6,
       sag: (rng() - 0.5) * 0.6, phase: rng() * 6.283, id: rng(),
       pinnae: Math.round(6 + len * 2.0), nv: D(lod, 6, 5),

@@ -134,7 +134,7 @@ const SCALE={
  celmisia:[.44,.88],gentian:[.36,.72],ourisia:[.40,.80],
  anisotome:[.42,.90],epineum:[.34,.70],
  'mount-cook-buttercup':[.42,.82],'south-island-daisy':[.42,.86],
- 'russell-lupin':[.68,1.20],
+ 'russell-lupin':[1.02,1.62],
 };
 function random(seed){return()=>{seed=Math.imul(seed^seed>>>15,1|seed);seed^=seed+Math.imul(seed^seed>>>7,61|seed);return((seed^seed>>>14)>>>0)/4294967296;};}
 /* Habitat suitability, 0..1, and the gradient is the whole point.
@@ -439,7 +439,13 @@ const LUPIN_COLOURS = [
 function lupinGeometry(variant, rng) {
   const p = [], ix = [], col = [];
   const push = (x, y, z, c) => { const n = p.length / 3; p.push(x, y, z); col.push(...c); return n; };
-  const spikes = 1 + (variant % 2);
+/* TWO TO FOUR SPIKES, NOT ONE OR TWO. A Russell lupin is a clump that throws
+   * up a handful of racemes at once — one spike per plant is a seedling. With
+   * 35,000 plants carrying 1.5 spikes each the drifts still measured under 2%
+   * of frame and read as green speckle with a fleck of colour in it, because
+   * the FLOWER is the thing that has to cover ground and it was a fifth of
+   * each plant. */
+  const spikes = 2 + (variant % 3);
   for (let s = 0; s < spikes; s++) {
     const flower = LUPIN_COLOURS[(rng() * LUPIN_COLOURS.length) | 0];
     /* Paler toward the tip: a raceme opens from the bottom, so the top of the
@@ -447,10 +453,10 @@ function lupinGeometry(variant, rng) {
     const tip = flower.map((v) => Math.min(1, v * 0.55 + 0.42));
     /* A lupin raceme is about four to six times as tall as it is wide. The
      * first cut was 1:10 and read as a row of little surfboards stood on end. */
-    const h = 0.38 + rng() * 0.34;
+    const h = 0.46 + rng() * 0.40;
     const lean = (rng() - 0.5) * 0.18;
     const yaw = rng() * 6.283;
-    const ox = Math.cos(yaw) * s * 0.10, oz = Math.sin(yaw) * s * 0.10;
+    const ox = Math.cos(yaw) * s * 0.075, oz = Math.sin(yaw) * s * 0.075;
     /* Three blades at 60 degrees, each a short strip rather than one triangle.
      *
      * The first version drew each blade as a single triangle from two base
@@ -545,7 +551,13 @@ function buildLupinDrifts(owner, terrain, tier, dummy) {
 
   const P = new THREE.Vector3(), T = new THREE.Vector3();
   const L = trail.length;
-  const DRIFTS = Math.round((L / 1000) * (tier === 'low' ? 16 : tier === 'medium' ? 28 : 44));
+/* SHEETS, NOT PATCHES. Measured, the old settings put 10,059 lupins along a
+   * five-kilometre road and they covered 0.13 to 0.34% OF FRAME — invisible.
+   * That is not what Tekapo looks like and it is not what a Russell lupin
+   * does: it is a garden escape that has taken over whole river flats, and the
+   * reason every photograph of this place has them is that they cover ground
+   * by the hectare, not by the square metre. */
+  const DRIFTS = Math.round((L / 1000) * (tier === 'low' ? 26 : tier === 'medium' ? 46 : 70));
   const CHUNK = 6;
   let lists = [[], [], [], []];
   let placed = 0;
@@ -579,13 +591,15 @@ function buildLupinDrifts(owner, terrain, tier, dummy) {
     trail.pointAt(t, P); trail.tangentAt(t, T);
     const nx = T.z, nz = -T.x;
     const side = rng() < 0.62 ? 1 : -1;
-    const centre = (ROAD_SHOULDER + 2 + Math.pow(rng(), 1.3) * 34) * side;
-    /* Tight. 131 plants over a 40 x 50 m patch is not a drift, it is a
-     * sprinkle — and that is what the first version looked like. A lupin
-     * colony spreads from seed fall around where it started, so it is a dense
-     * mass a few metres across with a ragged edge. */
-    const spread = 2.6 + rng() * 4.4;
-    const n = 90 + ((rng() * 130) | 0);
+    const centre = (ROAD_SHOULDER + 2 + Math.pow(rng(), 1.25) * 95) * side;
+    /* A colony still spreads from where it started, so it stays DENSE with a
+     * ragged edge — but the previous fix over-corrected into the opposite
+     * error. Six-metre blobs are botanically tidy and read as nothing: at
+     * walking distance one drift subtends less than a road marking. Ten to
+     * forty metres across, three hundred plants and up, which is the size the
+     * colonies on the Tekapo and Ahuriri flats actually are. */
+    const spread = 10 + rng() * 28;
+    const n = 300 + ((rng() * 350) | 0);
     for (let i = 0; i < n; i++) {
       /* Clumped inside the drift too, because a lupin colony spreads from
        * seed fall and is densest where it started. */
