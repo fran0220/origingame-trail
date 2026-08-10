@@ -223,7 +223,8 @@ export class Driver {
       { x: 0, y: 0, z: 0, amt: 0 }, { x: 0, y: 0, z: 0, amt: 0 },
     ];
     this._dentNext = 0;
-    this.skid = 0;                    // 0..1, how hard the tyres are complaining
+    this.skid = 0;                    // 0..1, gated: for the skid sound
+    this.tyreLoad = 0;                // 0..1, ungated: for the marks
 
     /* Camera. A chase camera is not a position, it is a filter: it lags the
      * car in translation and leads it in rotation, and getting those two
@@ -957,6 +958,24 @@ export class Driver {
     const slipUse = smoothstep(PEAK_SLIP * 0.9, PEAK_SLIP * 2.6, Math.abs(slipR));
     this.skid = clamp(Math.max(latUse > 0.92 ? latUse : 0, slipUse)
       + (this.handbrake > 0 && Math.abs(vx) > 4 ? 0.6 : 0), 0, 1);
+
+    /* HOW HARD THE TYRES ARE WORKING, CONTINUOUSLY — a sibling of `skid`, not
+     * a replacement for it.
+     *
+     * `skid` above has a hard gate at 0.92 of lateral limit, so it reports 0
+     * below that and roughly 1 above. That is exactly right for the thing it
+     * was built for: a skid sound is either playing or it is not. But it makes
+     * a terrible input for anything proportional, and measuring it over a hard
+     * lap shows why — 99.2% of on-seal frames land in 0.00-0.05 and 0.8% land
+     * in 0.90-1.00, WITH NOTHING IN BETWEEN. It is a boolean wearing a float.
+     *
+     * Tyre marks need the real quantity, because a tyre does not begin to lay
+     * rubber at a threshold: it scrubs faintly well before the limit and goes
+     * black at it, and that gradient IS the readable part of a mark. So this
+     * carries the ungated load, and anything wanting a proportion should use
+     * it rather than reaching for `skid` and getting a switch. */
+    this.tyreLoad = clamp(Math.max(latUse, slipUse)
+      + (this.handbrake > 0 && Math.abs(vx) > 4 ? 0.5 : 0), 0, 1);
   }
 
   /* ── camera ────────────────────────────────────────────────────────────── */
