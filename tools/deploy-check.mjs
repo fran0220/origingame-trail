@@ -50,6 +50,24 @@ const LEVELS = readdirSync(new URL('../src/levels/', import.meta.url))
   .filter((d) => existsSync(new URL(`../src/levels/${d}/index.js`, import.meta.url)));
 if (LEVELS.length < 2) { console.error('deploy-check: could not read LEVELS'); process.exit(1); }
 console.log(`  checking ${LEVELS.length} levels: ${LEVELS.join(', ')}`);
+
+/* THE PICKER IS HANDWRITTEN HTML AND DOES NOT KNOW ABOUT LEVELS.
+ *
+ * Tongariro shipped registered, packed, booting and reachable only by editing
+ * the URL, because index.html has one button per level typed in by hand and
+ * nobody had typed the third. For a player the level did not exist, and every
+ * check in this repo passed — they all load a level by hash, which is the one
+ * route a player never takes.
+ *
+ * So the packed markup is checked against the level list. */
+const html = readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8');
+const missing = LEVELS.filter((l) => !html.includes(`data-level="${l}"`));
+if (missing.length) {
+  console.error(`\nFAIL — no picker button for: ${missing.join(', ')}`);
+  console.error('  the level is registered and unreachable; add it to index.html');
+  process.exit(1);
+}
+console.log(`  picker offers all ${LEVELS.length}`);
 for (const level of LEVELS) {
   /* A fresh page per level. Changing only the hash does not re-run the module,
    * so the second level reported the first one's stats and proved nothing. */

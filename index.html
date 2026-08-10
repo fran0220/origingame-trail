@@ -169,6 +169,9 @@
   }
   #levelPicker button[data-level="jungle"] { background: linear-gradient(100deg, #0b1811, #263b25); }
   #levelPicker button[data-level="lake"] { background: linear-gradient(100deg, #121b25, #668299); }
+  /* Ash grey into oxidised scoria: the level's own palette, so the button
+     reads as the place before a single frame of it has been rendered. */
+  #levelPicker button[data-level="tongariro"] { background: linear-gradient(100deg, #2a2320, #7a3520); }
   #levelPicker button:hover, #levelPicker button:focus-visible { outline: 1px solid var(--gold); outline-offset: -5px; }
   #levelPicker strong { display: block; font-size: 20px; font-weight: 400; letter-spacing: .18em; }
   #levelPicker small { display: block; margin-top: 10px; color: rgba(235,240,230,.72); font-size: 12px; letter-spacing: .1em; }
@@ -568,6 +571,7 @@
     <div class="pick-list">
       <button type="button" data-level="jungle"><strong>Jungle · 雨林小径</strong><small>闭合林冠下，循水声走向遗迹与瀑布</small></button>
       <button type="button" data-level="lake"><strong>Lake Tekapo · 特卡波湖</strong><small>八号国道计时赛段，沿冰川湖岸驶向南阿尔卑斯</small></button>
+      <button type="button" data-level="tongariro"><strong>Tongariro · 汤加里罗</strong><small>越过火山鞍部的一天，红火口的蒸汽与翡翠湖</small></button>
     </div>
   </div>
 </main>
