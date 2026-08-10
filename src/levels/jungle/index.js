@@ -48,8 +48,16 @@ import { content } from '../../game/content.js';
 
 export const meta = {
   id: 'jungle',
-  title: '雨林小径',
-  blurb: '一条穿过闭合林冠的路，尽头是遗迹与瀑布。',
+  /* THE PLACE IS KARANGAHAKE, and naming it is the last thing that made this
+   * level generic. "Rainforest trail" is nowhere; the Karangahake Gorge is a
+   * real walk through regenerating native bush past the concrete and masonry
+   * of the Woodstock and Talisman gold batteries, which is exactly what this
+   * level already had — walls, terraces, a hall, a spillway, a tramway and a
+   * waterfall — and which explains why there is stone in a New Zealand forest
+   * at all. The module id stays 'jungle' because it is a save key and a URL,
+   * and renaming those would strand every player's progress. */
+  title: '卡兰加哈基峡谷',
+  blurb: '穿过再生原生林的步道，走过金矿捣石厂的遗骸，尽头是瀑布。',
 };
 
 /* The look of the air and the light, as data.

@@ -1,5 +1,22 @@
-/* Authored content: the twelve inscriptions and the twelve photographic
- * subjects.
+/* Authored content: what is left at Karangahake, and what grows over it.
+ *
+ * THE SITE IS REAL AND SO ARE THE RUINS. The first version of these texts was
+ * a lost civilisation — priests, masons, people who counted the rain — and it
+ * was the last tropical thing in a level that had otherwise been made a New
+ * Zealand one. It also left the stone unexplainable: there are no temple ruins
+ * in this country.
+ *
+ * There ARE stone ruins in New Zealand bush and they are industrial. The
+ * Karangahake Gorge carries the concrete and masonry of the Woodstock and
+ * Talisman gold batteries, their tramways and their tunnels, standing in
+ * regenerating native forest a century after the last shift walked out in
+ * 1920. Every structure this level already builds — walls, terraces, a hall,
+ * a spillway, a tramway — is something that site actually has, so nothing had
+ * to be rebuilt. Only the story was wrong.
+ *
+ * The inscriptions are therefore what a working site leaves behind: a mining
+ * district boundary post, a tally clerk's returns, a stonemason counting his
+ * own blocks, and the last shift.
  *
  * Nothing here invents a place. Every anchor is either a point on the trail
  * curve — which is the one coordinate system the whole level is built around —
@@ -36,60 +53,60 @@ const nearPlant = (species, t, off, search = 14) => ({ kind: 'plant', species, t
 export const GLYPHS = [
   {
     id: 'boundary', t: 0.055, at: onTrail(0.055, 2.4),
-    title: '界石',
+    title: '界桩',
     hint: '小径起点右侧',
-    text: '过此石者，请放轻脚步。\n下面的路是水修的，不是我们修的。',
+    text: '此处以下为塔利斯曼矿区。\n未持证者不得进入隧道。\n——奥克兰矿务局，一八九六',
   },
   {
     id: 'counters', t: 0.13, at: onTrail(0.13, -7.6),
-    title: '数水者',
+    title: '计量员',
     hint: '离开小径，左侧林下',
-    text: '雨季第十一日，水位到第三道刻痕。\n我族世代做一件事：数水。\n数得准，便能活。',
+    text: '本周碎石一千一百四十吨。\n汞板回收金一百零三盎司。\n差额照旧记在"损耗"一栏。',
   },
   {
     id: 'first-channel', t: 0.22, at: onTrail(0.22, 2.9),
-    title: '第一道渠',
-    text: '我们没有搬动山。\n我们只是说服水，换一条路走。',
+    title: '第一条水渠',
+    text: '我们没有搬走这座山。\n只是劝水改道，去推那台水轮。',
   },
   {
     id: 'mason', t: 0.31, at: onTrail(0.31, -9.4),
-    title: '石匠的抱怨',
+    title: '砌石工的抱怨',
     hint: '窄道前，左侧深处',
-    text: '第四百块。手掌裂了三次。\n祭司说石头会记住我的名字，\n可他没让我把名字刻上去。',
+    text: '第四百块。掌心裂了三回。\n工头说这堵墙会立一百年。\n他没说会不会有人记得是谁砌的。',
   },
   {
     id: 'naming', t: 0.44, at: onTrail(0.44, 2.2),
     title: '给雨命名',
-    text: '细雨叫「低语」。\n连日不停的叫「久客」。\n把树压弯的那种，我们不叫它的名字。',
+    text: '细雨叫"打湿引信"。\n横雨叫"停工"。\n下三天不停的那种，矿工不给它起名字。',
   },
   {
     id: 'terrace', t: 0.57, at: onTrail(0.57, 11.5),
-    title: '台地',
-    hint: '溪流对岸，远离小径',
-    text: '挖出的土不许运走。\n堆在两侧，做成岸。\n山让出的地方，要还给山一个形状。',
+    title: '捣矿机台面',
+    hint: '离开小径，右侧平台',
+    text: '三十道捣杆，日夜不停，每分钟九十下。\n峡谷两英里外都听得见。\n停下来的时候，人反而睡不着。',
   },
   {
     id: 'into-the-hall', t: 0.68, at: onTrail(0.68, -2.6),
-    title: '引水入殿',
-    text: '水从上面来，穿过殿，再回到潭里。\n站在殿中，脚下是流动的声音。\n那时我们以为这叫「掌握」。',
+    title: '进入厂房',
+    text: '这里曾有屋顶、皮带、以及一百二十匹马力。\n现在只剩混凝土的骨架，\n和从窗洞里长进来的树。',
   },
   {
     id: 'dry-year', t: 0.76, at: onTrail(0.76, -10.8),
-    title: '旱年',
-    hint: '地势开始抬升处，左侧坡上',
-    text: '第七年无雨。\n渠是空的，殿是干的，鼓也不响了。\n数水者无水可数，便成了无用的人。',
+    title: '枯水年',
+    hint: '窄道深处，左侧',
+    text: '一九〇八年夏，水位太低，水轮转不动。\n没有水就没有电，没有电就没有捣矿。\n那年整个峡谷都停了工。',
   },
   {
     id: 'the-crack', t: 0.84, at: atPoint(5.9, -313.4),
     title: '裂缝',
     hint: '门址附近的石堆',
-    text: '门楣裂了一指宽。\n祭司说是地在动。\n石匠说是我们把水放得太近了。',
+    text: '基座上这道裂缝比矿场还老。\n他们在上面浇了混凝土，\n混凝土也裂在同一条线上。',
   },
   {
     id: 'spillway', t: 0.90, at: atPoint(9.8, -359.8),
-    title: '溢流口',
+    title: '尾水道',
     hint: '潭东，水消失的地方',
-    text: '水从这里走，我们从来不知道它去哪。\n扔下去的东西，再没有浮起来过。',
+    text: '水从这里回到河里，带着它推过的一切。\n下游的河床至今是灰白色的。',
   },
   {
     /* Moved two metres south and one east off (-8.2, -365.0).
@@ -114,9 +131,9 @@ export const GLYPHS = [
   },
   {
     id: 'last', t: 0.975, at: atPoint(LIP.x - 4.2, IMPACT.z + 3.4),
-    title: '最后一块',
+    title: '最后一班',
     hint: '瀑布脚下',
-    text: '水赢了。\n这不是坏消息。\n它一直在这里，我们只是路过得久了一些。',
+    text: '一九二〇年十一月，塔利斯曼停产。\n最后一班人把工具留在原处，走出隧道。\n树用了一百年，把这里收了回去。',
   },
 ];
 
