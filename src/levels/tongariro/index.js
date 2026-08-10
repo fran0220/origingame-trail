@@ -149,7 +149,11 @@ class TongariroLevel {
     return {
       stage: null,
       datum: DATUM,
-      summitM: Math.round(trackElevation(0.65)),
+      /* Read from the profile's own high point rather than a t typed in here:
+       * it said 1719 because the stages were re-spanned and 0.65 stopped being
+       * the summit, which is the same stale-constant fault as the skyline's. */
+      summitM: Math.round(Math.max(...Array.from({ length: 101 },
+        (_, i) => trackElevation(i / 100)))),
       skyline: this.skyline?.stats(),
       lakes: this.lakes?.stats(),
       poles: this.poles?.stats(),

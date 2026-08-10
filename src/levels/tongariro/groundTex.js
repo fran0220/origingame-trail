@@ -37,7 +37,9 @@ void surf(vec2 uv, out vec3 albedo, out float height, out float rough, out float
   float fine  = unit(pfbm(p * 6.0, 48.0, 3));
   /* Lapilli: sparse coarse grains, second-nearest worley so they read as
    * separate stones rather than as a cell pattern. */
-  vec2 lap = pworley(p * 3.0, 24.0);
+  /* Lapilli at 24 cells were 12 cm stones lying on the ash pan; the real ones
+   * the wind cannot move are 2 to 4 cm. */
+  vec2 lap = pworley(p * 9.0, 72.0);
   float stones = sstep(0.16, 0.02, lap.y - lap.x);
   stones *= step(0.55, unit(pfbm(p * 3.0, 24.0, 2)));
 
@@ -64,14 +66,24 @@ void surf(vec2 uv, out vec3 albedo, out float height, out float rough, out float
 export const SCORIA = HELP + /* glsl */ `
 void surf(vec2 uv, out vec3 albedo, out float height, out float rough, out float ao){
   vec2 p = uv * 8.0;
-  vec2 ves = pworley(p * 6.0, 48.0);
+  /* VESICLES ARE MILLIMETRES, NOT CENTIMETRES. At 48 cells across a texture
+   * that tiles every 2.9 m each bubble was 6 cm across, which reads as a golf
+   * ball rather than as gas trapped in cooling rock — and on a mountain with
+   * no grass or trees to interrupt it, that is the whole surface. 160 cells
+   * puts them at 18 mm, which is the size they are. */
+  vec2 ves = pworley(p * 20.0, 160.0);
   float bubble = sstep(0.34, 0.0, ves.x);          // the holes
-  vec2 big = pworley(p * 2.0, 16.0);
-  float clast = sstep(0.30, 0.04, big.y - big.x);  // edges between lumps
-  float grit = unit(pfbm(p * 10.0, 80.0, 3));
+  /* CLASTS ARE RUBBLE, NOT PAVING. Once the vesicles came down to 18 mm this
+   * took over the surface: 16 cells across a 2.9 m tile is an 18 cm polygon,
+   * and a field of those reads as cracked mud or a tiled floor. Broken scoria
+   * is 3 to 10 cm, so the frequency goes up and the joint darkening comes
+   * down — the lumps should be felt, not outlined. */
+  vec2 big = pworley(p * 5.5, 44.0);
+  float clast = sstep(0.22, 0.03, big.y - big.x);  // edges between lumps
+  float grit = unit(pfbm(p * 18.0, 144.0, 3));
   float mass = unit(pfbm(p * 0.6, 5.0, 4));
 
-  height = 0.5 - bubble * 0.42 - clast * 0.22 + grit * 0.10;
+  height = 0.5 - bubble * 0.34 - clast * 0.14 + grit * 0.12;
 
   /* Iron red where it oxidised, purple-black in the shadow of every vesicle,
    * and a rust bloom on the broad masses so the field is not one hue. */
@@ -81,7 +93,7 @@ void surf(vec2 uv, out vec3 albedo, out float height, out float rough, out float
   albedo = mix(deep, rust, contrast(grit, 1.3));
   albedo = mix(albedo, bloom, contrast(mass, 1.6) * 0.45);
   albedo *= 1.0 - bubble * 0.55;
-  albedo *= 1.0 - clast * 0.24;
+  albedo *= 1.0 - clast * 0.15;
 
   rough = 0.92 - bubble * 0.10;
   ao = 1.0 - bubble * 0.55 - clast * 0.20;

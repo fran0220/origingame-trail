@@ -37,7 +37,20 @@ import { trackElevation, STAGES, BOUNDS, DATUM, VERT, crossSection, POOLS } from
  * the height it comes down to. 150 m of run for up to 550 m of fall is steep —
  * about 75 degrees at the worst — but this band is outside anywhere the player
  * can walk and its only job is to close the shape honestly. */
-export const EDGE_FALL = 150;
+/* 420 m, not 150. The mountain has to come down to the plateau at its own
+ * boundary or the level is a slab, but doing it in 150 m means up to 550 m of
+ * fall over 150 of run — a 75 degree face all the way round, which from the
+ * South Crater floor is a hard black wall standing on the horizon with a
+ * straight edge across the top. Widening the band to 420 m brings that to
+ * about 40 degrees, which is a mountainside.
+ *
+ * AND IT MUST BE SHORTER THAN THE LEVEL'S HALF-WIDTH. Tried at 420 first and
+ * the crater floor tilted: the field is 660 m across, so a 420 m band from
+ * both sides overlaps in the middle and the whole level gets lerped toward the
+ * plateau — at the centreline it was still 10% plateau, and the dead-flat ash
+ * pan that the level is built around acquired a slope. 280 leaves 50 m of
+ * untouched ground at the narrowest point. */
+export const EDGE_FALL = 280;
 export const PLATEAU_Y = -25;
 
 export const STEP = 1.7;
@@ -231,7 +244,7 @@ export function makeTerrainMaterial(renderer) {
     tMacro: { value: macro.map },
   };
 
-  mat.customProgramCacheKey = () => 'tongariro-ground-v1';
+  mat.customProgramCacheKey = () => 'tongariro-ground-v3';
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     mat.userData.shader = sh;
@@ -263,6 +276,13 @@ export function makeTerrainMaterial(renderer) {
        * need the same three and computing them three times is three times the
        * texture fetches for an identical answer. */
       void groundWeights(){
+        /* WRONG LEVER, TRIED AND REVERTED. The scoria read as a printed
+         * pattern on the ridge, so I halved this to 0.17 to double the tile
+         * period from 2.9 m to 5.9 — and it got worse, because the visible
+         * feature was never the TILE, it was the vesicles inside it. Doubling
+         * the period doubled them too and turned 6 cm bubbles into 12 cm golf
+         * balls. The fix belongs in the texture, not in its scale: the worley
+         * frequency in groundTex.js went up instead. */
         gUv = vWPos.xz * 0.34;
         /* A wall cannot use a top-down UV: at 70 degrees the projection
          * stretches the texture into vertical smears, and this level is mostly
