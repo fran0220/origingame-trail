@@ -34,22 +34,22 @@ const CONES = [
     /* 2291 m, and only 2500 years old — which is why it has no gullies worth
      * the name and a near-perfect profile. The steepness is real: the upper
      * cone is at 33 degrees, the angle loose scoria stands at and no steeper. */
-    profile: 1.28, gully: 0.20, snowLine: 0.10, rock: 0x3a2a22, snow: 0xd8dee4,
-    segments: 96,
+    profile: 1.28, gully: 0.85, snowLine: 0.14, rock: 0x3a2a22, snow: 0xd8dee4,
+    segments: 128,
   },
   {
     name: 'tongariro-massif', x: 1900, z: -3100, base: 20, height: 760, radius: 2100,
     /* The old massif is a shield of overlapping craters, not a cone: lower,
      * broader, and cut about by everything that has erupted out of it for
      * 275,000 years. */
-    profile: 0.72, gully: 0.62, snowLine: 0.05, rock: 0x453529, snow: 0xd2d8de,
+    profile: 0.72, gully: 1.05, snowLine: 0.07, rock: 0x453529, snow: 0xd2d8de,
     segments: 72,
   },
   {
     name: 'ruapehu', x: -4200, z: -6400, base: 10, height: 1760, radius: 3400,
     /* 2797 m and permanently snowed: the only one of the three with ice on it
      * all year, and at this distance that white cap is most of what it is. */
-    profile: 0.94, gully: 0.44, snowLine: 0.34, rock: 0x3e3630, snow: 0xe2e8ee,
+    profile: 0.94, gully: 0.72, snowLine: 0.40, rock: 0x3e3630, snow: 0xe2e8ee,
     segments: 88,
   },
 ];
@@ -84,42 +84,128 @@ const RING = { radius: 9000, height: 120, segments: 128, colour: 0x6b6257, inner
 
 function coneGeometry(spec, rng) {
   const { segments: S, radius: R, height: H, profile: P, gully: G } = spec;
-  const RINGS = 34;
+  const RINGS = 46;
   const pos = [], col = [], idx = [];
   const rock = new THREE.Color(spec.rock);
   const snow = new THREE.Color(spec.snow);
+  const lava = new THREE.Color(0x241d1b);
   const c = new THREE.Color();
 
+  /* THE FIVE THINGS A SMOOTH TRIANGLE DOES NOT HAVE, and the first build had
+   * none of them — three cones that were literally perfect triangles with a
+   * point on top, which is a child's drawing of a volcano.
+   *
+   *   A SUMMIT CRATER. Ngauruhoe's top is not a point, it is a 400 m bowl with
+   *   a rim that is higher on one side. That notch is the first thing you can
+   *   identify it by from thirty kilometres away.
+   *
+   *   A BREAK OF SLOPE. The upper cone stands at the angle of repose and the
+   *   apron below it is much gentler, so the profile is concave — a straight
+   *   flank is the tell that nothing has ever slid down it.
+   *
+   *   GULLIES WITH DEPTH. The old term was multiplied by 0.055, which at this
+   *   scale is a few metres on a 1200 m mountain — invisible. Real ones on
+   *   Ngauruhoe are 30 to 60 m deep and they are what the snow lies in.
+   *
+   *   LAVA FLOWS. The 1949 and 1954 flows are black tongues running most of
+   *   the way down the north-west flank and they are the darkest thing on the
+   *   mountain. Two or three of them break the radial symmetry completely.
+   *
+   *   SNOW IN THE GULLIES, not a cap. Snow survives where it is shaded and
+   *   drifted, which is inside the gullies and on the south side — a smooth
+   *   white hat is the thing that made these read as paper cut-outs.
+   */
+/* 0.26, not 0.085. Ngauruhoe's crater is about 400 m across on a cone 3 km
+   * wide, and at 0.085 the truncation was so narrow it read as a chimney or a
+   * plug standing on the summit rather than as a hole in it. The proportion is
+   * the whole point: a crater you can see into says the mountain is open at
+   * the top, and a spike says it is solid. */
+  const craterU = 0.26;
+  const rimHigh = rng * 2.1;          // bearing of the high side of the rim
+  /* Where the lava flows went. Fixed bearings per mountain, wide enough to
+   * read at distance and narrow enough to leave the rest of the cone alone. */
+  const flows = [rng * 1.7 + 0.4, rng * 1.7 + 2.8, rng * 1.7 + 4.9];
+
   for (let j = 0; j <= RINGS; j++) {
-    /* u is 0 at the summit and 1 at the base. */
-    const u = j / RINGS;
+    const u = j / RINGS;                     // 0 summit, 1 base
     for (let s = 0; s <= S; s++) {
       const a = (s / S) * Math.PI * 2;
-      /* The profile: a power curve, which is what a cone at the angle of
-       * repose actually is once the summit has been rounded off by its own
-       * crater. P below 1 is a shield, above 1 is a steep young cone. */
-      const r = R * Math.pow(u, P);
-      /* Erosion: radial gullies that are nothing at the summit and deepest at
-       * the base, because that is where the water has had furthest to run. */
-      const gullies = Math.sin(a * 11 + rng * 3.1) * 0.5 + Math.sin(a * 23 + rng) * 0.3;
-      const cut = gullies * G * u * u * H * 0.055;
-      const y = spec.base + H * (1 - u) - cut;
+
+      /* ONE EXPONENT, AND IT IS BELOW ONE. The first cut added a separate
+       * apron term on top of the main profile and the result was a BELL —
+       * r reached 1.06 R with a wide thin skirt and the mountain read as a
+       * mushroom. There is no need for two terms: for a cone at a constant
+       * angle r is proportional to height below the summit, which is exactly
+       * u to the power one, and every real stratovolcano sits slightly BELOW
+       * that because the upper cone stands at the angle of repose and the
+       * apron below it is gentler. e = 0.9 for Ngauruhoe, 0.5 for the old
+       * shield, from the same P that already distinguished them. */
+      const e = P * 0.70;
+      let r = R * Math.pow(u, e);
+
+      /* Gullies: nothing at the summit, deepest on the mid flank, dying out
+       * again in the apron where the debris has filled them. */
+      const gN = Math.sin(a * 9 + rng * 3.1) * 0.55
+               + Math.sin(a * 17 + rng * 1.7) * 0.30
+               + Math.sin(a * 29 + rng) * 0.15;
+      const gDepth = Math.max(0, gN) * G * Math.sin(Math.min(1, u / 0.85) * Math.PI) * H * 0.075;
+
+      /* The crater: the top of the cone is cut off into a bowl, and the rim
+       * is higher on one side. */
+      let y = spec.base + H * (1 - u);
+      const rimLift = Math.cos(a - rimHigh) * 0.5 + 0.5;
+      if (u < craterU) {
+        const k = u / craterU;                       // 0 centre, 1 rim
+        /* The rim matches the cone exactly at u = craterU, so there is no lip
+         * flaring outward — the first version scaled the crater radius
+         * independently and the summit came out as a trumpet on a stick. */
+        /* CLOSES AT THE CENTRE. It went to 0.30 of the crater radius at k = 0,
+         * which leaves a HOLE through the middle of the mesh — the summit was
+         * a donut with sky visible through it. A crater has a floor. */
+        r = R * Math.pow(craterU, e) * k;
+        /* Floor of the bowl sits well below the rim; the rim itself is
+         * tilted. */
+        /* A shallow bowl with a nearly flat floor, and a rim that is only
+         * slightly proud. Deeper than this and it reads as a funnel; the
+         * previous 0.085 with a 0.030 rim lift made a trumpet. */
+        y = spec.base + H - H * 0.052 * (1 - k * k * k) + H * 0.016 * rimLift * k;
+      } else {
+        y -= gDepth;
+      }
+
+      /* Lava flows: a shallow raised tongue on a few bearings, running from
+       * just below the crater to most of the way down. */
+      let onFlow = 0;
+      for (const f of flows) {
+        const d = Math.abs(((a - f + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+        onFlow = Math.max(onFlow, smoothstep(0.24, 0.05, d));
+      }
+      onFlow *= smoothstep(craterU + 0.02, 0.18, u) * (1 - smoothstep(0.72, 0.94, u));
+      y += onFlow * H * 0.012;
+      r += onFlow * R * 0.006;
+
       pos.push(Math.cos(a) * r, y, Math.sin(a) * r);
-      /* SNOW WHERE u IS SMALL, BECAUSE u IS 0 AT THE SUMMIT. Written the
-       * other way round first and every cone came out 86% white: with
-       * snowLine 0.86 the test passed everywhere below the top sixth, which
-       * is the whole mountain. A snow line is an altitude, and on this
-       * parameterisation altitude runs backwards.
-       *
-       * Lower on the south flank — the side facing away from the sun in this
-       * hemisphere, and the reason every photograph of these three has more
-       * snow on one side than the other. */
+
+      /* Snow where it is shaded and drifted: inside the gullies, on the south
+       * flank, above the line — never as a smooth cap. */
       const south = Math.max(0, -Math.sin(a));
-      const line = spec.snowLine * (1 + south * 0.35);
-      const white = smoothstep(line, line * 0.55, u);
-      c.copy(rock).lerp(snow, clamp(white, 0, 1));
+      const line = spec.snowLine * (1 + south * 0.55);
+      const inGully = clamp(Math.max(0, gN) * 1.5, 0, 1);
+      const white = smoothstep(line, line * 0.45, u) * (0.35 + 0.65 * inGully)
+                  + smoothstep(line * 0.5, line * 0.2, u) * 0.5;
+/* Oxidised bands. A cone this young is not one grey: the scoria that
+       * built it is rusty where it has weathered and dark where it has not,
+       * and the bands follow the eruptions that laid them down — so they run
+       * AROUND the mountain, not up it. Without them the flanks are one flat
+       * value and the gullies are the only thing on a very large object. */
+      const band = Math.sin(u * 23 + rng * 2) * 0.5 + 0.5;
+      c.copy(rock).lerp(new THREE.Color(0.232, 0.128, 0.086),
+                        Math.pow(band, 2.2) * 0.55 * (1 - smoothstep(0.72, 0.95, u)));
+      c.lerp(snow, clamp(white, 0, 1) * (1 - onFlow * 0.85));
+      /* The flows are the darkest thing on the mountain. */
+      c.lerp(lava, onFlow * 0.88);
       /* Gullies hold shadow whatever is in them. */
-      const shade = 1 - clamp(gullies * 0.5 + 0.5, 0, 1) * 0.22 * u;
+      const shade = 1 - clamp(Math.max(0, gN), 0, 1) * 0.30 * Math.min(1, u * 2);
       col.push(c.r * shade, c.g * shade, c.b * shade);
     }
   }
