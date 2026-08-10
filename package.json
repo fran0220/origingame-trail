@@ -27,7 +27,8 @@
     "test:seating": "node tools/seating.mjs lake",
     "audit:seating": "node tools/seating.mjs lake && node tools/seating.mjs jungle --report",
     "test:lap": "node tools/lap-standard.mjs",
-    "audit:solidity": "node tools/solidity.mjs lake && node tools/solidity.mjs jungle"
+    "audit:solidity": "node tools/solidity.mjs lake && node tools/solidity.mjs jungle",
+    "audit:frametime": "node tools/frametime.mjs lake && node tools/frametime.mjs jungle"
   },
   "devDependencies": {
     "playwright": "^1.62.0"
