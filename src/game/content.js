@@ -154,7 +154,7 @@ export const SUBJECTS = [
     id: 'buttress-tree', title: '板根巨木', group: '林木',
     at: nearPlant('tree', 0.12, -6.0), radius: 2.8, range: [8, 30], up: 4.0,
     hint: '小径前段，一株撑开板根的大树',
-    text: '雨林的土层薄得可怜，几十厘米之下就是死的。树没法向下扎，只好向外摊开，把自己钉在地面上。',
+    text: '这里的土层薄得可怜，几十厘米之下就是死的。树没法向下扎，只好向外摊开，把自己钉在地面上。',
   },
   {
     id: 'closed-canopy', title: '闭合树冠', group: '林木',
@@ -182,7 +182,7 @@ export const SUBJECTS = [
      * most of the trail's length. */
     at: onTrail(0.62, brookOffset(0.62)), radius: 1.6, range: [3, 18], up: 0.7,
     hint: '小径左侧，循着水声离开小径',
-    text: '这条溪最后会汇进潭里。它比神庙老得多，也会比神庙留得更久。',
+    text: '这条溪最后会汇进潭里。它比捣石厂老得多，也会比捣石厂留得更久。',
   },
   {
     id: 'light-shaft', title: '光柱', group: '光',
@@ -191,22 +191,22 @@ export const SUBJECTS = [
     text: '看得见的光柱意味着空气里有东西——水汽、孢子、被踩起来的浮尘。晴朗的空气不会给你这个。',
   },
   {
-    id: 'gateway', title: '门址', group: '遗迹',
+    id: 'gateway', title: '隧道口', group: '遗迹',
     at: atPoint(5.6, -313.2), radius: 3.2, range: [8, 32], up: 3.0,
     hint: '走出林子后的第一处石构',
-    text: '门是整座建筑最先被看见的部分，也是最先塌的部分。它承的重量最少，可它两侧什么也没有。',
+    text: '轻便铁道从这里进山，穿过一千一百米的石头到另一头。洞口是整条线上最先被看见的部分，也是最后还立着的部分。',
   },
   {
-    id: 'colonnade', title: '柱列', group: '遗迹',
+    id: 'colonnade', title: '机座', group: '遗迹',
     at: atPoint(-6.9, -337.2), radius: 3.0, range: [7, 30], up: 3.2,
     hint: '台地上，一列断柱',
-    text: '柱身是一段段垒起来的鼓形石。塌了以后它们会顺着地势滚开，滚的方向能告诉你墙是朝哪边倒的。',
+    text: '这些混凝土墩曾经托着三十道捣杆。机器拆走了，墩子太重，没人搬得动，于是它们留下来，按当年的间距站着。',
   },
   {
-    id: 'terrace', title: '台地', group: '遗迹',
+    id: 'terrace', title: '厂台', group: '遗迹',
     at: atPoint(-15.0, -341.0), radius: 5.5, range: [14, 48], up: 3.0,
     hint: '整片高出地面的平台',
-    text: '他们先把地做平，再在上面盖房子。地基比墙费的工多，可地基还在，墙没了。',
+    text: '他们先把山坡削成台阶，再在上面装机器。削平比装机器费工得多，可台阶还在，机器没了。',
   },
   {
     id: 'plunge-pool', title: '深潭', group: '水',
@@ -223,7 +223,7 @@ export const SUBJECTS = [
     at: atPoint(SWALLOW.x, SWALLOW.z), radius: 2.0, range: [4, 22],
     up: SWALLOW.depth + 0.6,
     hint: '潭东侧，水消失进地下的地方',
-    text: '潭没有出口，水却没有涨。它从这里下去，进了石灰岩里的某条路。碑上说，扔下去的东西没有浮起来过。',
+    text: '潭没有出口，水却没有涨。它从这里下去，进了石灰岩里的某条路。矿工说，扔下去的东西没有浮起来过。',
   },
   {
     id: 'falls', title: '瀑布', group: '水',
