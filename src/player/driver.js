@@ -260,7 +260,9 @@ export class Driver {
      * far off the seal each one is. Read by the dust. */
     this.wheels = [0, 1, 2, 3].map(() => ({ x: 0, y: 0, z: 0, off: 0 }));
 
-    this.placeAt(0.02);
+    /* 0.005, not 0.02: the start arch is at t = 0.035 and the car must be
+     * BEHIND it, not past it. See the comment on GATES in game/race.js. */
+    this.placeAt(0.005);
   }
 
   /* ── placement ─────────────────────────────────────────────────────────── */
@@ -1132,6 +1134,19 @@ export class Driver {
      * world past the frame edge per metre travelled. */
     cam.fov = lerp(this._baseFov, this._baseFov + 14, fast);
     cam.updateProjectionMatrix();
+
+    /* THE OPENING SHOT, applied last and on top of everything above.
+     *
+     * It is hooked here rather than in main.js on purpose: by the time this
+     * line runs the chase camera has already decided where it wants to be and
+     * where it wants to look, this frame, including lag, lead, glance and
+     * roll. The intro is expressed as an offset from exactly that, so when it
+     * reaches its end the offset is zero and the last frame of the cinematic
+     * IS the first frame of play. There is no hand-off to get wrong, and no
+     * cut for the eye to catch. */
+    if (this.intro && this.intro.active) {
+      this.intro.update(dt, this.pos, this.camPos, this.camLook);
+    }
   }
 
   dispose() { this._detach?.(); }

@@ -164,6 +164,28 @@ function makeRng(seed) {
  * What separates a rally car from a soft-roader is that it is a *low* car with
  * long-travel springs, not a tall one.
  */
+/* ROOF HEIGHT AND BELT LINE, RESET TOGETHER — this is what made the car read
+ * as a tall MPV wearing a rally livery rather than as a rally car.
+ *
+ * Two faults, and neither was the shape of any single panel.
+ *
+ * THE ROOF WAS 1.478 AND FLAT ACROSS THREE STATIONS, from z = 0.42 to 1.62.
+ * That is 1.2 m of dead level roof on a 4.19 m car. A current WRC car is about
+ * 1.36 m to the roof and its peak is a short crown over the B-pillar that
+ * falls away both ways; a long flat top is the single most van-like thing a
+ * body can have, and no amount of arch flare or rear wing argues with it.
+ *
+ * THE BELT LINE WAS AT 0.50, so exactly half the body side was glass. Road
+ * cars are around there; a rally car is nowhere near it. The shell is caged,
+ * the glass is thin polycarbonate and it is kept small, and the visual result
+ * — deep painted flanks under a shallow band of window — is most of why one
+ * looks purposeful standing still. At 0.50 this car had the glass-to-metal
+ * ratio of a people mover.
+ *
+ * Roof down about 8% and the belt up to 0.635 through the cabin, tapering at
+ * both ends so the crown still falls away rather than stepping. The arches,
+ * track and wheels are untouched: they were already right, and they only
+ * looked small because the body above them was too tall. */
 const STATIONS = [
   /* WIDTHS FIRST, because the whole car used to be one width.
    *
@@ -210,8 +232,8 @@ const STATIONS = [
   { z: -0.730, yB: 0.360, yT: 1.030, wB: 0.740, wMax: 0.762, wTop: 0.612, vBelt: 0.55, n: 5.6 },
   { z: -0.590, yB: 0.265, yT: 1.170, wB: 0.752, wMax: 0.800, wTop: 0.668, vBelt: 0.55, n: 4.9 },
   /* rear quarter over the rear arch */
-  { z: -0.340, yB: 0.175, yT: 1.330, wB: 0.760, wMax: 0.845, wTop: 0.715, vBelt: 0.52, n: 3.8 },
-  { z: -0.050, yB: 0.155, yT: 1.448, wB: 0.780, wMax: 0.842, wTop: 0.672, vBelt: 0.50, n: 3.7 },
+  { z: -0.340, yB: 0.175, yT: 1.258, wB: 0.760, wMax: 0.845, wTop: 0.715, vBelt: 0.58, n: 3.8 },
+  { z: -0.050, yB: 0.155, yT: 1.338, wB: 0.780, wMax: 0.842, wTop: 0.672, vBelt: 0.61, n: 3.7 },
   /* roof: very slightly crowned, because a dead flat roof has no highlight on
    * it at all and reads as a lid.
    *
@@ -220,13 +242,13 @@ const STATIONS = [
    * rounds continuously from sill to roof is a bar of soap. 3.7 puts about
    * 50 mm of radius on the shoulder and leaves the rest of the flank straight,
    * which is what carries a long unbroken highlight down the side of a car. */
-  { z: 0.420, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.806, wTop: 0.640, vBelt: 0.50, n: 3.7 },
-  { z: 1.000, yB: 0.15, yT: 1.478, wB: 0.78, wMax: 0.800, wTop: 0.632, vBelt: 0.50, n: 3.7 },
-  { z: 1.620, yB: 0.155, yT: 1.452, wB: 0.78, wMax: 0.800, wTop: 0.616, vBelt: 0.50, n: 3.7 },
+  { z: 0.420, yB: 0.15, yT: 1.362, wB: 0.78, wMax: 0.806, wTop: 0.640, vBelt: 0.635, n: 3.7 },
+  { z: 1.000, yB: 0.15, yT: 1.352, wB: 0.78, wMax: 0.800, wTop: 0.632, vBelt: 0.635, n: 3.7 },
+  { z: 1.620, yB: 0.155, yT: 1.296, wB: 0.78, wMax: 0.800, wTop: 0.616, vBelt: 0.62, n: 3.7 },
   /* windscreen: 0.435 m of rise over 0.68 m of run is 57 degrees from the
    * vertical, which is where modern screens sit — steep enough to be obviously
    * raked, shallow enough that the wipers still have somewhere to park */
-  { z: 1.980, yB: 0.165, yT: 1.260, wB: 0.78, wMax: 0.806, wTop: 0.664, vBelt: 0.52, n: 3.6 },
+  { z: 1.980, yB: 0.165, yT: 1.168, wB: 0.78, wMax: 0.806, wTop: 0.664, vBelt: 0.59, n: 3.6 },
   { z: 2.300, yB: 0.175, yT: 1.020, wB: 0.78, wMax: 0.826, wTop: 0.742, vBelt: 0.55, n: 3.7 },
   /* the doubled station: 80 mm apart with a 30 mm height step, which is how a
    * Catmull-Rom is told that the cowl is a crease and not a curve */

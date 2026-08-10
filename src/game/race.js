@@ -32,7 +32,19 @@ import * as THREE from 'three';
  * player who loses two seconds should be able to name what they lost them on.
  */
 const GATES = [
-  { t: 0.00, name: '起点' },
+  /* THE START LINE IS NOT AT t = 0, AND IT CANNOT BE.
+   *
+   * It was, and the car spawns at the start of the road too, so the player
+   * began 39 m PAST the arch facing away from it. Everything built for the
+   * start — the gantry, the service park, its awnings, the crowd — was behind
+   * the camera at spawn and was never seen by anyone who did not reverse. The
+   * first thing a rally stage shows you is the arch you are about to go
+   * through; this showed you the empty road after it.
+   *
+   * A start line needs road BEHIND it for the car to wait on, so the gate goes
+   * 3.5% in and the car spawns at 0.5%, which leaves about 60 m of run-up with
+   * the arch dead ahead. */
+  { t: 0.035, name: '起点' },
   { t: 0.22, name: '冰碛台地' },
   { t: 0.45, name: '砾石滩' },
   { t: 0.62, name: '第一冲积扇' },

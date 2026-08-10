@@ -11,6 +11,7 @@ import * as jungle from './levels/jungle/index.js';
 import * as lake from './levels/lake/index.js';
 import { Walker } from './player/controller.js';
 import { Driver } from './player/driver.js';
+import { Intro } from './render/intro.js';
 import { Race } from './game/race.js';
 import { CollisionWorld } from './player/collision.js';
 import {
@@ -286,6 +287,21 @@ class Game {
       await step(0.80, '交付赛车');
       this.walker = new Driver(this.camera, this.terrain, this.trail,
                                this.collision).attach(this.canvas);
+      /* The opening shot. Given to the driver rather than run from the frame
+       * loop, because it has to be applied AFTER the chase camera has decided
+       * where it wants to be — see the hook at the end of Driver's camera
+       * update for why that is the only place the join can be invisible.
+       *
+       * Skippable on any input, and that matters more than the shot does: a
+       * cinematic you cannot escape is a tax on every replay after the first,
+       * and a timed stage is meant to be replayed. */
+      this.walker.intro = new Intro(this.camera, { seconds: 9.0 });
+      const skipIntro = () => {
+        if (this.walker?.intro) this.walker.intro.skip();
+      };
+      for (const ev of ['keydown', 'pointerdown', 'touchstart', 'wheel']) {
+        addEventListener(ev, skipIntro, { once: true, passive: true });
+      }
       /* Imported here rather than at the top of the file, because a walked
        * level has no use for several thousand triangles of bodywork and no
        * reason to pay for parsing it. This is the only dynamic import in the
