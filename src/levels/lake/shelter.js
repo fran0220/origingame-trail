@@ -224,9 +224,20 @@ function treeGeometry(kind, variant, rng, detail = 1) {
       branch(out, 0, y, 0, Math.cos(a) * reach, y + 0.7 + rng() * 0.7,
              Math.sin(a) * reach, 0.11, 0.035, bark);
     }
-    crownClumps(out, kind, h, rng, top, bot, dt, Math.round(28 * N), (u) => ({
+    /* SAME FAULT THE POPLARS HAD, AND THE SAME ARITHMETIC. 28 clumps at 1.42 m
+     * radius on a crown 3.7 m in half-width is TWO AND A HALF BALLS ACROSS THE
+     * TREE, and no amount of overlap rescues a canopy built from three
+     * spheres. Frame-share work already proved this on the poplars: smaller
+     * clumps at detail 0 cost fewer triangles than fewer large smooth ones and
+     * put six masses across instead of two. */
+    /* Detail 1, not 0, unlike the poplars. A poplar is a narrow column usually
+     * seen at fifty metres; a shelterbelt pine is four metres across and stands
+     * beside the road, so the same coarse ball that reads as foliage at
+     * distance reads as a stack of crystals at eight. The clump COUNT is the
+     * fix, not the facet count — and frame time is insensitive to both. */
+    crownClumps(out, kind, h, rng, top, bot, dt, Math.round(96 * N), (u) => ({
       y: 0.46 + 0.52 * u,
-      r: 1.42 * (1 - u * 0.38),
+      r: 0.66 * (1 - u * 0.38),
       squash: 0.80,
       /* Ragged: a mature radiata's outline is not a dome, it is a dome with
        * pieces missing where limbs have been lost to wind. */
@@ -244,9 +255,9 @@ function treeGeometry(kind, variant, rng, detail = 1) {
       branch(out, 0, h * 0.40, 0, Math.cos(a) * reach, h * (0.62 + rng() * 0.2),
              Math.sin(a) * reach, 0.13, 0.04, bark);
     }
-    crownClumps(out, kind, h, rng, top, bot, dt, Math.round(26 * N), (u) => ({
+    crownClumps(out, kind, h, rng, top, bot, dt, Math.round(104 * N), (u) => ({
       y: 0.52 + 0.34 * u,
-      r: 1.48 * (1 - u * 0.22),
+      r: 0.62 * (1 - u * 0.22),
       /* Flattened and hanging — the top of a willow is broad and its edges
        * fall away below the widest point. */
       squash: 0.62,

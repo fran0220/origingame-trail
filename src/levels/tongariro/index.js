@@ -22,6 +22,8 @@ import { Skyline } from './skyline.js';
 import { Lakes } from './lakes.js';
 import { Poles } from './poles.js';
 import { Fumaroles } from './steam.js';
+import { Rockfield } from './rocks.js';
+import { Alpine } from './alpine.js';
 import { TongariroAmbience } from './audio.js';
 import { pick, applyCondition } from './conditions.js';
 import { content } from './content.js';
@@ -116,6 +118,14 @@ class TongariroLevel {
     this.skyline = new Skyline(this.terrain);
     scene.add(this.skyline.root);
 
+    await step(0.72, '撒下火山块与火山弹');
+    this.rock = new Rockfield(this.terrain, this.trail, tier);
+    scene.add(this.rock.root);
+
+    await step(0.80, '在林线以下种下红草丛');
+    this.alpine = new Alpine(this.terrain, this.trail, tier);
+    scene.add(this.alpine.root);
+
     await step(0.88, '注满翡翠湖');
     this.lakes = new Lakes(this.terrain, this.trail);
     scene.add(this.lakes.root);
@@ -129,7 +139,7 @@ class TongariroLevel {
     scene.add(this.steam.root);
   }
 
-  materials() { return [this.terrainMat, ...this.skyline.materials, ...this.lakes.materials, ...this.poles.materials, ...this.steam.materials]; }
+  materials() { return [this.terrainMat, ...this.skyline.materials, ...this.lakes.materials, ...this.poles.materials, ...this.steam.materials, ...this.rock.materials, ...this.alpine.materials]; }
 
   makeAmbience({ camera, walker }) {
     this.ambience = new TongariroAmbience({ camera, walker, terrain: this.terrain });
@@ -158,6 +168,8 @@ class TongariroLevel {
       lakes: this.lakes?.stats(),
       poles: this.poles?.stats(),
       steam: this.steam?.stats(),
+      rock: this.rock?.stats(),
+      alpine: this.alpine?.stats(),
       audio: this.ambience?.stats?.() ?? null,
     };
   }
