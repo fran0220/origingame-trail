@@ -58,7 +58,7 @@ export const CONDITIONS = [
     label: '正午穿顶',
     /* Sun almost overhead. The beams shorten to near-vertical columns and most
      * of the light arrives as sunflecks on the floor instead — which is the
-     * single most characteristic thing about a tropical forest at midday, and
+     * single most characteristic thing about a closed NZ bush interior at midday, and
      * the reason the understorey is shaped the way it is. Less mist, because
      * the morning's has burned off, so the shafts are crisper and fewer. */
     sun: { elevation: 74, azimuth: 188 },

@@ -360,8 +360,9 @@ export class Brook {
  * the ruins put there — and trenching a channel under it would leave the
  * blocks standing on air.
  *
- * So the water leaves the way water leaves a closed basin in limestone, which
- * is what this whole cliff is made of: it goes down a swallow hole. A notch
+ * So the water leaves the way water leaves a closed basin in fractured
+ * greywacke, which is what this whole cliff is made of: it goes down a
+ * swallow hole. A notch
  * cut through the rim at the south-east shoulder, a funnel of bare rock, and a
  * slot running away under an overhang. It costs three metres of terrain
  * instead of forty, it cannot conflict with anything already built, and it

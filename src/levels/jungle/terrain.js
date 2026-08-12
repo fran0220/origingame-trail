@@ -236,7 +236,7 @@ export class Terrain extends Heightfield {
     /* And the way the water gets out again. The basin is a closed hollow —
      * every col out of it is metres above the surface and the west rim is
      * under the ruins' platform — so it drains the way a closed basin in
-     * limestone does, down a swallow hole notched through the south-east
+     * greywacke does, down a swallow hole notched through the south-east
      * shoulder. See world/brook.js. */
     h = swallowCut(x, z, h, POOL_Y);
 

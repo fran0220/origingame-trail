@@ -1,15 +1,15 @@
-/* Lianas: the layer between the canopy and the floor.
+/* Supplejack and kiekie: the layer between the canopy and the floor.
  *
  * The forest is built in two bands with a hole between them. There is a
  * detailed understorey up to about three metres, and there is a canopy from
  * about twelve up, and the eight metres in between contain trunks and nothing
  * else. That gap is why the level, for all its density, still reads as a set
- * of tree columns on a carpet rather than as a volume — a real rainforest has
- * its most tangled layer exactly there.
+ * of tree columns on a carpet rather than as a volume — Karangahake bush has
+ * its most tangled layer exactly there, and it is cane, not tropical liana.
  *
- * Lianas fill it, and they are the right thing to fill it with for a reason
- * beyond botany: they are the only object in the scene whose SILHOUETTE reads
- * against a bright background. Everything else here is a mass. A hanging vine
+ * Supplejack fills it, and it is the right thing to fill it with for a reason
+ * beyond botany: it is the only object in the scene whose SILHOUETTE reads
+ * against a bright background. Everything else here is a mass. A hanging cane
  * is a line, and a line crossing a shaft of light is the strongest depth cue
  * available in a forest interior, because the eye immediately knows which side
  * of it everything else is on.

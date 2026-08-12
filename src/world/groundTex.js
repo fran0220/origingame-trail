@@ -85,15 +85,15 @@ void surf(vec2 uv, out vec3 albedo, out float height, out float rough, out float
   float basin = unit(pfbm(p * 0.5, 4.0, 4));
   float wet = contrast(sstep(0.58, 0.26, height + basin * 0.5), 1.7);
 
-  /* Tropical trail soil is dark. It is lateritic clay that is damp essentially
-   * all the time under closed canopy, and it reads as a deep red-brown, not as
-   * the pale dust of a temperate footpath. Getting this value wrong is what
-   * makes the trail look like poured concrete running through the forest.
+  /* Karangahake track soil is wet greywacke clay, not laterite. Under closed
+   * kanuka and tawa it stays dark, but the hue is olive-brown with pale grit,
+   * not the rust-red of a tropical lateritic path. Getting this value wrong
+   * is what makes the trail look like poured laterite running through NZ bush.
    */
-  vec3 dry   = vec3(0.232, 0.160, 0.104);
-  vec3 damp  = vec3(0.128, 0.086, 0.058);
-  vec3 soak  = vec3(0.052, 0.040, 0.032);
-  vec3 stone = vec3(0.255, 0.244, 0.222);
+  vec3 dry   = vec3(0.210, 0.168, 0.112);
+  vec3 damp  = vec3(0.118, 0.096, 0.068);
+  vec3 soak  = vec3(0.048, 0.042, 0.034);
+  vec3 stone = vec3(0.268, 0.256, 0.232);
 
   albedo = mix(dry, damp, contrast(clay, 1.4));
   // The mass field again, this time as tone: drier compacted lanes against

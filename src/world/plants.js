@@ -1789,21 +1789,20 @@ export function tree(rng, scale = 1) {
    * on the trunk to bark on the buttress happens on a single surface with a
    * single texture on it, which is what the seam between them used to
    * advertise. */
-  const nB = 3 + Math.floor(rng() * 3);
+  /* Surface roots, not tropical flying buttresses. Pūriri and tawa on a
+   * Karangahake bank throw a few thick laterals along the soil; they do not
+   * raise metre-high plates. Keeping two or three low ridges still seats the
+   * bole in the litter without importing a fig. */
+  const nB = 2 + Math.floor(rng() * 2);
   const buts = [];
   for (let i = 0; i < nB; i++) {
     buts.push({
       ang: (i / nB) * Math.PI * 2 + rng() * 0.9,
-      // Sized off the bole rather than in absolute metres. Buttressing is a
-      // response to the load the tree is carrying, so a two-metre giant grows
-      // four-metre plates and a sapling-sized bole grows knee-high ones.
-      h: (0.9 + rng() * 1.1) * (0.8 + 0.75 * rBase) * scale,
-      reach: (0.60 + rng() * 0.80) * (0.7 + 0.8 * rBase) * scale,
-      thick: 0.075 * (0.6 + rBase) * scale,
-      // How wide a sector of the bole this one swells, in radians. Narrow
-      // buttresses on a slim trunk, broad ones on a giant.
-      wid: 0.34 + rng() * 0.30,
-      amp: 0.45 + rng() * 0.45,
+      h: (0.28 + rng() * 0.38) * (0.7 + 0.45 * rBase) * scale,
+      reach: (0.85 + rng() * 0.95) * (0.7 + 0.55 * rBase) * scale,
+      thick: 0.095 * (0.6 + rBase) * scale,
+      wid: 0.42 + rng() * 0.28,
+      amp: 0.22 + rng() * 0.22,
     });
   }
 
@@ -1988,10 +1987,9 @@ export function tree(rng, scale = 1) {
   }
 
   /* Climbers. A bare cylinder is the most obviously synthetic thing that can
-   * be in frame, and in a rainforest it does not exist — every trunk carries
-   * lianas, aerial roots and a coat of moss, and the vertical lines of those
-   * climbers are half of what gives the trunk its scale and its silhouette. */
-  const nClimb = 2 + Math.floor(rng() * 4);
+   * be in frame. In this gorge the vertical lines are supplejack and kiekie,
+   * not tropical lianas, and they are half of what gives the trunk its scale. */
+  const nClimb = 1 + Math.floor(rng() * 3);
   for (let i = 0; i < nClimb; i++) {
     const a0 = rng() * Math.PI * 2;
     const twistRate = (rng() - 0.5) * 2.4;
@@ -2016,18 +2014,16 @@ export function tree(rng, scale = 1) {
             { occ: (a, s) => 0.35 + 0.5 * s, moss: () => 0.22 });
   }
 
-  /* Shingle aroids on the lower bole.
+  /* Kiekie and seedling foliage on the lower bole.
    *
    * This is the part of a trunk anyone walking the trail actually sees, and a
-   * bare cylinder there is the loudest remaining CG tell on a tree. Climbing
-   * aroids press themselves flat against the bark in overlapping ranks — the
-   * "shingle" habit — and they are all over the first few metres of almost
-   * every mature trunk in a lowland forest. They also do useful work as
-   * geometry: they give the trunk a broken, leafy edge instead of a clean
-   * silhouette, which is what makes it stop reading as a cylinder.
+   * bare cylinder there is the loudest remaining CG tell on a tree. In this
+   * gorge the shingle habit belongs to kiekie and young ponga, not climbing
+   * aroids. They also do useful work as geometry: they give the trunk a
+   * broken, leafy edge instead of a clean silhouette.
    */
   const sm = new THREE.Matrix4(), se = new THREE.Euler();
-  const nShingle = 14 + Math.floor(rng() * 22);
+  const nShingle = 8 + Math.floor(rng() * 12);
   const sa0 = rng() * Math.PI * 2, sSpin = (rng() - 0.5) * 1.6;
   for (let i = 0; i < nShingle; i++) {
     const s = Math.pow(rng(), 1.4) * 0.30;

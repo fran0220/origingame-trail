@@ -4,9 +4,9 @@
  *
  * The brief for the level is a walk that opens into a clearing with crumbling
  * ruins and a fall behind them, and the one thing that can go wrong with that
- * is putting the ruins where they can be seen from everywhere. A temple that
+ * is putting the ruins where they can be seen from everywhere. A battery that
  * is simply present in the middle distance for the last eighty metres is
- * scenery; a temple that arrives is an event. So the whole complex is laid out
+ * scenery; a battery that arrives is an event. So the whole complex is laid out
  * against the trail's own sightlines rather than on a plan drawn from above,
  * and it is built in four beats:
  *

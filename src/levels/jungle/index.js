@@ -90,7 +90,7 @@ const BASE_MOOD = {
     ground: 0x4d5a41,
     haze: 0x475538,
     /* Rayleigh-shaped, but well above true sea-level optical depth: humid
-     * tropical air carries far more aerosol than the clear-sky model accounts
+     * humid gorge air carries far more aerosol than the clear-sky model accounts
      * for, and the warmth it puts in the beam is most of what makes the forest
      * read as hot. */
     beta: [0.19, 0.42, 0.95],

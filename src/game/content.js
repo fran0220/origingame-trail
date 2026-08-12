@@ -125,9 +125,9 @@ export const GLYPHS = [
      * spot is still west of the pool and still off the trail at 7 m, which is
      * what the hint promises, but the reader stands on level ground. */
     id: 'abandon', t: 0.93, at: atPoint(-7.0, -374.0),
-    title: '弃殿',
+    title: '停产告示',
     hint: '潭西的石阶下',
-    text: '不是一夜之间。\n是一年比一年少几个人，\n直到最后一个数水者把刻刀放下。',
+    text: '不是一夜之间。\n是一年比一年少几个人，\n直到最后一班把灯熄了，走出隧道。',
   },
   {
     id: 'last', t: 0.975, at: atPoint(LIP.x - 4.2, IMPACT.z + 3.4),
@@ -151,10 +151,10 @@ export const GLYPHS = [
  */
 export const SUBJECTS = [
   {
-    id: 'buttress-tree', title: '板根巨木', group: '林木',
+    id: 'buttress-tree', title: '普里里', group: '林木',
     at: nearPlant('tree', 0.12, -6.0), radius: 2.8, range: [8, 30], up: 4.0,
-    hint: '小径前段，一株撑开板根的大树',
-    text: '这里的土层薄得可怜，几十厘米之下就是死的。树没法向下扎，只好向外摊开，把自己钉在地面上。',
+    hint: '小径前段，一株带板状侧根的普里里',
+    text: '普里里在峡谷里长得又矮又宽。浅土留不住深根，它就把侧根摊开，把自己钉在河岸上。',
   },
   {
     id: 'closed-canopy', title: '闭合树冠', group: '林木',
@@ -223,7 +223,7 @@ export const SUBJECTS = [
     at: atPoint(SWALLOW.x, SWALLOW.z), radius: 2.0, range: [4, 22],
     up: SWALLOW.depth + 0.6,
     hint: '潭东侧，水消失进地下的地方',
-    text: '潭没有出口，水却没有涨。它从这里下去，进了石灰岩里的某条路。矿工说，扔下去的东西没有浮起来过。',
+    text: '潭没有出口，水却没有涨。它从这里下去，进了灰色瓦克岩里的一条缝。矿工说，扔下去的东西没有浮起来过。',
   },
   {
     id: 'falls', title: '瀑布', group: '水',

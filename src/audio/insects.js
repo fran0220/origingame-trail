@@ -1,6 +1,6 @@
 /* Insects — the continuous bed of the soundscape.
  *
- * In any real rainforest recording the insects are the floor the rest sits
+ * In any real New Zealand bush recording the insects are the floor the rest sits
  * on: broadband, dense, and never silent. The design splits them by what can
  * loop and what cannot:
  *

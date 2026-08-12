@@ -13,7 +13,7 @@ import { clamp, smoothstep, dbToGain } from './dsp.js';
  * to peak 1. Working in dB against normalized sources means a level here
  * survives any change to a layer's synthesis recipe.
  *
- * The shape of the table is the shape of a rainforest recording: insects
+ * The shape of the table is the shape of a New Zealand bush recording: insects
  * loudest and constant, birds clearly above the bed but intermittent, wind
  * mostly subliminal, and the falls given enough headroom to genuinely
  * dominate the last fifty metres — the brief's one explicit crescendo. */

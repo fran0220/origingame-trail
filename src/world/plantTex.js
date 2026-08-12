@@ -7,10 +7,10 @@
  *
  * The atlas is a grid of four shape families across by four individuals down.
  *
- *   column 0  broad ovate    aroids, philodendron, the big understory blades
- *   column 1  lanceolate     narrow strap leaves, sedges, grass
- *   column 2  pinnate half   one side of a palm or fern frond, rachis at left
- *   column 3  small ovate    vine leaves, seedlings, ground sprigs
+ *   column 0  broad ovate    rangiora, five-finger, kawakawa understorey
+ *   column 1  lanceolate     lancewood, sedges, toetoe blades
+ *   column 2  pinnate half   one side of a nīkau or ponga frond, rachis at left
+ *   column 3  small ovate    kiekie, seedlings, ground sprigs
  *
  * Column 2 earns its place: a palm frond built from one card per leaflet is
  * ~40 draw-triangles and looks correct, but there are thousands of fronds in
@@ -425,10 +425,10 @@ void leafSurf(vec2 uv, out vec3 alb, out float a, out float h, out float rough, 
    * living plant from a fake one under a moving light. */
   /* Gloss is per leaf type, not global.
    *
-   * A broad aroid blade has a thick waxy cuticle and throws a sharp, oily
-   * highlight; a fern frond and a grass blade do not, they are matte and
+   * A rangiora or kawakawa blade has a thick waxy cuticle and throws a sharp,
+   * oily highlight; a ponga frond and a grass blade do not, they are matte and
    * slightly hairy. Setting one roughness for all of them means choosing
-   * between plastic aroids and mirror-finish ferns, and the mirror ferns are
+   * between plastic shrubs and mirror-finish ferns, and the mirror ferns are
    * worse — a dense mass of small facets at low roughness catches the sky on
    * every one of them and the whole plant goes white.
    *
@@ -438,14 +438,14 @@ void leafSurf(vec2 uv, out vec3 alb, out float a, out float h, out float rough, 
    * aliasing, not foliage. The material clamps roughness upward with mip level
    * as well, but starting from a slightly duller cuticle costs nothing in the
    * foreground and removes most of it. */
-  /* Tightened for the waxy blades only. The highlight on the near aroids was
-   * a broad soft sheen spread over most of a leaf, which is the response of a
-   * matte dielectric, not of a cuticle — a real waxed blade throws a small
-   * hard spot and is dark everywhere else, and that concentration is what
-   * makes the surface read as coated rather than as painted. The matte end
-   * (ferns, grass) is untouched: those genuinely are hairy and diffuse, and
-   * dragging them down with the aroids is how a frond mass turns into a sheet
-   * of white sparkle. The mid-distance guard is elsewhere and unchanged —
+  /* Tightened for the waxy blades only. The highlight on the near rangiora
+   * was a broad soft sheen spread over most of a leaf, which is the response
+   * of a matte dielectric, not of a cuticle — a real waxed blade throws a
+   * small hard spot and is dark everywhere else, and that concentration is
+   * what makes the surface read as coated rather than as painted. The matte
+   * end (ferns, grass) is untouched: those genuinely are hairy and diffuse,
+   * and dragging them down with the shrubs is how a frond mass turns into a
+   * sheet of white sparkle. The mid-distance guard is elsewhere and unchanged —
    * LOD_DAMP forces roughness toward 0.94 with the mip footprint — so buying
    * a tighter lobe here costs nothing beyond the near field. */
   float wax = (id == 0 || id == 3) ? 0.0 : (id == 1 ? 0.5 : 1.0);
@@ -505,10 +505,10 @@ void main(){
  * a fixed span stretched a two-metre bole's texture to four times the size of
  * a sapling's, and a trunk with metre-wide fissures reads as a redwood.
  *
- * Tropical bark is mostly thin, smooth and pale — the deeply furrowed oak-bark
- * default is a temperate look and reads wrong here — but it is never clean.
- * Lichen crusts, algal green film on the wet side, and moss in every crevice
- * are what actually cover it.
+ * Karangahake bark is thin, smooth and pale-grey on tawa and māhoe, darker
+ * and plated on pūriri — never oak-furrowed, never lateritic. It is never
+ * clean. Lichen crusts, algal green film on the wet side, and moss in every
+ * crevice are what actually cover it.
  */
 export const BARK = /* glsl */ `
 float unit(float v){ return v * 0.5 + 0.5; }
@@ -703,7 +703,7 @@ void surf(vec2 uv, out vec3 albedo, out float height, out float rough, out float
    * Twice as tall as it is wide, because everything on a bole is. */
   float tone = unit(pfbm(vec2(p.x * 1.5, p.y * 0.25) + 5.0, vec2(12.0, 6.0), 4));
   float grit = unit(pfbm(p * vec2(11.0, 5.0), vec2(88.0, 120.0), 3));
-  // Horizontal lenticel scars, a strong tell for smooth tropical bark.
+  // Horizontal lenticel scars, a strong tell for smooth tawa / māhoe bark.
   float lent = sstep(0.86, 1.0, unit(pnoise(vec2(p.x * 6.0, p.y * 30.0), vec2(48.0, 720.0))));
 
   /* Now that the mask genuinely selects the crack and not the bark, the sign
@@ -718,7 +718,7 @@ void surf(vec2 uv, out vec3 albedo, out float height, out float rough, out float
    * having everywhere else. */
   height += (fib - 0.5) * 0.11;
 
-  /* Tropical bark is pale, and this map was pale and *neutral*, which turned
+  /* Host-tree bark is pale, and this map was pale and *neutral*, which turned
    * out to be the other half of the stone problem.
    *
    * Measuring the last bake settled an argument that was being had in the

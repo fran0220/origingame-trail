@@ -13,9 +13,9 @@
  *    exponentially long time. Real birds repeat locally and are silent
  *    globally; a per-call uniform timer gets both of those wrong.
  *
- * The species are invented, but each is built on a real syrinx trick:
- * near-pure whistles, low hoots with a couple of harmonics, fast FM trills,
- * and one harsh harmonic-stack screech kept far away.
+ * The voices are New Zealand bush birds, each built on a real syrinx trick:
+ * korimako whistles, ruru hoots, riroriro chirps, tūī trills, and a distant
+ * kākā croak kept far away.
  */
 import {
   makeRng, rrange, expRand, biquad, smoothstep, normalize, TAU,
@@ -44,8 +44,8 @@ function addTone(out, sr, t0, dur, fFn, aFn, partials) {
  * are pure wasted memory once multiplied across a bank. */
 
 function whistler(sr, rng) {
-  // Two to four clear descending whistles — the "someone whistling in the
-  // canopy" voice that carries a rainforest's middle distance.
+  // Two to four clear descending whistles — a korimako / bellbird phrase
+  // that carries a New Zealand bush interior's middle distance.
   const notes = 2 + ((rng() * 2.4) | 0);
   const plan = [];
   let t = 0.03, f0 = 2350 * rrange(rng, 0.94, 1.06);
@@ -66,7 +66,7 @@ function whistler(sr, rng) {
 }
 
 function hooter(sr, rng) {
-  // Low double hoot, motmot-like. Almost sinusoidal; the faint 2nd and 3rd
+  // Low double hoot, morepork / ruru. Almost sinusoidal; the faint 2nd and 3rd
   // harmonics are what make it a chest voice instead of a test tone.
   const f0 = rrange(rng, 520, 600);
   const dur = rrange(rng, 0.26, 0.32), gap = rrange(rng, 0.18, 0.26);
@@ -81,9 +81,10 @@ function hooter(sr, rng) {
 }
 
 function chirper(sr, rng) {
-  // Sharp rising chirps in a doublet or triplet — a manakin-like understory
-  // voice, close and bright. The exponential rise matters: a linear sweep of
-  // the same width sounds like a slide whistle, because pitch is log.
+  // Sharp rising chirps in a doublet or triplet — riroriro / grey warbler
+  // in the understorey, close and bright. The exponential rise matters: a
+  // linear sweep of the same width sounds like a slide whistle, because pitch
+  // is log.
   const chirps = 2 + (rng() < 0.4 ? 1 : 0);
   const dur = rrange(rng, 0.055, 0.075), gap = rrange(rng, 0.08, 0.13);
   const f0 = rrange(rng, 1700, 2000);
@@ -113,10 +114,10 @@ function trill(sr, rng) {
 }
 
 function screech(sr, rng) {
-  // Parrot-ish screech: a harmonic stack roughened by ~100 Hz AM, with a
-  // band of noise mixed in. Kept for distance only — the scheduler never
-  // places it close, because up close it is grating in exactly the way a
-  // real macaw is, and this walk is supposed to be pleasant.
+  // Kākā croak: a harmonic stack roughened by ~100 Hz AM, with a band of
+  // noise mixed in. Kept for distance only — the scheduler never places it
+  // close, because up close it is grating in exactly the way a real kākā is,
+  // and this walk is supposed to be pleasant.
   const calls = 2 + (rng() < 0.3 ? 1 : 0);
   const dur = rrange(rng, 0.2, 0.26), gap = rrange(rng, 0.12, 0.2);
   const f0 = rrange(rng, 980, 1180);

@@ -134,8 +134,9 @@ function butterflyGeometry() {
   const b2 = push(0, 0.012, 0, dark, 0);
   idx.push(b0, b1, b2, b0, b2, b1);
   for (const s of [-1, 1]) {
-    /* Morpho blue on top. The upper surface is the one that flashes. */
-    const up = [0.085, 0.220, 0.640];
+    /* Kahukōwhai / yellow admiral. Orange-brown with a dark rim — the flash
+     * a New Zealand bush track actually has, not a morpho. */
+    const up = [0.62, 0.28, 0.055];
     const fore = [
       push(0, 0, 0.028, up, s), push(0.075 * s, 0, 0.050, up, s),
       push(0.098 * s, 0, -0.010, up, s), push(0, 0, -0.014, up, s),
@@ -252,7 +253,7 @@ export class JungleLife {
         `);
       this._flySh = sh;
     };
-    flyMat.customProgramCacheKey = () => 'jungle-butterfly';
+    flyMat.customProgramCacheKey = () => 'karangahake-admiral';
     this.materials.push(flyMat);
 
     const flies = new THREE.InstancedMesh(bgeo, flyMat, N_FLY);

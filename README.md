@@ -2,11 +2,12 @@
 
 [Play on OriginGame](https://play.origingame.dev/yupadwblpc/)
 
-Two first-person field walks built in Three.js with zero external art assets:
-the original winding jungle trail into overgrown stone ruins and a waterfall,
-and a timed rally stage on State Highway 8 along the turquoise shore of Lake Tekapo toward
-the Southern Alps. Each is a small exploration game recorded through the same
-field notebook.
+Three first-person field walks built in Three.js with zero external art assets:
+the Karangahake Gorge walk through regenerating native bush into the masonry of
+the Talisman gold battery and a waterfall; a timed rally stage on State Highway 8
+along the turquoise shore of Lake Tekapo toward the Southern Alps; and a day on
+the Tongariro Alpine Crossing. Each is a small exploration game recorded through
+the same field notebook.
 
 Every texture, mesh and sound in the scene is generated procedurally in code.
 There are no image files, no models, no audio recordings and no material
@@ -28,7 +29,7 @@ npm run serve
 ```
 
 Then open `http://localhost:8099/` and choose a scene. Deep links are
-`#level=jungle` and `#level=lake`. Any other static server works equally well;
+`#level=jungle`, `#level=lake` and `#level=tongariro`. Any other static server works equally well;
 opening `index.html` from the filesystem does not, because ES modules and workers
 need a real origin.
 
@@ -69,8 +70,8 @@ The two runs share one versioned save envelope but retain independent progress.
 **Inscriptions.** Twelve carved tablets stand along the route, six within a
 couple of metres of the tread and six far enough off it that they can only be
 found by leaving the path. Each holds one fragment of what the people who built
-the temple wrote down; read in any order, they add up to why the place was
-abandoned. The script on them is generated, not authored: each panel hashes to a
+the battery left behind; read in any order, they add up to why the last shift
+walked out. The script on them is generated, not authored: each panel hashes to a
 grid of chisel strokes and rings, carved into the same height field the stone's
 weathering is built from, with an erosion mask running over the top so a tablet
 loses whole phrases to one weathered patch rather than losing every stroke a
@@ -127,8 +128,8 @@ reachable ending; the notebook can still be finished afterwards.
 - 100,799 individual plants across 16 species, all built from two primitives: a
   bent leaf card and a swept tube.
 - 536 individually eroded stone blocks. The ruin plan is computed before the
-  terrain, so the ground builds a terrace and spoil banks beneath the temple
-  rather than the temple being dropped onto whatever the ground happened to do.
+  terrain, so the ground builds a terrace and spoil banks beneath the battery
+  rather than the masonry being dropped onto whatever the ground happened to do.
 - 12 inscription tablets set into the finished heightfield, each one mesh
   mapping into its own cell of a single 16-panel bake.
 - A procedural character: 22 bones, 7,488 triangles, and a 512-square procedural

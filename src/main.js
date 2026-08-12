@@ -119,7 +119,7 @@ function autoTier() {
  * startup for no gameplay benefit. */
 export const LEVELS = {
   jungle: {
-    title: '雨林小径',
+    title: '卡兰加哈基峡谷',
     load: () => import('./levels/jungle/index.js'),
   },
   lake: {
@@ -137,7 +137,7 @@ function showLevelLoading(id) {
   const level = document.getElementById('bootLevel');
   const step = document.getElementById('bootStep');
   const bar = document.getElementById('bootBar');
-  if (level) level.textContent = entry?.title ?? '雨林小径';
+  if (level) level.textContent = entry?.title ?? '卡兰加哈基峡谷';
   if (step) step.textContent = '正在载入关卡代码';
   if (bar) bar.style.width = '2%';
 }

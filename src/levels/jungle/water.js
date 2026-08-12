@@ -749,10 +749,9 @@ export class Water {
         tFoam: { value: this.tex.foam },
         uTime: { value: 0 },
         /* Measured off the deep end of a shaded forest pool rather than
-         * picked: it is very dark, and barely blue. Tropical plunge pools are
-         * not the postcard turquoise — that colour comes from a white
-         * limestone or sand bed lit from above, and this one is dark rock
-         * under a canopy. */
+         * picked: it is very dark, and barely blue. A Karangahake gorge pool
+         * is not postcard turquoise — that colour comes from a white sand bed
+         * lit from above, and this one is dark greywacke under a canopy. */
         uDeep: { value: new THREE.Color(0x0a1614) },
         /* The other end of the absorption curve. Half a metre of water over
          * wet gravel is not the same colour as four metres of it over nothing

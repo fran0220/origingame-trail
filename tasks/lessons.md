@@ -301,3 +301,17 @@
   sharper; the grain fade and the lighting did. Put the budget back (1.45 m,
   LOD 80/175) and keep the shader work. Geometry that exists only to fight
   aliasing the shader already fades is the grass-card mistake again.
+
+## A New Zealand forest is not a generic rainforest with local names
+
+- Renaming the site Karangahake while leaving morpho-blue butterflies,
+  metre-high flying buttresses, lateritic red clay, limestone swallow holes
+  and motmot/macaw comments is still the wrong biome. Thumbnail-size frames
+  decide this before any species label does.
+- New Zealand lowland bush tells: nīkau crownshafts, ponga/mamaku skirts,
+  supplejack cane, pūriri/tawa boles with low surface roots, greywacke grit,
+  kahukōwhai orange, korimako/ruru/riroriro/tūī/kākā. Anything that needs a
+  tropical noun to explain itself does not belong.
+- Industrial masonry is the only honest ruin in this country. Temple copy
+  (`弃殿`, priests, limestone karst) is leftover from the first brief and
+  has to be mined out of content, README and comments together.
