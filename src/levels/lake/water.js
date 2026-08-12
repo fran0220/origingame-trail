@@ -94,11 +94,11 @@ function waterMaterial() {
     /* Near and far are one optical surface. Vary only geometric resolution;
      * changing roughness or PMREM strength at the strip boundary creates a
      * horizontal material seam exactly 220 m from shore. */
-    roughness: .07,
+    roughness: .045,
     metalness: 0,
     ior: 1.333,
     specularIntensity: 1,
-    envMapIntensity: 2.35,
+    envMapIntensity: 2.45,
     transparent: false,
     opacity: 1,
     depthWrite: true,
@@ -110,7 +110,7 @@ function waterMaterial() {
     uWaves: { value: 1 },
   };
   material.userData.uniforms = U;
-  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v10';
+  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v11';
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, U);
     material.userData.shader = shader;
@@ -141,13 +141,15 @@ function waterMaterial() {
          * conspicuous diagonal band. Below about 12 cm there is no wave left. */
         float edge = smoothstep(.05, .70, aBed);
         float gust = .64 + .36 * (.5 + .5*sin(q.x*.021 + q.z*.014 + sin(q.z*.003)*2.0));
-        float surfaceDetail = mix(uNear,.42,smoothstep(400.0,1000.0,aFetch));
+        /* Photographic Pukaki is a glass sheet with long low swell, not a
+         * choppy fetch. Keep geometry for the grazing highlight, not for sea. */
+        float surfaceDetail = mix(uNear,.22,smoothstep(280.0,900.0,aFetch));
         vec2 slope = vec2(0.0);
-        wave(normalize(vec2(.91,.42)), 36.0, .38*surfaceDetail, .52, edge*gust, q, slope);
-        wave(normalize(vec2(.69,.72)), 16.0, .16*surfaceDetail, .82, edge*(1.15-gust*.28), q, slope);
-        wave(normalize(vec2(.98,-.18)), 7.4, .070*surfaceDetail, 1.22, edge, q, slope);
-        wave(normalize(vec2(.32,.95)), 2.8, .018*surfaceDetail, 1.92, edge, q, slope);
-        wave(normalize(vec2(-.55,.83)), 1.35, .0075*surfaceDetail, 2.55, edge, q, slope);
+        wave(normalize(vec2(.91,.42)), 48.0, .16*surfaceDetail, .38, edge*gust, q, slope);
+        wave(normalize(vec2(.69,.72)), 22.0, .070*surfaceDetail, .62, edge*(1.15-gust*.28), q, slope);
+        wave(normalize(vec2(.98,-.18)), 9.5, .028*surfaceDetail, .94, edge, q, slope);
+        wave(normalize(vec2(.32,.95)), 3.4, .008*surfaceDetail, 1.45, edge, q, slope);
+        wave(normalize(vec2(-.55,.83)), 1.55, .0032*surfaceDetail, 2.05, edge, q, slope);
         vFetch = aFetch;
         vBed = aBed;
         vW = (modelMatrix * vec4(q, 1.0)).xyz;
@@ -186,8 +188,8 @@ function waterMaterial() {
         vec2 np2 = vW.xz*1.63+vec2(-wind.y,wind.x)*uTime*.19+31.7;
         float nh2 = wfbm(np2);
         vec2 noiseSlope2 = vec2(wfbm(np2+vec2(eps,0.0))-nh2,wfbm(np2+vec2(0.0,eps))-nh2)/eps;
-        float surfaceDetail = mix(uNear,.68,smoothstep(400.0,1000.0,vFetch));
-        vec2 micro = (noiseSlope0*.22 + noiseSlope*.14 + noiseSlope2*.06)
+        float surfaceDetail = mix(uNear,.38,smoothstep(400.0,1000.0,vFetch));
+        vec2 micro = (noiseSlope0*.10 + noiseSlope*.055 + noiseSlope2*.022)
           * surfaceDetail * uWaves * detailFade;
         gLakeNormal = normalize(vN + vec3(-micro.x, 0.0, -micro.y));
         vec3 V = normalize(cameraPosition-vW);
@@ -203,9 +205,13 @@ function waterMaterial() {
          * five it is gone. That first metre is the entire shallow-water
          * transition, and the old code spent it before the shore was even
          * reached because it was counting horizontal distance. */
-        float extinction = 1.0-exp(-max(vBed,0.0)*.55);
-        vec3 deep = vec3(.025,.255,.375);
-        vec3 flour = vec3(.125,.525,.610);
+        float extinction = 1.0-exp(-max(vBed,0.0)*.42);
+        /* Pukaki / Tekapo milk: glacial flour is pale cyan-white, not
+         * chlorophyll teal. The postcard read is a milky turquoise body
+         * going powder-blue at depth, with a pink-white scatter in the
+         * first few metres. */
+        vec3 deep = vec3(.055,.285,.470);
+        vec3 flour = vec3(.34,.64,.68);
         /* The bed seen through the shallows is wet shingle, and it is dark: the
          * dry map bakes to a linear mean near 0.20 and the terrain shader drops
          * wet ground to 0.58 of its dry value. An earlier 0.19..0.23 here was
@@ -216,8 +222,11 @@ function waterMaterial() {
          * rescaled with it: the shift from pale flour green to deep blue happens
          * over tens of metres of water, which the bed profile reaches a couple
          * of hundred metres out. */
-        vec3 body = mix(flour,deep,smoothstep(9.0,52.0,vBed));
+        vec3 body = mix(flour,deep,smoothstep(6.0,38.0,vBed));
         vec3 color = mix(bed,body,extinction);
+        /* A faint rose scatter in the first two metres of flour — the
+         * postcard "milk" that teal chlorophyll water never has. */
+        color = mix(color, vec3(.52,.68,.70), (1.0-smoothstep(1.2,8.0,vBed))*extinction*.30);
         /* Wind lanes are the lake's missing middle scale: broad darker ribbons
          * where capillary ripples roughen the surface, separated by calmer sky-
          * reflecting water. They carry more photographic information than a
@@ -238,7 +247,12 @@ function waterMaterial() {
          * seam rejected in the first water rebuild. */
         float ndv=max(dot(gLakeNormal,V),0.0);
         float fresnel=.02037+(1.0-.02037)*pow(1.0-ndv,5.0);
-        vec3 clearSky = mix(vec3(.52,.64,.72),vec3(.08,.27,.49),smoothstep(0.0,.82,R.y));
+        vec3 clearSky = mix(vec3(.62,.74,.80),vec3(.10,.30,.52),smoothstep(0.0,.82,R.y));
+        /* When the reflection looks north, tint toward snow so the massif
+         * can read in the glass without a second render of the range. */
+        float northLook = smoothstep(-.15,.55,-R.z);
+        vec3 snowReflect = mix(vec3(.55,.66,.74), vec3(.88,.92,.94), clamp(R.y,0.0,1.0));
+        clearSky = mix(clearSky, snowReflect, northLook * .55);
         float longWave = clamp(.5+(vN.x*.72+vN.z*.28)*18.0,0.0,1.0);
         /* The shared environment probe already contains the sky and distant
          * massif. At this scale it is the correct representation: directional
@@ -252,7 +266,7 @@ function waterMaterial() {
          * angles. The stock PMREM still supplies the real specular lobe; this
          * restrained body-side term keeps ankle-deep cells from becoming dark
          * polygons when their bed depth is interpolated to almost zero. */
-        color = mix(color,clearSky,fresnel*mix(.28,.48,longWave));
+        color = mix(color,clearSky,fresnel*mix(.42,.72,longWave));
         /* The captured image and the volume below are different optical
          * sources, but there is only one physical surface over both. Carry a
          * restrained long-wave facet term after the reflection mix so the
@@ -323,7 +337,7 @@ function waterMaterial() {
         gLakeFoam *= smoothstep(.52, .74, torn);
         color = mix(color, vec3(.91,.94,.94), gLakeFoam*.82);
         float distanceHaze = smoothstep(520.0, 2200.0, gLakeDistance);
-        color = mix(color, vec3(.38,.56,.68), distanceHaze*.38);
+        color = mix(color, vec3(.48,.64,.74), distanceHaze*.28);
         diffuseColor.rgb *= color;
         diffuseColor.a = 1.0;
       `
@@ -333,8 +347,8 @@ function waterMaterial() {
       /* Foam is air in water: it scatters instead of reflecting, so it has to
        * take the specular highlight off the surface or it looks like white paint
        * on glass. */
-      `float roughnessFactor = mix(.065, .155, gLakeWindLane);
-       roughnessFactor = mix(roughnessFactor, .20, smoothstep(180.0,900.0,gLakeDistance));
+      `float roughnessFactor = mix(.038, .095, gLakeWindLane);
+       roughnessFactor = mix(roughnessFactor, .12, smoothstep(220.0,1100.0,gLakeDistance));
        roughnessFactor = mix(roughnessFactor, .82, gLakeFoam);`
     );
     shader.fragmentShader = shader.fragmentShader.replace(
@@ -349,12 +363,12 @@ function waterMaterial() {
         * cells at the ragged edge almost black. Fade to the denser body over
         * the first two metres instead of drawing a dark shoreline polygon. */
        float shallowLight = smoothstep(.18, 2.0, vBed);
-       reflectedLight.directDiffuse *= mix(.78, .42, shallowLight);
-       reflectedLight.indirectDiffuse *= mix(.70, .54, shallowLight);
-       reflectedLight.directSpecular *= .82;
-       reflectedLight.indirectSpecular *= 1.08;
-       reflectedLight.directSpecular += vec3(.78,.88,.96)*gLakeGlint*.16;
-       reflectedLight.indirectSpecular *= mix(1.0, 1.18, longWave*uWaves);`
+       reflectedLight.directDiffuse *= mix(.82, .48, shallowLight);
+       reflectedLight.indirectDiffuse *= mix(.74, .58, shallowLight);
+       reflectedLight.directSpecular *= .92;
+       reflectedLight.indirectSpecular *= 1.22;
+       reflectedLight.directSpecular += vec3(.82,.90,.98)*gLakeGlint*.22;
+       reflectedLight.indirectSpecular *= mix(1.0, 1.28, longWave*uWaves);`
     );
   };
   return material;

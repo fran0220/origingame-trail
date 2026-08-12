@@ -39,7 +39,7 @@ export const CONDITIONS = [
     sun: { elevation: 34, azimuth: 26 },
     hemi: { sky: 0x83b4db, ground: 0x526d38, intensity: 0.64 },
     fog: { color: 0xb7cddd, density: 0.00028 },
-    air: { clouds: 0.72, cloudScale: 1.35 },
+    air: { clouds: 0.48, cloudScale: 1.20 },
     environmentIntensity: 0.86,
     exposureScale: 1.00,
   },

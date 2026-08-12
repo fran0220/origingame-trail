@@ -13,7 +13,7 @@ const HAZE = new THREE.Color(0xb7cddd);
 const RANGES = [
   {
     name: 'alps-foothills', seed: 0x4391, x0: -3000, x1: 2100, z0: -1150, z1: -3600,
-    nx: 320, nz: 144, base: -18, height: 320, haze: .11, snowLine: 2.0, ridgeStrength: .16, gullyStrength: .046,
+    nx: 320, nz: 144, base: -18, height: 320, haze: .11, snowLine: 1.55, ridgeStrength: .18, gullyStrength: .052,
     peaks: [
       [-2460,-2440,180,1480,1380,1.26,.3], [-1530,-2830,270,1700,1600,1.18,1.8],
       [-420,-2660,195,1450,1500,1.24,2.6], [820,-2580,305,1780,1620,1.20,3.4],
@@ -24,7 +24,7 @@ const RANGES = [
   },
   {
     name: 'alps-mid-range', seed: 0x715b, x0: -5200, x1: 3600, z0: -3420, z1: -7100,
-    nx: 560, nz: 224, base: -42, height: 1120, haze: .19, snowLine: 1.28, ridgeStrength: .13, gullyStrength: .060,
+    nx: 560, nz: 224, base: -42, height: 1120, haze: .19, snowLine: 0.92, ridgeStrength: .15, gullyStrength: .068,
     peaks: [
       [-4100,-5250,560,1450,1680,1.08,.8], [-2870,-5580,670,1320,1650,1.02,2.2],
       [-1650,-6030,580,1280,1580,1.08,4.7], [760,-5770,640,1420,1680,1.02,1.3],
@@ -35,7 +35,7 @@ const RANGES = [
   },
   {
     name: 'Aoraki-complete-massif', seed: 0xa04a, x0: -6500, x1: 5100, z0: -6920, z1: -12100,
-    nx: 1280, nz: 480, base: -62, height: 3300, haze: .13, snowLine: .41, ridgeStrength: 0, gullyStrength: .065,
+    nx: 1280, nz: 480, base: -62, height: 3300, haze: .13, snowLine: .28, ridgeStrength: 0, gullyStrength: .072,
     /* One continuous uplifted block. Each entry changes the height and bearing
      * of the same drainage divide; it is not a radial cone and it is not a
      * thin link between summit nodes. Wide overlapping shoulders carry Aoraki
@@ -52,9 +52,9 @@ const RANGES = [
        * comment claiming otherwise. Narrow the principal summit and lower its
        * neighbours enough that the lake view reads one peak, two shoulders and
        * saddles rather than a single rectangular ice mass. */
-      [ -420, 3280,  900, 780, 1.32, -180],
-      [  420, 2420,  780, 920, 1.28, -110],
-      [ 1260, 1940,  920,1080, 1.28,   80],
+      [ -420, 3680,  620, 540, 1.48, -220],
+      [  280, 2280,  640, 780, 1.34, -140],
+      [ 1260, 1860,  860,1020, 1.30,   80],
       [ 2360, 1900, 1220,1320, 1.30,  170],
       [ 3650, 1370, 1280,1440, 1.38,   40],
       [ 4820,  910, 1180,1050, 1.44,  -70],
@@ -417,7 +417,7 @@ function mountainMaterial(spec, layer) {
     uLayer: { value: layer },
   };
   mat.userData.uniforms = U;
-  mat.customProgramCacheKey = () => 'lake-mountain-terrain-v3';
+  mat.customProgramCacheKey = () => 'lake-mountain-terrain-v4';
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     mat.userData.shader = sh;
@@ -515,11 +515,11 @@ function mountainMaterial(spec, layer) {
        float snowCross=mf(vec2((vMPos.x-vMPos.z*.41)*.0022,vMPos.y*.00115)-coarse*1.3);
        float snowBreak = smoothstep(.36, .62, snowFlow*.62+snowCross*.38+vCavity*.28);
        float outcrop = smoothstep(.30, .67, 1.0-vMNrm.y + fracture*.42);
-       float snowCover = smoothstep(.36,.58,vSnow);
+       float snowCover = smoothstep(.22,.52,vSnow);
        float windScour=smoothstep(-.35,.48,dot(normalize(vMNrm.xz+vec2(.001)),normalize(vec2(.84,.54))));
-       float snowMask = clamp(snowCover * mix(.52,1.0,snowBreak)
-         * (1.0-outcrop*.38) * mix(.58,1.0,windScour) * uSnow, 0.0, 1.0);
-       vec3 snowColor = mix(vec3(.68,.79,.88), vec3(.96,.97,.95), .56 + fine*.38);
+       float snowMask = clamp(snowCover * mix(.55,1.0,snowBreak)
+         * (1.0-outcrop*.48) * mix(.62,1.0,windScour) * uSnow, 0.0, 1.0);
+       vec3 snowColor = mix(vec3(.78,.86,.92), vec3(.98,.99,.97), .62 + fine*.32);
        surf = mix(surf, snowColor, snowMask);
        vec3 ice = mix(vec3(.55,.70,.78), vec3(.90,.94,.95), fine);
        float glacierMask=vGlacier*uSnow*mix(.32,.62,snowBreak)*(1.0-outcrop*.42)*smoothstep(.04,.30,vCavity);
@@ -549,8 +549,11 @@ function mountainMaterial(spec, layer) {
       '#include <tonemapping_fragment>',
       `/* Preserve summit contrast: full flat haze was washing Aoraki into the
           * sky and removing the only long-distance modelling cue. */
-       float h = uHaze * uHazeEnabled * mix(.55,1.0,smoothstep(.0,1.8,uLayer));
-       gl_FragColor.rgb = mix(gl_FragColor.rgb, uHazeColor, h);
+       float distH = length(vMPos - cameraPosition);
+       float aerial = clamp(1.0 - exp(-distH * 0.000055), 0.0, 0.42);
+       float h = uHaze * uHazeEnabled * mix(.32,.72,smoothstep(.0,1.8,uLayer));
+       vec3 hazeCol = mix(uHazeColor, vec3(.78,.86,.92), aerial);
+       gl_FragColor.rgb = mix(gl_FragColor.rgb, hazeCol, mix(h, aerial, .55));
        #include <tonemapping_fragment>`
     );
   };

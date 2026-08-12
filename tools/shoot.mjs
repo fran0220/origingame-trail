@@ -86,33 +86,12 @@ await run({ width: W, height: H, hash: HASH }, async ({ page, errs, gl }) => {
         g.walker.camPos.y += 22 * Math.max(0, pitch);
         g.walker._camInit = true;
       }
-      /* Dedicated alpine showcase: lift off the chase and look at the
-       * authored Aoraki anchor so a gallery station can judge the range. */
-      if (g.levelModule?.meta?.id === 'lake' && !pitch) {
-        const p = g.camera.position;
-        p.y += 18;
-        p.x -= 28;
-        g.camera.lookAt(-420, 210, p.z - 1400);
-        g.camera.updateMatrixWorld();
-        if (g.walker.camPos) {
-          g.walker.camPos.copy(p);
-          g.walker._camInit = true;
-        }
-      }
+      /* Dedicated alpine showcase is opt-in via --js, not the default
+       * play camera. A 2 m chase that always looks at Aoraki is not driving. */
       if (g.walker.intro) g.walker.intro.skip();
       // Let the camera height spring settle and any streaming/adaptive state
       // reach the value it would have if you had actually walked here.
       g.warp(2.0);
-      if (g.levelModule?.meta?.id === 'lake' && !pitch) {
-        const p = g.camera.position;
-        p.set(p.x - 36, p.y + 22, p.z + 8);
-        g.camera.lookAt(-420, 180, p.z - 1600);
-        g.camera.updateMatrixWorld();
-        if (g.walker.camPos) {
-          g.walker.camPos.copy(p);
-          g.walker._camInit = true;
-        }
-      }
     }, [t, YAW, PITCH]);
     await page.waitForTimeout(SETTLE);
 

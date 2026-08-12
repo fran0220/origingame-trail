@@ -130,8 +130,8 @@ const BASE_MOOD = {
      * morning has broken cumulus over the divide and long banks running down
      * the valley, and they are also the only thing that gives an empty half of
      * the frame any scale. */
-    clouds: 0.72,
-    cloudScale: 1.35,
+    clouds: 0.48,
+    cloudScale: 1.20,
   },
   /* Nothing in this basin is under anything. That switches off both halves of
    * the canopy light model — the sunfleck mask, which would otherwise print

@@ -1082,8 +1082,8 @@ export class Driver {
      * speed — a fixed chase camera makes 30 m/s look like 10 m/s because the
      * car occupies the same fraction of frame at both. */
     const fast = smoothstep(0, 48, this.speed);
-    const back = lerp(5.6, 7.4, fast);
-    const high = lerp(2.05, 2.45, fast);
+    const back = lerp(6.2, 8.2, fast);
+    const high = lerp(2.55, 3.20, fast);
 
     /* The rig follows the car's *heading*, not its velocity, and it lags.
      * Following velocity points the camera where the car is sliding, which
@@ -1113,7 +1113,7 @@ export class Driver {
     /* Aim ahead of the car rather than at it, and further ahead the faster it
      * goes. This is the part that makes a chase camera read as driving: the
      * player is looking where they are going, not at their own boot lid. */
-    const lead = lerp(3.0, 15.0, fast);
+    const lead = lerp(8.0, 28.0, fast);
     /* The aim point carries no glance in it. It is heavily smoothed — that
      * smoothing is what stops the camera twitching over every bump — and a
      * smoothed target eats a glance almost entirely: rotating it 30 degrees
@@ -1122,7 +1122,7 @@ export class Driver {
      * applied to the camera itself below, where it is immediate. */
     const target = this._tmp.set(
       this.pos.x + sinY * lead,
-      this.pos.y + 1.15,
+      this.pos.y + 2.4,
       this.pos.z + cosY * lead,
     );
     if (!this._camLookInit) { this.camLook.copy(target); this._camLookInit = true; }
