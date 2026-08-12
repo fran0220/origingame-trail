@@ -43,15 +43,18 @@ function tussockGeo(rng, blades, height, spread) {
     const w = 0.016 + rng() * 0.014;
     const SEG = 4;
     const dx = Math.cos(a), dz = Math.sin(a);
+    const kink = (a * 7.13) % 0.22;
     let prev = null;
     for (let s = 0; s <= SEG; s++) {
       const u = s / SEG;
       /* Blades arc over: straight up at the base, falling away at the tip,
        * which is what makes a tussock a fountain and not a hedgehog. */
-      const bend = u * u;
-      const x = dx * lean * bend, z = dz * lean * bend;
-      const y = h * u * (1 - 0.18 * bend);
-      const hw = w * (1 - u * 0.82);
+      const bend = u * u * (0.85 + kink);
+      const twist = Math.sin(u * 3.7 + a) * 0.035 * u;
+      const x = dx * lean * bend + (-dz) * twist;
+      const z = dz * lean * bend + dx * twist;
+      const y = h * u * (1 - 0.22 * bend);
+      const hw = w * (1 - u * 0.78) * (0.7 + Math.abs(Math.sin(a * 2.4 + u)) * 0.55);
       const n0 = pos.length / 3;
       pos.push(x - dz * hw, y, z + dx * hw, x + dz * hw, y, z - dx * hw);
       const k = lerp(0, 1, u);
@@ -79,15 +82,18 @@ function shrubGeo(rng, dark) {
      * distance; dracophyllum is a fountain of hard straps. */
     const SEG = 4;
     const dx = Math.cos(yaw), dz = Math.sin(yaw);
+    const kink = 0.08 + ((yaw * 13.7) % 0.18);
+    const flare = 0.55 + ((yaw * 9.1) % 0.55);
     let prev = null;
     for (let s = 0; s <= SEG; s++) {
       const u = s / SEG;
-      const bend = u * u * (0.55 + (yaw * 0.07 % 0.25));
-      const twist = Math.sin(u * 3.1 + yaw) * 0.04;
-      const x = x0 + dx * len * bend + (-dz) * twist;
-      const z = z0 + dz * len * bend + dx * twist;
-      const y = y0 + len * u * (1 - 0.22 * bend);
-      const hw = 0.018 * (1 - u * 0.82) * (0.7 + Math.abs(Math.sin(yaw * 3.0 + u)) * 0.6);
+      const bend = u * u * flare;
+      const twist = Math.sin(u * 4.7 + yaw) * kink;
+      const wobble = Math.sin(u * 9.3 + yaw * 2.1) * 0.018 * u;
+      const x = x0 + dx * len * bend + (-dz) * (twist + wobble);
+      const z = z0 + dz * len * bend + dx * (twist + wobble);
+      const y = y0 + len * u * (1 - 0.28 * bend);
+      const hw = 0.013 * (1 - u * 0.88) * (0.55 + Math.abs(Math.sin(yaw * 4.2 + u * 2.0)) * 0.9);
       const n0 = pos.length / 3;
       pos.push(x - dz * hw, y, z + dx * hw, x + dz * hw, y, z - dx * hw);
       col.push(...c, ...c);
@@ -95,19 +101,19 @@ function shrubGeo(rng, dark) {
       prev = n0;
     }
   };
-  const n = 4 + ((rng() * 4) | 0);
+  const n = 3 + ((rng() * 3) | 0);
   for (let i = 0; i < n; i++) {
-    const a = (i / n) * 6.283 + rng();
-    const r = rng() * 0.14;
-    const h = 0.18 + rng() * 0.28;
+    const a = (i / n) * 6.283 + rng() * 0.7;
+    const r = rng() * 0.11;
+    const h = 0.22 + rng() * 0.34;
     const bx = Math.cos(a) * r, bz = Math.sin(a) * r;
-    blade(bx, 0, bz, h * 0.55, a, wood);
-    const tuft = 9 + ((rng() * 7) | 0);
+    blade(bx, 0, bz, h * 0.62, a + (rng() - 0.5) * 0.4, wood);
+    const tuft = 8 + ((rng() * 6) | 0);
     for (let k = 0; k < tuft; k++) {
-      const yaw = a + (k / tuft - 0.5) * 2.4 + (rng() - 0.5) * 0.55;
-      const lift = h * (0.18 + rng() * 0.22);
-      blade(bx + Math.cos(yaw) * 0.03, lift, bz + Math.sin(yaw) * 0.03,
-            0.16 + rng() * 0.22, yaw, leaf);
+      const yaw = a + (k / tuft - 0.5) * 2.8 + (rng() - 0.5) * 0.85;
+      const lift = h * (0.22 + rng() * 0.28);
+      blade(bx + Math.cos(yaw) * 0.025, lift, bz + Math.sin(yaw) * 0.025,
+            0.14 + rng() * 0.26, yaw, leaf);
     }
   }
   const g = new THREE.BufferGeometry();

@@ -128,6 +128,13 @@ export class Terrain extends Heightfield {
     if (!(t >= STAGES.southCrater[0] && t < STAGES.southCrater[1])) {
       h += this._ridged(x, z, 0.018) * 7.5 * rough;
       h += this.n3.n(x * 0.045, z * 0.045) * 1.9 * rough;
+      /* Old lava terraces in the valley: long, slightly tilted sheets
+       * rather than isotropic lumps. They stay off the graded tread. */
+      if (t < STAGES.staircase[0]) {
+        const sheet = this.n2.n(x * 0.0065, z * 0.0028);
+        const step = Math.floor((sheet * 0.5 + 0.5) * 4.0) / 4.0;
+        h += (step * 2.4 + sheet * 0.55) * rough;
+      }
     } else {
       h += this.n2.n(x * 0.010, z * 0.010) * 0.5;
     }
@@ -321,7 +328,7 @@ export function makeTerrainMaterial(renderer) {
     tMacro: { value: macro.map },
   };
 
-  mat.customProgramCacheKey = () => 'tongariro-ground-v4';
+  mat.customProgramCacheKey = () => 'tongariro-ground-v5';
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     mat.userData.shader = sh;
@@ -397,7 +404,11 @@ export function makeTerrainMaterial(renderer) {
         * at fifteen metres is the default outcome of splat blending however
         * good the individual surfaces are, because the eye finds the tile long
         * before it finds the grain. */
-       surfCol *= 0.78 + 0.44 * gMacro.r;
+       surfCol *= 0.74 + 0.38 * gMacro.r + 0.16 * gMacro.g;
+       /* Hard alpine light needs a slope term the hemisphere cannot give:
+        * faces that turn from the sun go iron-dark, benches stay pale ash. */
+       float face = clamp(dot(normalize(vWNrm), vec3(0.42, 0.78, 0.46)), 0.0, 1.0);
+       surfCol *= mix(0.62, 1.08, face);
        /* Mean of the three surfaces, so far pixels keep geology and lose
         * the vesicle comb. Scoria stays iron-red rather than fading to grey. */
        vec3 meanCol = vec3(0.210, 0.168, 0.142) * gW.x

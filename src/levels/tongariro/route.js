@@ -191,7 +191,12 @@ function stageOffset(name, side, a) {
   switch (name) {
     case 'valley':
     case 'soda':
-      return smoothstep(22, 245, a) * 145 + smoothstep(8, 34, a) * 6;
+      /* Mangatepopo is a lava-filled trough, not a U-shaped meadow.
+       * Two benches step the floor up before the walls take over, so
+       * hard alpine sun has faces to shade instead of one pale plane. */
+      return smoothstep(8, 22, a) * 7
+           + smoothstep(28, 62, a) * 18
+           + smoothstep(78, 240, a) * 128;
     case 'staircase':
       return smoothstep(6, 150, a) * 70 * (side > 0 ? 1 : -0.35);
     case 'southCrater':
