@@ -85,7 +85,7 @@ export function makeBasinMaterial(renderer) {
    * apparently switched off and hard-edged black across the valley side. It
    * looked like a flaky rasteriser because it was bimodal and load-dependent;
    * it was a compile-order race. */
-  mat.customProgramCacheKey = () => 'basin-splat-v6';
+  mat.customProgramCacheKey = () => 'basin-splat-v7';
 
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
@@ -163,6 +163,16 @@ export function makeBasinMaterial(renderer) {
        * shingle needs the half-frequency tap below. */
       vec2 tuv = vWPos.xz * 0.85;
       vec2 grvUv = vWPos.xz * 0.50;
+      /* A bank cannot use a top-down UV: at 60 degrees the scan stretches
+       * into a vertical smear, which is the retaining-wall look every shore
+       * frame showed. Cheap half-triplanar, same as Tongariro. */
+      float wall = sstep(0.38, 0.72, 1.0 - abs(vWNrm.y));
+      vec2 tuvW = abs(vWNrm.x) > abs(vWNrm.z)
+                ? vec2(vWPos.z, vWPos.y) * 0.85
+                : vec2(vWPos.x, vWPos.y) * 0.85;
+      vec2 grvUvW = abs(vWNrm.x) > abs(vWNrm.z)
+                  ? vec2(vWPos.z, vWPos.y) * 0.50
+                  : vec2(vWPos.x, vWPos.y) * 0.50;
       /* Fine shingle and thatch are useful at the player's feet and alias into
        * a screen-door pattern on a hillside hundreds of metres away. Mipmaps
        * cannot remove the pattern completely because this shader combines two
@@ -205,9 +215,9 @@ export function makeBasinMaterial(renderer) {
       float slope = 1.0 - clamp(vWNrm.y, 0.0, 1.0);
       float rok = sstep(0.42, 0.72, slope);
 
-      vec3 cGrv = tap2(tGrvA, grvUv);
-      vec3 cMat = tap2(tMatA, tuv);
-      vec3 cRok = tap2(tRokA, tuv * 0.7);
+      vec3 cGrv = mix(tap2(tGrvA, grvUv), tap2(tGrvA, grvUvW), wall);
+      vec3 cMat = mix(tap2(tMatA, tuv), tap2(tMatA, tuvW), wall);
+      vec3 cRok = mix(tap2(tRokA, tuv * 0.7), tap2(tRokA, tuvW * 0.7), wall);
 
       /* ── the biome ─────────────────────────────────────────────────────
        * The tussock bake is authored green-dominant, which is what a

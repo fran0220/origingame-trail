@@ -77,7 +77,7 @@ const BASE_MOOD = {
    * rather than green. This is only the near-field haze; the aerial
    * perspective that carries the mountains is computed from the atmosphere
    * rather than faked with a fog colour. */
-  fog: { color: 0xb7cddd, density: 0.00135 },
+  fog: { color: 0xb7cddd, density: 0.00072 },
   /* Sky term: real, deep, high-altitude blue — the thing a forest can never
    * have. Ground term: pale tawny, bouncing off dry tussock and grey shingle,
    * and much brighter than a forest floor's because there is far more light

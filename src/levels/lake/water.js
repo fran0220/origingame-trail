@@ -94,11 +94,11 @@ function waterMaterial() {
     /* Near and far are one optical surface. Vary only geometric resolution;
      * changing roughness or PMREM strength at the strip boundary creates a
      * horizontal material seam exactly 220 m from shore. */
-    roughness: .10,
+    roughness: .07,
     metalness: 0,
     ior: 1.333,
     specularIntensity: 1,
-    envMapIntensity: 1.55,
+    envMapIntensity: 1.95,
     transparent: false,
     opacity: 1,
     depthWrite: true,
@@ -110,7 +110,7 @@ function waterMaterial() {
     uWaves: { value: 1 },
   };
   material.userData.uniforms = U;
-  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v7';
+  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v8';
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, U);
     material.userData.shader = shader;
@@ -252,7 +252,7 @@ function waterMaterial() {
          * angles. The stock PMREM still supplies the real specular lobe; this
          * restrained body-side term keeps ankle-deep cells from becoming dark
          * polygons when their bed depth is interpolated to almost zero. */
-        color = mix(color,clearSky,fresnel*mix(.18,.28,longWave));
+        color = mix(color,clearSky,fresnel*mix(.28,.48,longWave));
         /* The captured image and the volume below are different optical
          * sources, but there is only one physical surface over both. Carry a
          * restrained long-wave facet term after the reflection mix so the

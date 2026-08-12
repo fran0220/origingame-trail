@@ -1451,7 +1451,7 @@ export class Vegetation {
        * their margins with only a curled edge showing. Sinking a whole patch
        * rather than a single leaf is deliberate: burial is regional, the same
        * way rot is, and the wet hollows swallow their drifts fastest. */
-      const sink = (0.035 + c.rng() * 0.090 * (0.5 + c.wet)) * Math.min(1.6, s);
+      const sink = (0.055 + c.rng() * 0.11 * (0.55 + c.wet)) * Math.min(1.8, s);
       return {
         v: (c.rng() * SPECIES_LOD.litterMat.v) | 0,
         // Conformed all the way. Litter has no opinion about which way is up;
