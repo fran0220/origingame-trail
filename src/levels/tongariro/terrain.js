@@ -236,11 +236,11 @@ export class Terrain extends Heightfield {
     /* Mangatepopo is old lava under tussock, not a meadow. Long dark
      * tongues break the lawn without another ten thousand rocks. */
     if (t2 < STAGES.staircase[0]) {
-      const tongue = this.n2.n(x * 0.0048, z * 0.0019);
-      const ribbon = this.n3.n(x * 0.018 + 11, z * 0.006);
+      const tongue = this.n2.n(x * 0.0022, z * 0.00085);
+      const ribbon = this.n3.n(x * 0.0075 + 11, z * 0.0026);
       black = clamp(black
-        + smoothstep(0.08, 0.38, tongue) * 0.82
-        + smoothstep(0.42, 0.72, ribbon) * 0.55, 0, 1);
+        + smoothstep(0.02, 0.28, tongue) * 0.92
+        + smoothstep(0.28, 0.62, ribbon) * 0.62, 0, 1);
     }
     const ash = clamp(1 - red - black, 0, 1);
     out[0] = ash;
