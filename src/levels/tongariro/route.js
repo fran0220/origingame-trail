@@ -201,8 +201,14 @@ function stageOffset(name, side, a) {
       return smoothstep(230, 430, a) * 96;
     case 'redRidge':
       /* The knife edge: the crater on one side, the outer face on the other.
-       * This is the drop the other two levels do not have. */
-      return side > 0 ? -smoothstep(7, 190, a) * 118 : -smoothstep(9, 150, a) * 86;
+       * This is the drop the other two levels do not have.
+       *
+       * Steeper in the first 40 m so a walker on the crest can READ the fall.
+       * The old 7→190 ramp spent the first twenty metres almost flat, which
+       * from eye height is a beige hill, not a crater. */
+      return side > 0
+        ? -smoothstep(3, 28, a) * 38 - smoothstep(28, 170, a) * 92
+        : -smoothstep(4, 24, a) * 22 - smoothstep(24, 140, a) * 72;
     case 'scree':
       return side > 0 ? smoothstep(4, 130, a) * 60 : -smoothstep(4, 210, a) * 96;
     default:

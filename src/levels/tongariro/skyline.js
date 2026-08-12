@@ -35,7 +35,7 @@ const CONES = [
      * the name and a near-perfect profile. The steepness is real: the upper
      * cone is at 33 degrees, the angle loose scoria stands at and no steeper. */
     profile: 1.28, gully: 0.85, snowLine: 0.14, rock: 0x3a2a22, snow: 0xd8dee4,
-    segments: 192,
+    segments: 160,
   },
   {
     name: 'tongariro-massif', x: 1900, z: -3100, base: 20, height: 760, radius: 2100,
@@ -43,14 +43,14 @@ const CONES = [
      * broader, and cut about by everything that has erupted out of it for
      * 275,000 years. */
     profile: 0.72, gully: 1.05, snowLine: 0.07, rock: 0x453529, snow: 0xd2d8de,
-    segments: 112,
+    segments: 96,
   },
   {
     name: 'ruapehu', x: -4200, z: -6400, base: 10, height: 1760, radius: 3400,
     /* 2797 m and permanently snowed: the only one of the three with ice on it
      * all year, and at this distance that white cap is most of what it is. */
     profile: 0.94, gully: 0.72, snowLine: 0.40, rock: 0x3e3630, snow: 0xe2e8ee,
-    segments: 128,
+    segments: 104,
   },
 ];
 
@@ -84,7 +84,7 @@ const RING = { radius: 9000, height: 120, segments: 128, colour: 0x6b6257, inner
 
 function coneGeometry(spec, rng) {
   const { segments: S, radius: R, height: H, profile: P, gully: G } = spec;
-  const RINGS = 64;
+  const RINGS = 52;
   const pos = [], col = [], idx = [];
   const rock = new THREE.Color(spec.rock);
   const snow = new THREE.Color(spec.snow);
@@ -269,17 +269,27 @@ function ringGeometry(terrain) {
       const r = j < FRACS.length ? tEdge * FRACS[j] : R;
       const wx = CENTRE.x + cx * r, wz = CENTRE.z + cz * r;
       /* Seam: the terrain height just inside its own edge on this bearing. */
-      /* A CONSTANT, because the terrain now comes down to the plateau at its
-       * own edge (see EDGE_FALL in terrain.js). Sampling a varying seam was
-       * solving a problem that should not have existed. */
-      const seam = PLATEAU_Y;
-      const fall = smoothstep(tEdge, tEdge * 4.0, r);
+      /* Sample the playable field just inside its rectangle. A constant
+       * plateau join left a hard brown/grey cliff wherever EDGE_FALL had not
+       * quite finished — the seam every South Crater frame showed. */
+      const inset = 8;
+      const ix = clamp(CENTRE.x + cx * Math.max(0, tEdge - inset),
+                      BOUNDS.x0 + 2, BOUNDS.x1 - 2);
+      const iz = clamp(CENTRE.z + cz * Math.max(0, tEdge - inset),
+                      BOUNDS.z1 + 2, BOUNDS.z0 - 2);
+      const seam = terrain ? terrain.height(ix, iz) : PLATEAU_Y;
+      const fall = smoothstep(tEdge, tEdge * 4.2, r);
       const rise = smoothstep(3900, R, r);
       const h = lerp(seam, -30, fall) + rise * H
               + n.n(wx * 0.0016, wz * 0.0016) * 26 * smoothstep(tEdge, tEdge * 2.4, r);
       pos.push(wx, h, wz);
-      const k = 0.66 + 0.34 * smoothstep(tEdge * 2.0, R, r);
-      col.push(c.r * k, c.g * k, c.b * k);
+      /* Warm the inner rings toward the playable ash so the join is a
+       * colour as well as a height. */
+      const ash = new THREE.Color(0x8a7a68);
+      const k = smoothstep(tEdge, tEdge * 2.6, r);
+      const cc = ash.clone().lerp(c, k);
+      const shade = 0.72 + 0.28 * smoothstep(tEdge * 2.0, R, r);
+      col.push(cc.r * shade, cc.g * shade, cc.b * shade);
     }
   }
   const W = S + 1;

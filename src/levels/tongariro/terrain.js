@@ -69,7 +69,7 @@ export const PLATEAU_Y = -25;
  * geometry that cannot be shown to change a pixel is the irrigator again.
  */
 
-export const STEP = 1.25;
+export const STEP = 1.45;
 export const CHUNK = 40;
 export { BOUNDS };
 
@@ -77,7 +77,7 @@ export { DATUM };
 
 export class Terrain extends Heightfield {
   constructor(trail, seed = 20260810) {
-    super(trail, BOUNDS, { step: STEP, chunk: CHUNK, lod: [95, 210], skirt: 4.0 });
+    super(trail, BOUNDS, { step: STEP, chunk: CHUNK, lod: [80, 175], skirt: 4.0 });
     /* Pool centres in world space, resolved once so evalHeight is not doing
      * curve lookups for four basins at every one of half a million cells. */
     const P = new THREE.Vector3(), T = new THREE.Vector3();

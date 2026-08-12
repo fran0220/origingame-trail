@@ -169,7 +169,7 @@ export class Alpine {
                    * (1 - smoothstep(spec.hi - 160, spec.hi, realY));
         if (band < 0.02 || rng() > band) continue;
         const slope = terrain.slopeAt(x, z);
-        if (slope > 0.52) continue;
+        if (slope > 0.38) continue;
         terrain.sampleField(x, z, q);
         if (q.dist < trail.widthAt(clamp(q.t, 0, 1)) + 1.1) continue;
         /* Patchy, like the rock: tussock grows in stands with bare scoria

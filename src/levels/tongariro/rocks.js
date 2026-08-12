@@ -166,7 +166,7 @@ export class Rockfield {
         mesh.name = `rock:${spec.kind}:${v}`;
         const colours = new Float32Array(list.length * 3);
         list.forEach((it, i) => {
-          dummy.position.set(it.x, it.y + it.r * 0.28, it.z);
+          dummy.position.set(it.x, it.y + it.r * 0.12, it.z);
           dummy.rotation.set(it.tilt, it.yaw, it.tilt * 0.6);
           dummy.scale.setScalar(it.r);
           dummy.updateMatrix();
