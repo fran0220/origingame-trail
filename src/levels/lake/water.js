@@ -98,7 +98,7 @@ function waterMaterial() {
     metalness: 0,
     ior: 1.333,
     specularIntensity: 1,
-    envMapIntensity: 1.95,
+    envMapIntensity: 2.35,
     transparent: false,
     opacity: 1,
     depthWrite: true,
@@ -110,7 +110,7 @@ function waterMaterial() {
     uWaves: { value: 1 },
   };
   material.userData.uniforms = U;
-  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v8';
+  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v9';
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, U);
     material.userData.shader = shader;
@@ -143,11 +143,11 @@ function waterMaterial() {
         float gust = .64 + .36 * (.5 + .5*sin(q.x*.021 + q.z*.014 + sin(q.z*.003)*2.0));
         float surfaceDetail = mix(uNear,.12,smoothstep(400.0,1000.0,aFetch));
         vec2 slope = vec2(0.0);
-        wave(normalize(vec2(.91,.42)), 22.0, .095*surfaceDetail, .78, edge*gust, q, slope);
-        wave(normalize(vec2(.69,.72)), 10.5, .042*surfaceDetail, 1.12, edge*(1.15-gust*.28), q, slope);
-        wave(normalize(vec2(.98,-.18)), 5.1, .018*surfaceDetail, 1.64, edge, q, slope);
-        wave(normalize(vec2(.32,.95)), 2.15, .0070*surfaceDetail, 2.18, edge, q, slope);
-        wave(normalize(vec2(-.55,.83)), 1.05, .0028*surfaceDetail, 2.85, edge, q, slope);
+        wave(normalize(vec2(.91,.42)), 28.0, .22*surfaceDetail, .62, edge*gust, q, slope);
+        wave(normalize(vec2(.69,.72)), 13.0, .10*surfaceDetail, .94, edge*(1.15-gust*.28), q, slope);
+        wave(normalize(vec2(.98,-.18)), 6.2, .046*surfaceDetail, 1.38, edge, q, slope);
+        wave(normalize(vec2(.32,.95)), 2.8, .018*surfaceDetail, 1.92, edge, q, slope);
+        wave(normalize(vec2(-.55,.83)), 1.35, .0075*surfaceDetail, 2.55, edge, q, slope);
         vFetch = aFetch;
         vBed = aBed;
         vW = (modelMatrix * vec4(q, 1.0)).xyz;
@@ -186,8 +186,8 @@ function waterMaterial() {
         vec2 np2 = vW.xz*1.63+vec2(-wind.y,wind.x)*uTime*.19+31.7;
         float nh2 = wfbm(np2);
         vec2 noiseSlope2 = vec2(wfbm(np2+vec2(eps,0.0))-nh2,wfbm(np2+vec2(0.0,eps))-nh2)/eps;
-        float surfaceDetail = mix(uNear,.54,smoothstep(400.0,1000.0,vFetch));
-        vec2 micro = (noiseSlope0*.11 + noiseSlope*.078 + noiseSlope2*.032)
+        float surfaceDetail = mix(uNear,.68,smoothstep(400.0,1000.0,vFetch));
+        vec2 micro = (noiseSlope0*.22 + noiseSlope*.14 + noiseSlope2*.06)
           * surfaceDetail * uWaves * detailFade;
         gLakeNormal = normalize(vN + vec3(-micro.x, 0.0, -micro.y));
         vec3 V = normalize(cameraPosition-vW);

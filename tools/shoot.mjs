@@ -80,6 +80,13 @@ await run({ width: W, height: H, hash: HASH }, async ({ page, errs, gl }) => {
         g.walker.pitch += pitch;
         if ('lookPitch' in g.walker) g.walker.lookPitch = pitch;
       }
+      /* A driving level's default chase looks at the boot lid. Raise the
+       * rig so a gallery station can see the range the road is pointing at. */
+      if (g.walker.camPos && pitch) {
+        g.walker.camPos.y += 22 * Math.max(0, pitch);
+        g.walker._camInit = true;
+      }
+      if (g.walker.intro) g.walker.intro.skip();
       // Let the camera height spring settle and any streaming/adaptive state
       // reach the value it would have if you had actually walked here.
       g.warp(2.0);

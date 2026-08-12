@@ -287,7 +287,7 @@ function makeSealMaterial() {
     envMapIntensity: 0.42,
   });
 
-  mat.customProgramCacheKey = () => 'lake-chipseal-v3';
+  mat.customProgramCacheKey = () => 'lake-chipseal-v4';
 
   mat.onBeforeCompile = (sh) => {
     mat.userData.shader = sh;
@@ -405,8 +405,8 @@ function makeSealMaterial() {
        * than another opinion. 0.0030-0.012 takes 32% off the comb and keeps
        * the near chip at 1.8x the floor, and that is the whole of what a
        * single number can buy here. */
-      float chipFade = sstep(0.0030, 0.012, px);
-      float fade = max(sstep(30.0, 190.0, distance(cameraPosition, vRoadPos)), chipFade);
+      float chipFade = sstep(0.0016, 0.0060, px);
+      float fade = max(sstep(18.0, 110.0, distance(cameraPosition, vRoadPos)), chipFade);
 
       /* Chip. 90 cells per metre puts a cell at about 11 mm, which is a
        * grade 3 chip — the common NZ rural size. */
@@ -577,7 +577,7 @@ function makeSealMaterial() {
          * glitter rather than as a tint. */
         float a2 = max(fwidth(vRoadPos.x), 1e-5), b2 = max(fwidth(vRoadPos.z), 1e-5);
         float px2 = pow(min(a2,b2), 0.35) * pow(max(a2,b2), 0.65);
-        float chip2 = mix(fbm2(vRoadPos.xz * 90.0), 0.5, sstep(0.0030, 0.012, px2));
+        float chip2 = mix(fbm2(vRoadPos.xz * 90.0), 0.5, sstep(0.0016, 0.0060, px2));
         float wheel2 = max(1.0 - sstep(0.30, 0.62, abs(vRoad.x + 1.85)),
                            1.0 - sstep(0.30, 0.62, abs(vRoad.x - 1.85)));
         float dash2 = step(fract(vRoad.y / 12.0), 0.25);
@@ -665,7 +665,7 @@ function makeSealMaterial() {
          * sparkle is. */
         float a3 = max(fwidth(vRoadPos.x), 1e-5), b3 = max(fwidth(vRoadPos.z), 1e-5);
         float px3 = pow(min(a3,b3), 0.35) * pow(max(a3,b3), 0.65);
-        float amp = 1.0 - sstep(0.0025, 0.010, px3);
+        float amp = 1.0 - sstep(0.0014, 0.0055, px3);
         float shoulder3 = sstep(4.10, 4.70, abs(vRoad.x));
         amp *= mix(0.34, 0.62, shoulder3);
         float wheel3 = max(1.0 - sstep(0.30, 0.62, abs(vRoad.x + 1.85)),

@@ -598,8 +598,8 @@ function buildLupinDrifts(owner, terrain, tier, dummy) {
      * walking distance one drift subtends less than a road marking. Ten to
      * forty metres across, three hundred plants and up, which is the size the
      * colonies on the Tekapo and Ahuriri flats actually are. */
-    const spread = 14 + rng() * 30;
-    const n = 280 + ((rng() * 260) | 0);
+    const spread = 12 + rng() * 22;
+    const n = 160 + ((rng() * 140) | 0);
     for (let i = 0; i < n; i++) {
       /* Clumped inside the drift too, because a lupin colony spreads from
        * seed fall and is densest where it started. */
@@ -609,7 +609,11 @@ function buildLupinDrifts(owner, terrain, tier, dummy) {
       const x = P.x + nx * (centre + Math.cos(a) * r) + T.x * along;
       const z = P.z + nz * (centre + Math.cos(a) * r) + T.z * along;
       const y = terrain.height(x, z);
-      if (y < LAKE_Y + 0.8) continue;
+      if (y < LAKE_Y + 1.15) continue;
+      const e = 0.8;
+      const gx = (terrain.height(x + e, z) - terrain.height(x - e, z)) / (2 * e);
+      const gz = (terrain.height(x, z + e) - terrain.height(x, z - e)) / (2 * e);
+      if (Math.hypot(gx, gz) > 0.22) continue;
       const q = trail.nearest(x, z, {});
       if (q.dist < ROAD_SHOULDER + 1.2) continue;
       lists[(rng() * 4) | 0].push({ x, y, z, s: 1.05 + rng() * .70, yaw: rng() * 6.283 });
@@ -756,7 +760,7 @@ function buildSward(owner, terrain, tier, dummy) {
   /* The corridor reaches further too — 34 m stopped inside the distance a
    * driver reads, so the sward ended and the bare terrain began well within
    * the frame. */
-  const OUTER = tier === 'low' ? 22 : tier === 'medium' ? 34 : 52;
+  const OUTER = tier === 'low' ? 16 : tier === 'medium' ? 24 : 34;
   const INNER = ROAD_SHOULDER + 0.35;
   const rng = random(0x5ea77);
 
@@ -880,7 +884,12 @@ function buildSward(owner, terrain, tier, dummy) {
           const x = P.x + nx * jx * side + T.x * (rng() - 0.5) * 0.9;
           const z = P.z + nz * jx * side + T.z * (rng() - 0.5) * 0.9;
           const y = terrain.height(x, z);
-          if (y < LAKE_Y + 0.55) continue;
+          if (y < LAKE_Y + 1.05) continue;
+          const e = 0.7;
+          if (Math.hypot(
+            (terrain.height(x + e, z) - terrain.height(x - e, z)) / (2 * e),
+            (terrain.height(x, z + e) - terrain.height(x, z - e)) / (2 * e),
+          ) > 0.26) continue;
           lists[(rng() * 3) | 0].push({ x, y, z, yaw: rng() * 6.283, s: 0.92 + rng() * 0.30 });
         }
       }
@@ -1314,7 +1323,7 @@ export class LakeFlora{
  * under one condition is not the whole stage, and a 2x margin under the point
  * where a difference first appears is cheap insurance for the sun angles and
  * viewpoints that were not sampled. */
-  cullAround(x,z){this.lastCull=[x,z];this.meshes.forEach(m=>{const c=m.boundingSphere?.center,near=!c||Math.hypot(c.x-x,c.z-z)<120+(m.boundingSphere?.radius||0),matches=m.name.startsWith(`flora:${this.debugSpecies}:`);m.visible=this.debugSpecies?matches:near;});}
+  cullAround(x,z){this.lastCull=[x,z];this.meshes.forEach(m=>{const c=m.boundingSphere?.center,r=m.boundingSphere?.radius||0,reach=m.name.includes('sward')||m.name.includes('turf')||m.name.includes('cover')?55:m.name.includes('lupin')?95:85,near=!c||Math.hypot(c.x-x,c.z-z)<reach+r,matches=m.name.startsWith(`flora:${this.debugSpecies}:`);m.visible=this.debugSpecies?matches:near;});}
  setDebug(mode='none'){this.debugSpecies=this.species.includes(mode)?mode:null;if(this.lastCull)this.cullAround(...this.lastCull);}
  /* Materials no longer share one uniform name — the roadside turf has its own
   * wind. Written defensively rather than by branching on the material, because

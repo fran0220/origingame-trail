@@ -387,8 +387,18 @@ export class Basin extends Heightfield {
        * at the waterline instead of easing in from flat. The berm height is
        * unchanged; only the first two metres differ, and they are the two
        * metres the whole shore is read from. */
-      const face = 1.55 * (1 - Math.exp(-fromShore / 7.4));
-      const back = smoothstep(7.5, 30, fromShore) * 0.9;
+      /* 1:4.8 at the waterline, not 1:4.8 over 7 m then a wall. The old
+       * 1.55/7.4 exponential put a 12-degree face that, from a car on the
+       * terrace, foreshortened into a grey retaining wall. Stretching the
+       * run keeps the berm and loses the cliff. */
+      /* A wave-built terrace, not a retaining wall. 1:6 off the waterline
+       * for the first 40 m, then a low storm berm. The measured start camera
+       * sat 50 m above the lake because fans and till stacked on a 15 m bench
+       * and the overlook only ran *after* pathY was surveyed from that stack.
+       * Cap the land here, before the survey, so the road inherits a grade a
+       * driver can read as a shore rather than a cliff. */
+      const face = 0.85 * (1 - Math.exp(-fromShore / 18.0));
+      const back = smoothstep(16, 52, fromShore) * 1.35;
       y = face + back;
 
       /* The valley side rising east of the track. U-shaped: the profile is a
@@ -418,7 +428,7 @@ export class Basin extends Heightfield {
        * water, so it is flattened explicitly rather than left to noise. */
       const benchC = 74, benchW = 26;
       const onBench = Math.exp(-(((fromShore - benchC) / benchW) ** 2));
-      y = lerp(y, 15.0 + 2.2 * n.fbm(x * 0.02, z * 0.02, 3, 0.5), onBench * 0.82);
+      y = lerp(y, 8.4 + 1.6 * n.fbm(x * 0.02, z * 0.02, 3, 0.5), onBench * 0.70);
 
       /* The two alluvial fans. Convex cones, spreading from the wall down to
        * the water, and the reason the track has to climb inland twice. */
@@ -427,12 +437,11 @@ export class Basin extends Heightfield {
        * landform that gives this road its only real gradients. */
       for (const [fu, famp, fw] of FANS) {
         const fz = BOUNDS.z0 - fu * VALLEY;
-        const fh = 0.30 * famp, fr = 2.4 * fw;
+        const fh = 0.18 * famp, fr = 2.4 * fw;
         const r = Math.hypot((z - fz) * 1.5, Math.max(0, fromShore + 10)) / fr;
         if (r < 1) {
           const cone = (1 - r) ** 1.6 * fh;
-          y = Math.max(y, cone + 0.9 * n.fbm(x * 0.06, z * 0.06, 3, 0.5) * (1 - r));
-
+          y = Math.max(y, cone + 0.55 * n.fbm(x * 0.06, z * 0.06, 3, 0.5) * (1 - r));
         }
       }
 
@@ -440,10 +449,15 @@ export class Basin extends Heightfield {
        * its relief is broad: the previous equal-amplitude 20–40 m fBm covered
        * the whole terrace in regular pillow-like wrinkles. Real spring sward
        * reveals long low rises, with only a restrained kettle-scale detail. */
-      const till = smoothstep(24, 60, fromShore) * (1 - onBench * 0.7);
-      y += till * 2.7 * n.fbm(x * 0.011, z * 0.010, 3, 0.54);
-      y += till * 1.15 * n.fbm(x * 0.026, z * 0.023, 3, 0.52);
-      y += till * 0.52 * nb.ridged(x * 0.014, z * 0.013, 3, 0.5);
+      const till = smoothstep(28, 70, fromShore) * (1 - onBench * 0.7);
+      y += till * 1.55 * n.fbm(x * 0.011, z * 0.010, 3, 0.54);
+      y += till * 0.70 * n.fbm(x * 0.026, z * 0.023, 3, 0.52);
+      y += till * 0.32 * nb.ridged(x * 0.014, z * 0.013, 3, 0.5);
+
+      /* Cap the lakeward terrace after every stacked term. Fans and till
+       * used to rebuild the 50 m wall this profile had just refused. */
+      const terrace = 1.05 + fromShore * 0.145 + 2.4 * smoothstep(14, 48, fromShore);
+      if (fromShore < 78) y = Math.min(y, terrace);
 
       /* Keep the lakeward side of the track an overlook rather than a second
        * moraine wall.
@@ -466,10 +480,10 @@ export class Basin extends Heightfield {
        * beach relief landed). Leave the first twelve metres to the face and
        * the cusp field; cap only the mid-strip hummocks that used to hide the
        * lake from the track. */
-      if (q.side > 0 && q.dist > this.trail.widthAt(t) && fromShore > 12) {
+      if (this.pathY && q.side > 0 && q.dist > this.trail.widthAt(t) && fromShore > 8) {
         const span = Math.max(1, q.dist + fromShore);
         const overlook = this._pathYAt(t) * (fromShore / span)
-          + 0.28 * n.fbm(x * 0.09, z * 0.09, 2, 0.5);
+          + 0.22 * n.fbm(x * 0.09, z * 0.09, 2, 0.5);
         y = Math.min(y, overlook);
       }
 

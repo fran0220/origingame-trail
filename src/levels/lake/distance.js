@@ -571,7 +571,7 @@ function mountainMaterial(spec, layer) {
  * its absolute position is not, so long as it stays beyond the ground the
  * player can reach and keeps the same bearing from the road.
  */
-const BACKDROP_Z = -780;
+const BACKDROP_Z = -620;
 
 export class LakeDistance {
   constructor() {
