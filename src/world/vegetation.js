@@ -1209,10 +1209,12 @@ export class Vegetation {
         if (q.dist < path.widthAt(t) + 0.8) continue;
         if (this.waterMask(x, z, y, q) > 0.08) continue;
         const v = i % SPECIES_LOD.treeFern.v;
+        const yaw = Math.atan2(P.x - x, P.z - z);
         extraTf.push({
           v,
           m: M().compose(_p.set(x, y - 0.06, z),
-                         new THREE.Quaternion(), bulk(makeRng(seed + 400 + i), 1.42, 0.12)),
+                         new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), yaw),
+                         bulk(makeRng(seed + 400 + i), 1.42, 0.12)),
         });
         if (i % 3 === 0) {
           extraNk.push({

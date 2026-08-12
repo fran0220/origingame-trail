@@ -52,8 +52,8 @@ const RANGES = [
        * comment claiming otherwise. Narrow the principal summit and lower its
        * neighbours enough that the lake view reads one peak, two shoulders and
        * saddles rather than a single rectangular ice mass. */
-      [ -420, 3680,  620, 540, 1.48, -220],
-      [  280, 2280,  640, 780, 1.34, -140],
+      [ -180, 3920,  480, 420, 1.62, -260],
+      [  380, 2140,  580, 720, 1.38, -160],
       [ 1260, 1860,  860,1020, 1.30,   80],
       [ 2360, 1900, 1220,1320, 1.30,  170],
       [ 3650, 1370, 1280,1440, 1.38,   40],

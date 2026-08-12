@@ -1323,7 +1323,7 @@ export class LakeFlora{
  * under one condition is not the whole stage, and a 2x margin under the point
  * where a difference first appears is cheap insurance for the sun angles and
  * viewpoints that were not sampled. */
-  cullAround(x,z){this.lastCull=[x,z];this.meshes.forEach(m=>{const c=m.boundingSphere?.center,r=m.boundingSphere?.radius||0,reach=m.name.includes('sward')||m.name.includes('turf')||m.name.includes('cover')?55:m.name.includes('lupin')?95:85,near=!c||Math.hypot(c.x-x,c.z-z)<reach+r,matches=m.name.startsWith(`flora:${this.debugSpecies}:`);m.visible=this.debugSpecies?matches:near;});}
+  cullAround(x,z){this.lastCull=[x,z];this.meshes.forEach(m=>{const c=m.boundingSphere?.center,r=m.boundingSphere?.radius||0,reach=m.name.includes('sward')||m.name.includes('turf')||m.name.includes('cover')?38:m.name.includes('lupin')?70:62,near=!c||Math.hypot(c.x-x,c.z-z)<reach+r,matches=m.name.startsWith(`flora:${this.debugSpecies}:`);m.visible=this.debugSpecies?matches:near;});}
  setDebug(mode='none'){this.debugSpecies=this.species.includes(mode)?mode:null;if(this.lastCull)this.cullAround(...this.lastCull);}
  /* Materials no longer share one uniform name — the roadside turf has its own
   * wind. Written defensively rather than by branching on the material, because

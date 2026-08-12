@@ -810,7 +810,8 @@ class Game {
      * through a different door: not an empty temp scene this time, but a real
      * scene whose forest is switched off. Because `setSun` rebakes and the sun
      * advances with the walk, it got worse the further the player went. */
-    this.level?.cullAround(p.x, p.z);
+    /* Do not move gameplay culls to the probe. On the lake that hid the
+     * start sward and left 50 M mid-stage triangles in the first corner. */
 
     /* And aim the shadow cascade there too, with one update requested. `bake`
      * holds shadows still across the six faces, which is right — one depth

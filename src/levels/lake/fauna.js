@@ -325,7 +325,7 @@ export class LakeFauna {
         t: (c + def.t) / COLONIES,
         /* Later colonies are a touch smaller, so the first one a player meets
          * is still the set piece. */
-        count: Math.max(2, Math.round(def.count * (c === 0 ? 1 : 0.7))),
+        count: Math.max(1, Math.round(def.count * (c === 0 ? 0.55 : 0.32))),
       }))
     ));
 
@@ -400,7 +400,7 @@ export class LakeFauna {
 
   cullAround(x, z) {
     this.lastCull = [x, z];
-    const range = this.tier === 'low' ? 145 : this.tier === 'medium' ? 220 : 310;
+    const range = this.tier === 'low' ? 90 : this.tier === 'medium' ? 130 : 170;
     for (const entity of this.entities) {
       const near = Math.hypot(entity.position.x - x, entity.position.z - z) < range;
       const notable = this.notable[entity.species] === entity;

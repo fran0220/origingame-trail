@@ -34,7 +34,7 @@ function farEdge(z) {
   return THREE.MathUtils.lerp(shoreX(z) - NEAR_WIDTH, shoreX(z), taper);
 }
 
-function lakeGeometry(terrain, nearRows = 620, farRows = 100, cols = 232) {
+function lakeGeometry(terrain, nearRows = 420, farRows = 72, cols = 168) {
   const positions = [], fetch = [], bed = [], indices = [];
   const rows = nearRows + farRows;
   for (let j = 0; j <= rows; j++) {
@@ -98,7 +98,7 @@ function waterMaterial() {
     metalness: 0,
     ior: 1.333,
     specularIntensity: 1,
-    envMapIntensity: 2.45,
+    envMapIntensity: 2.15,
     transparent: false,
     opacity: 1,
     depthWrite: true,
@@ -110,7 +110,7 @@ function waterMaterial() {
     uWaves: { value: 1 },
   };
   material.userData.uniforms = U;
-  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v11';
+  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v12';
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, U);
     material.userData.shader = shader;
@@ -189,7 +189,7 @@ function waterMaterial() {
         float nh2 = wfbm(np2);
         vec2 noiseSlope2 = vec2(wfbm(np2+vec2(eps,0.0))-nh2,wfbm(np2+vec2(0.0,eps))-nh2)/eps;
         float surfaceDetail = mix(uNear,.38,smoothstep(400.0,1000.0,vFetch));
-        vec2 micro = (noiseSlope0*.10 + noiseSlope*.055 + noiseSlope2*.022)
+        vec2 micro = (noiseSlope0*.07 + noiseSlope*.038)
           * surfaceDetail * uWaves * detailFade;
         gLakeNormal = normalize(vN + vec3(-micro.x, 0.0, -micro.y));
         vec3 V = normalize(cameraPosition-vW);
