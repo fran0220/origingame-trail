@@ -56,7 +56,11 @@ const WARP = +flag('warp', 2.5);
 const outDir = path.join(ROOT, 'shots', tag);
 fs.mkdirSync(outDir, { recursive: true });
 
-await run({ width: W, height: H, hash: 'manual&tier=' + flag('tier', 'high') },
+const LEVEL = flag('level', '');
+const COND = flag('cond', '');
+await run({ width: W, height: H, hash: 'manual&tier=' + flag('tier', 'high')
+  + (LEVEL ? `&level=${LEVEL}` : '')
+  + (COND ? `&cond=${COND}` : '') },
   async ({ page, errs, gl }) => {
     await page.evaluate(([el, az, js]) => {
       window.__game.setSun(el, az);
