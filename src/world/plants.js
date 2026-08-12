@@ -2207,10 +2207,10 @@ function addLitterSkirt(b, rng, r0, r1, n, size, lod = 0) {
     const a = rng() * Math.PI * 2;
     const rr = r0 + Math.pow(rng(), 0.6) * (r1 - r0);
     // Nearly flat, and tipped up where it has banked against the stem.
-    const pitch = -0.08 + rng() * 0.38;
-    e.set(-pitch, a + (rng() - 0.5) * 2.2, (rng() - 0.5) * 0.7, 'YXZ');
+    const pitch = -0.04 + rng() * 0.16;
+    e.set(-pitch, a + (rng() - 0.5) * 2.2, (rng() - 0.5) * 0.28, 'YXZ');
     m.makeRotationFromEuler(e);
-    m.setPosition(Math.cos(a) * rr, 0.015 + rng() * 0.10, Math.sin(a) * rr);
+    m.setPosition(Math.cos(a) * rr, -0.018 + rng() * 0.028, Math.sin(a) * rr);
     const ll = size * (0.6 + rng() * 0.8);
     addLeaf(b, m, {
       len: ll, wid: ll * (0.5 + rng() * 0.4),
@@ -2315,10 +2315,10 @@ export function litterMat(rng, scale = 1, lod = 0) {
        * the big recent falls, because a fragment has already been flattened
        * into the mulch. */
       curl: (rng() < 0.62 ? -1 : 1)
-          * (kind === 1 ? 1.35 + rng() * 0.75 : big ? 0.55 + rng() * 0.85 : 0.16 + rng() * 0.30),
+          * (kind === 1 ? 0.45 + rng() * 0.35 : big ? 0.22 + rng() * 0.35 : 0.08 + rng() * 0.16),
       // The rolled family also twists hard along its length, which is what
       // turns a dished blade into the little dry tubes real litter is full of.
-      roll: (rng() < 0.72 ? -1 : 1) * (kind === 2 ? 0.15 + rng() * 0.3 : 0.5 + rng() * 0.9),
+      roll: (rng() < 0.72 ? -1 : 1) * (kind === 2 ? 0.08 + rng() * 0.16 : 0.18 + rng() * 0.32),
       sag: (rng() - 0.5) * 0.9, phase: rng() * 6.283,
       asym: (rng() - 0.5) * 0.4,
       twist: (rng() - 0.5) * (kind === 1 ? 3.0 : 1.5), flex0: 0.0,

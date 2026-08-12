@@ -184,6 +184,15 @@ function coneGeometry(spec, rng) {
       y += onFlow * H * 0.012;
       r += onFlow * R * 0.006;
 
+      /* Last rings flare into a debris apron instead of dropping. A dropped
+       * last ring opened the hollow cone and the camera saw the interior as
+       * a black diagonal. Flaring keeps the outside closed and overlaps the
+       * plateau ring. */
+      if (u > 0.86) {
+        const t = (u - 0.86) / 0.14;
+        r += R * 0.11 * t * t;
+        y = lerp(y, spec.base - 2, t * t);
+      }
       pos.push(Math.cos(a) * r, y, Math.sin(a) * r);
 
       /* Snow where it is shaded and drifted: inside the gullies, on the south
@@ -338,7 +347,7 @@ export class Skyline {
        * cascades do not reach them, and asking would only cost a pass. */
       flatShading: false,
     });
-    mat.customProgramCacheKey = () => 'tongariro-skyline-v2';
+    mat.customProgramCacheKey = () => 'tongariro-skyline-v3';
     mat.onBeforeCompile = (sh) => {
       mat.userData.shader = sh;
       sh.fragmentShader = sh.fragmentShader.replace(
