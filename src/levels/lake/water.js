@@ -514,7 +514,7 @@ export class LakeWater {
     this.surface.name='adaptive-density-whole-lake';
     this.surface.renderOrder=1;
     if (renderer) {
-      const size = tier === 'low' ? 384 : 640;
+      const size = tier === 'low' ? 256 : 384;
       this.mirrorTarget = new THREE.WebGLRenderTarget(size, size, {
         type: THREE.HalfFloatType,
         depthBuffer: true,
@@ -547,7 +547,7 @@ export class LakeWater {
     this.time+=dt;
     this.surfaceMaterial.userData.uniforms.uTime.value=this.time;
     this._mirrorTick = (this._mirrorTick || 0) + 1;
-    if ((this._mirrorTick & 1) === 1) this._captureMirror(camera);
+    if (this._mirrorTick % 3 === 1) this._captureMirror(camera);
   }
 
   /* Flip the live camera under the lake and photograph only the Alps and
