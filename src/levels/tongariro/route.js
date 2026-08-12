@@ -53,7 +53,7 @@ import { smoothstep, clamp } from '../../world/noise.js';
 const CONTROL = [
   [0, 30], [5, -86], [-8, -231], [3, -376], [19, -521],
   [8, -680], [-14, -826], [-5, -985], [11, -1136], [22, -1290],
-  [5, -1443], [-16, -1594], [-8, -1754], [8, -1913], [3, -2058],
+  [5, -1443], [-40, -1588], [-78, -1710], [-96, -1824], [-42, -1948], [8, -2066],
   [-11, -2209], [-3, -2362], [5, -2508],
 ];
 
@@ -207,8 +207,8 @@ function stageOffset(name, side, a) {
        * The old 7→190 ramp spent the first twenty metres almost flat, which
        * from eye height is a beige hill, not a crater. */
       return side > 0
-        ? -smoothstep(3, 28, a) * 38 - smoothstep(28, 170, a) * 92
-        : -smoothstep(4, 24, a) * 22 - smoothstep(24, 140, a) * 72;
+        ? -smoothstep(1.2, 14, a) * 52 - smoothstep(14, 150, a) * 88
+        : -smoothstep(3, 22, a) * 18 - smoothstep(22, 140, a) * 68;
     case 'scree':
       return side > 0 ? smoothstep(4, 130, a) * 60 : -smoothstep(4, 210, a) * 96;
     default:

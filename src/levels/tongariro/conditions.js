@@ -24,7 +24,7 @@ export const CONDITIONS = [
      * needs direct light on it, and the whole palette argument for this level
      * depends on at least one condition delivering it. */
     sun: { elevation: 24, azimuth: 68 },
-    hemi: { sky: 0x8eb4d4, ground: 0x5a4536, intensity: 0.72 },
+    hemi: { sky: 0x8eb4d4, ground: 0x5a4536, intensity: 0.48 },
     /* 0.00030, NOT 0.0016. At the old value a mountain 1.5 km away kept 9% of
      * itself and arrived as 91% haze — which is why Ngauruhoe rendered as a
      * white wedge for five builds and why I went looking for a snow-line bug

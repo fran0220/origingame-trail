@@ -100,10 +100,12 @@ function shrubGeo(rng, dark) {
     const h = 0.18 + rng() * 0.28;
     const bx = Math.cos(a) * r, bz = Math.sin(a) * r;
     blade(bx, 0, bz, h * 0.55, a, wood);
-    const tuft = 6 + ((rng() * 5) | 0);
+    const tuft = 9 + ((rng() * 7) | 0);
     for (let k = 0; k < tuft; k++) {
-      const yaw = a + (k / tuft - 0.5) * 1.8 + (rng() - 0.5) * 0.4;
-      blade(bx, h * 0.28, bz, 0.14 + rng() * 0.18, yaw, leaf);
+      const yaw = a + (k / tuft - 0.5) * 2.4 + (rng() - 0.5) * 0.55;
+      const lift = h * (0.18 + rng() * 0.22);
+      blade(bx + Math.cos(yaw) * 0.03, lift, bz + Math.sin(yaw) * 0.03,
+            0.16 + rng() * 0.22, yaw, leaf);
     }
   }
   const g = new THREE.BufferGeometry();

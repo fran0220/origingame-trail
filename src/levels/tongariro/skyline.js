@@ -30,7 +30,7 @@ import { BOUNDS } from './route.js';
  * the west across South Crater, and Ruapehu is far to the south beyond it. */
 const CONES = [
   {
-    name: 'ngauruhoe', x: -2100, z: -1500, base: 40, height: 1180, radius: 1500,
+    name: 'ngauruhoe', x: -2100, z: -1500, base: -28, height: 1248, radius: 1500,
     /* 2291 m, and only 2500 years old — which is why it has no gullies worth
      * the name and a near-perfect profile. The steepness is real: the upper
      * cone is at 33 degrees, the angle loose scoria stands at and no steeper. */
@@ -38,7 +38,7 @@ const CONES = [
     segments: 160,
   },
   {
-    name: 'tongariro-massif', x: 1900, z: -3100, base: 20, height: 760, radius: 2100,
+    name: 'tongariro-massif', x: 1900, z: -3100, base: -28, height: 808, radius: 2100,
     /* The old massif is a shield of overlapping craters, not a cone: lower,
      * broader, and cut about by everything that has erupted out of it for
      * 275,000 years. */
@@ -46,7 +46,7 @@ const CONES = [
     segments: 96,
   },
   {
-    name: 'ruapehu', x: -4200, z: -6400, base: 10, height: 1760, radius: 3400,
+    name: 'ruapehu', x: -4200, z: -6400, base: -28, height: 1798, radius: 3400,
     /* 2797 m and permanently snowed: the only one of the three with ice on it
      * all year, and at this distance that white cap is most of what it is. */
     profile: 0.94, gully: 0.72, snowLine: 0.40, rock: 0x3e3630, snow: 0xe2e8ee,
@@ -257,7 +257,7 @@ function ringGeometry(terrain) {
    * multiple of that distance — the apron is rectangular where it touches and
    * relaxes to a circle by the time it reaches the plateau. */
   const HX = HALF_X, HZ = HALF_Z;
-  const FRACS = [1.0, 1.18, 1.6, 2.4, 3.8, 6.0];
+  const FRACS = [0.985, 1.08, 1.28, 1.62, 2.15, 2.9, 4.1, 6.2];
   for (let j = 0; j < FRACS.length + 1; j++) {
     for (let s = 0; s <= S; s++) {
       const a = (s / S) * Math.PI * 2;
@@ -272,23 +272,28 @@ function ringGeometry(terrain) {
       /* Sample the playable field just inside its rectangle. A constant
        * plateau join left a hard brown/grey cliff wherever EDGE_FALL had not
        * quite finished — the seam every South Crater frame showed. */
-      const inset = 8;
+      const inset = 18;
       const ix = clamp(CENTRE.x + cx * Math.max(0, tEdge - inset),
                       BOUNDS.x0 + 2, BOUNDS.x1 - 2);
       const iz = clamp(CENTRE.z + cz * Math.max(0, tEdge - inset),
                       BOUNDS.z1 + 2, BOUNDS.z0 - 2);
       const seam = terrain ? terrain.height(ix, iz) : PLATEAU_Y;
-      const fall = smoothstep(tEdge, tEdge * 4.2, r);
+      /* Fall starts after a short overlap so the first ring sits *on* the
+       * playable field rather than dropping off its already-falling edge.
+       * The black diagonal was two rings spanning a 280 m EDGE_FALL in one
+       * band, so the join read as a crack. Extra inner rings keep the grade
+       * below about 8 degrees until the colour has already blended. */
+      const fall = smoothstep(tEdge * 1.12, tEdge * 5.4, r);
       const rise = smoothstep(3900, R, r);
-      const h = lerp(seam, -30, fall) + rise * H
-              + n.n(wx * 0.0016, wz * 0.0016) * 26 * smoothstep(tEdge, tEdge * 2.4, r);
+      const h = lerp(seam, PLATEAU_Y, fall) + rise * H
+              + n.n(wx * 0.0016, wz * 0.0016) * 18 * smoothstep(tEdge * 1.4, tEdge * 3.2, r);
       pos.push(wx, h, wz);
       /* Warm the inner rings toward the playable ash so the join is a
        * colour as well as a height. */
       const ash = new THREE.Color(0x8a7a68);
-      const k = smoothstep(tEdge, tEdge * 2.6, r);
+      const k = smoothstep(tEdge * 1.05, tEdge * 3.4, r);
       const cc = ash.clone().lerp(c, k);
-      const shade = 0.72 + 0.28 * smoothstep(tEdge * 2.0, R, r);
+      const shade = 0.78 + 0.22 * smoothstep(tEdge * 2.2, R, r);
       col.push(cc.r * shade, cc.g * shade, cc.b * shade);
     }
   }

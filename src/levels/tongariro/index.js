@@ -60,7 +60,7 @@ const BASE_MOOD = {
    * every surface receives nearly the same fill, landform shadows disappear,
    * and the mountain reads as a clay model under studio lights. The lake is
    * 0.64 and the jungle 0.55; alpine daylight is hard, not flooded. */
-  hemi: { sky: 0x8eb4d4, ground: 0x5a4536, intensity: 0.72 },
+  hemi: { sky: 0x8eb4d4, ground: 0x5a4536, intensity: 0.48 },
   /* Lower than the jungle's 1.90 because nothing here is in shade. An alpine
    * scene lit at a forest's stop is a white one. 0.92 rather than 1.15 so
    * oxidised scoria can sit in the upper mid-tones instead of washing to tan. */
