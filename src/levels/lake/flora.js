@@ -760,7 +760,7 @@ function buildSward(owner, terrain, tier, dummy) {
   /* The corridor reaches further too — 34 m stopped inside the distance a
    * driver reads, so the sward ended and the bare terrain began well within
    * the frame. */
-  const OUTER = tier === 'low' ? 16 : tier === 'medium' ? 24 : 34;
+  const OUTER = tier === 'low' ? 12 : tier === 'medium' ? 18 : 24;
   const INNER = ROAD_SHOULDER + 0.35;
   const rng = random(0x5ea77);
 

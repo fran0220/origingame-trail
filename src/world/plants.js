@@ -1598,7 +1598,7 @@ export function treeFern(rng, scale = 1, lod = 0, vi = 0) {
   for (let i = 0; i < n; i++) {
     const age = i / (n - 1);
     const yaw = i * 2.39996 + (rng() - 0.5) * 0.22;
-    const pitch = 0.15 + age * 1.45 + (rng() - 0.5) * 0.18;
+    const pitch = 0.45 + age * 1.35 + (rng() - 0.5) * 0.16;
     const len = (mamaku ? 2.4 + rng() * 1.2 : 1.85 + rng() * 1.05) * scale;
     e.set(-pitch, yaw, (rng() - 0.5) * 0.22, 'YXZ');
     m.makeRotationFromEuler(e);

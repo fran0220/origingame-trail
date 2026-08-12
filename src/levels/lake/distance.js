@@ -24,7 +24,7 @@ const RANGES = [
   },
   {
     name: 'alps-mid-range', seed: 0x715b, x0: -5200, x1: 3600, z0: -3420, z1: -7100,
-    nx: 560, nz: 224, base: -42, height: 1120, haze: .19, snowLine: 0.92, ridgeStrength: .15, gullyStrength: .068,
+    nx: 360, nz: 160, base: -42, height: 1120, haze: .19, snowLine: 0.92, ridgeStrength: .15, gullyStrength: .068,
     peaks: [
       [-4100,-5250,560,1450,1680,1.08,.8], [-2870,-5580,670,1320,1650,1.02,2.2],
       [-1650,-6030,580,1280,1580,1.08,4.7], [760,-5770,640,1420,1680,1.02,1.3],
@@ -35,7 +35,7 @@ const RANGES = [
   },
   {
     name: 'Aoraki-complete-massif', seed: 0xa04a, x0: -6500, x1: 5100, z0: -6920, z1: -12100,
-    nx: 1280, nz: 480, base: -62, height: 3300, haze: .13, snowLine: .28, ridgeStrength: 0, gullyStrength: .072,
+    nx: 720, nz: 280, base: -62, height: 3300, haze: .13, snowLine: .28, ridgeStrength: 0, gullyStrength: .072,
     /* One continuous uplifted block. Each entry changes the height and bearing
      * of the same drainage divide; it is not a radial cone and it is not a
      * thin link between summit nodes. Wide overlapping shoulders carry Aoraki

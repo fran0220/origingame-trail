@@ -291,7 +291,7 @@ if( !gl_FrontFacing ){
   float alum = dot( diffuseColor.rgb, vec3( 0.34, 0.50, 0.16 ) );
   /* Silver fern first: the white abaxial bloom is the national silhouette.
    * A ponga frond seen from below must go silver, not another green. */
-  vec3 silver = vec3( 0.72, 0.74, 0.68 );
+  vec3 silver = vec3( 0.86, 0.87, 0.82 );
   vec3 glaucous = vec3( 0.112, 0.142, 0.118 );
   vec3 paleGreen = vec3( 0.144, 0.166, 0.086 );
   vec3 rufous = vec3( 0.132, 0.090, 0.056 );
@@ -304,9 +304,10 @@ if( !gl_FrontFacing ){
   // Faded out on dead tissue. A brown leaf is brown on both sides — the
   // pigments and the hairs have gone with everything else — and letting the
   // abaxial tint survive senescence would put blue-grey backs on the litter.
-  float abK = ( 0.52 + 0.30 * sin( lid * 17.3 ) * sin( lid * 4.1 ) )
+  float abK = ( lid < 0.38 ? 0.92 : ( 0.52 + 0.30 * sin( lid * 17.3 ) * sin( lid * 4.1 ) ) )
             * ( 1.0 - clamp( vDead * 1.6, 0.0, 1.0 ) );
-  diffuseColor.rgb = mix( diffuseColor.rgb, ab * ( 0.60 + 1.05 * alum ), abK );
+  vec3 abLit = lid < 0.38 ? silver : ab * ( 0.60 + 1.05 * alum );
+  diffuseColor.rgb = mix( diffuseColor.rgb, abLit, abK );
 }
 `;
 
