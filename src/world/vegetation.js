@@ -1301,7 +1301,7 @@ export class Vegetation {
     this._add('broadleaf', this._scatter('broadleaf', 1.6, (c) => {
       if (!bank(c, 1.0, 48)) return 0;
       if (c.slope > 0.85) return 0;
-      return 0.62 * edgeLight(c.dist) * (0.7 + 0.5 * c.wet)
+      return 0.38 * edgeLight(c.dist) * (0.7 + 0.5 * c.wet)
            * wallFoot(c, 0.55) * (c.stone ? 0.28 : 1) * rooting(c, 0.85, 0.58);
     }, (c) => {
       /* Held to herb height. The old range ran to 1.7 before the bulk jitter,
@@ -1360,7 +1360,7 @@ export class Vegetation {
       const s = 0.6 + c.rng() * 0.9;
       return {
         v: (c.rng() * SPECIES_LOD.sprig.v) | 0,
-        m: M().compose(_p.set(c.x, c.y - 0.01, c.z),
+        m: M().compose(_p.set(c.x, c.y - 0.045, c.z),
                        stand(c, 0.90, 0.36), bulk(c.rng, s, 0.18)),
       };
     }, seed + 7));
@@ -1451,7 +1451,7 @@ export class Vegetation {
        * their margins with only a curled edge showing. Sinking a whole patch
        * rather than a single leaf is deliberate: burial is regional, the same
        * way rot is, and the wet hollows swallow their drifts fastest. */
-      const sink = (0.012 + c.rng() * 0.075 * (0.5 + c.wet)) * Math.min(1.6, s);
+      const sink = (0.035 + c.rng() * 0.090 * (0.5 + c.wet)) * Math.min(1.6, s);
       return {
         v: (c.rng() * SPECIES_LOD.litterMat.v) | 0,
         // Conformed all the way. Litter has no opinion about which way is up;

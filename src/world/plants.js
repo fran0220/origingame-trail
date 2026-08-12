@@ -1151,7 +1151,7 @@ export function broadleaf(rng, scale = 1, lod = 0, vi = 0) {
       m.setPosition(tip.x, tip.y, tip.z);
       addLeaf(leaf, m, {
         len, wid: len * (0.40 + rng() * 0.32),
-        cell: rng() < 0.45 ? CELL.OVATE : CELL.LANCE,
+        cell: rng() < 0.28 ? CELL.OVATE : CELL.LANCE,
         // Old blades at the bottom of the stool are the chewed ones.
         vary: ageF > 0.72 ? oldLeaf(rng) : anyLeaf(rng),
         bend: 0.75 + rng() * 1.35,

@@ -153,7 +153,10 @@ export class JungleTrailhead {
       const px = P.x + mnx * side * off, pz = P.z + mnz * side * off;
       const py = terrain.height(px, pz);
       /* Stake, then the plate facing back down the track. */
-      box(px, py - 0.1, pz, 0.035, 1.55, 0.035, my, TIMBER);
+      /* A weathered stake, not a machined dowel. Slight taper and a darker
+       * wet foot so it reads as timber driven into the verge. */
+      box(px, py - 0.18, pz, 0.042, 0.55, 0.042, my, [0.095, 0.078, 0.055]);
+      box(px, py + 0.34, pz, 0.034, 1.12, 0.034, my, TIMBER);
       triangle(px, py + 1.46, pz, 0.115, my + Math.PI, ORANGE);
       markers++;
     }
