@@ -587,7 +587,11 @@ class Game {
    */
   _aimShadow(p) {
     const d = this.sky.sunDir;
-    const dist = SHADOW_REACH * 1.6;
+    /* Same reach the cascade is sized to. Hard-coding the jungle's 46 m here
+     * left every open level with a correctly *sized* map aimed from the wrong
+     * distance, so the far half of a 170 m cascade was empty and the near
+     * half was a travelling ring. */
+    const dist = levelShadowReach(this.levelModule.mood) * 1.6;
     this.sun.position.set(p.x + d.x * dist, p.y + d.y * dist, p.z + d.z * dist);
     this.sun.target.position.copy(p);
     this.sun.target.updateMatrixWorld();
