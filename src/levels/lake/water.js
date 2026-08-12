@@ -110,7 +110,7 @@ function waterMaterial() {
     uWaves: { value: 1 },
   };
   material.userData.uniforms = U;
-  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v9';
+  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v10';
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, U);
     material.userData.shader = shader;
@@ -141,11 +141,11 @@ function waterMaterial() {
          * conspicuous diagonal band. Below about 12 cm there is no wave left. */
         float edge = smoothstep(.05, .70, aBed);
         float gust = .64 + .36 * (.5 + .5*sin(q.x*.021 + q.z*.014 + sin(q.z*.003)*2.0));
-        float surfaceDetail = mix(uNear,.12,smoothstep(400.0,1000.0,aFetch));
+        float surfaceDetail = mix(uNear,.42,smoothstep(400.0,1000.0,aFetch));
         vec2 slope = vec2(0.0);
-        wave(normalize(vec2(.91,.42)), 28.0, .22*surfaceDetail, .62, edge*gust, q, slope);
-        wave(normalize(vec2(.69,.72)), 13.0, .10*surfaceDetail, .94, edge*(1.15-gust*.28), q, slope);
-        wave(normalize(vec2(.98,-.18)), 6.2, .046*surfaceDetail, 1.38, edge, q, slope);
+        wave(normalize(vec2(.91,.42)), 36.0, .38*surfaceDetail, .52, edge*gust, q, slope);
+        wave(normalize(vec2(.69,.72)), 16.0, .16*surfaceDetail, .82, edge*(1.15-gust*.28), q, slope);
+        wave(normalize(vec2(.98,-.18)), 7.4, .070*surfaceDetail, 1.22, edge, q, slope);
         wave(normalize(vec2(.32,.95)), 2.8, .018*surfaceDetail, 1.92, edge, q, slope);
         wave(normalize(vec2(-.55,.83)), 1.35, .0075*surfaceDetail, 2.55, edge, q, slope);
         vFetch = aFetch;
