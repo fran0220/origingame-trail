@@ -1186,6 +1186,43 @@ export class Vegetation {
       return { v, m };
     }, seed + 21));
 
+    /* THE VERGE MUST CARRY PONGA AND NĪKAU. Scatter keyed to hollow/wet puts
+     * them in the gully the walker never looks into. A Karangahake track is
+     * walled with tree ferns; without a line of them on the tread the whole
+     * walk still reads as generic broadleaf, whatever the comments say. */
+    {
+      const extraTf = [], extraNk = [];
+      const P = new THREE.Vector3(), T = new THREE.Vector3();
+      const L = trail.length;
+      const q = {};
+      for (let i = 0; i < 42; i++) {
+        const t = 0.04 + i * 0.018;
+        trail.pointAt(t, P); trail.tangentAt(t, T);
+        const side = (i % 2 === 0) ? 1 : -1;
+        const off = (2.4 + (i % 5) * 0.55) * side;
+        const x = P.x + T.z * off, z = P.z - T.x * off;
+        const y = terrain.height(x, z);
+        terrain.sampleField(x, z, q);
+        if (q.dist < trail.widthAt(t) + 0.8) continue;
+        if (this.waterMask(x, z, y, q) > 0.08) continue;
+        const v = i % SPECIES_LOD.treeFern.v;
+        extraTf.push({
+          v,
+          m: M().compose(_p.set(x, y - 0.06, z),
+                         new THREE.Quaternion(), bulk(makeRng(seed + 400 + i), 0.92, 0.08)),
+        });
+        if (i % 3 === 0) {
+          extraNk.push({
+            v: i % SPECIES_LOD.palm.v,
+            m: M().compose(_p.set(x + T.x * 1.1, y - 0.05, z + T.z * 1.1),
+                           new THREE.Quaternion(), bulk(makeRng(seed + 500 + i), 0.88, 0.10)),
+          });
+        }
+      }
+      this._add('treeFern', extraTf);
+      this._add('palm', extraNk);
+    }
+
     /* The perching layer. A primeval wet forest carries a second garden on
      * its trunks: nest epiphytes the size of flax bushes in the forks, and
      * ferns rooted in nothing but bark. It is the single strongest cue that
