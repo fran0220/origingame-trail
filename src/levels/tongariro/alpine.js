@@ -74,32 +74,37 @@ function shrubGeo(rng, dark) {
   const pos = [], col = [], idx = [];
   const wood = [0.130, 0.104, 0.072];
   const leaf = dark ? [0.088, 0.126, 0.070] : [0.155, 0.170, 0.098];
-  const box = (cx, cy, cz, hw, h, hd, c) => {
-    const b = pos.length / 3;
-    for (let i = 0; i < 8; i++) {
-      pos.push(cx + ((i & 1) ? hw : -hw), cy + ((i & 2) ? h : 0), cz + ((i & 4) ? hd : -hd));
-      col.push(...c);
+  const blade = (x0, y0, z0, len, yaw, c) => {
+    /* A stiff needle tuft, not a box. Boxes read as tables from any
+     * distance; dracophyllum is a fountain of hard straps. */
+    const SEG = 3;
+    const dx = Math.cos(yaw), dz = Math.sin(yaw);
+    let prev = null;
+    for (let s = 0; s <= SEG; s++) {
+      const u = s / SEG;
+      const bend = u * u * 0.35;
+      const x = x0 + dx * len * bend, z = z0 + dz * len * bend;
+      const y = y0 + len * u * (1 - 0.12 * bend);
+      const hw = 0.012 * (1 - u * 0.75);
+      const n0 = pos.length / 3;
+      pos.push(x - dz * hw, y, z + dx * hw, x + dz * hw, y, z - dx * hw);
+      col.push(...c, ...c);
+      if (prev !== null) idx.push(prev, prev + 1, n0, prev + 1, n0 + 1, n0);
+      prev = n0;
     }
-    const F = [[0,1,3,2],[4,6,7,5],[0,2,6,4],[1,5,7,3],[2,3,7,6],[0,4,5,1]];
-    F.forEach((f) => idx.push(b+f[0], b+f[1], b+f[2], b+f[0], b+f[2], b+f[3]));
   };
-  const n = 3 + ((rng() * 4) | 0);
+  const n = 4 + ((rng() * 4) | 0);
   for (let i = 0; i < n; i++) {
     const a = (i / n) * 6.283 + rng();
-    const r = rng() * 0.18;
-    const h = 0.22 + rng() * 0.30;
-    box(Math.cos(a) * r, 0, Math.sin(a) * r, 0.020, h * 0.55, 0.020, wood);
-    /* FOLIAGE OVERLAPPING DOWN THE STEM, NOT PERCHED ON TOP OF IT. The first
-     * version put one lump at the top of each bare stick and a field of them
-     * read as small dark tables — the gap between the ground and the leaves
-     * was the whole silhouette, and a shrub does not have one. Dracophyllum
-     * does hold its leaves in tufts at the ends of stems, but the stems are
-     * short and the tufts overlap into a single stiff mass. */
-    const fh = 0.16 + rng() * 0.16;
-    box(Math.cos(a) * r * 1.15, h * 0.42, Math.sin(a) * r * 1.15,
-        0.11 + rng() * 0.09, fh, 0.11 + rng() * 0.09, leaf);
-    box(Math.cos(a) * r * 0.6, h * 0.30 + fh * 0.5, Math.sin(a) * r * 0.6,
-        0.09 + rng() * 0.07, fh * 0.8, 0.09 + rng() * 0.07, leaf);
+    const r = rng() * 0.14;
+    const h = 0.18 + rng() * 0.28;
+    const bx = Math.cos(a) * r, bz = Math.sin(a) * r;
+    blade(bx, 0, bz, h * 0.55, a, wood);
+    const tuft = 6 + ((rng() * 5) | 0);
+    for (let k = 0; k < tuft; k++) {
+      const yaw = a + (k / tuft - 0.5) * 1.8 + (rng() - 0.5) * 0.4;
+      blade(bx, h * 0.28, bz, 0.14 + rng() * 0.18, yaw, leaf);
+    }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));

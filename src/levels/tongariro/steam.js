@@ -29,10 +29,11 @@ import { STAGES } from './route.js';
 /* Where the ground is venting. Two clusters, because that is how a fumarole
  * field works — they follow a fracture, they do not scatter. */
 const VENTS = [
-  { t: 0.700, off:  -6, n: 5, scale: 1.05 },   // the Red Crater rim
-  { t: 0.742, off:   9, n: 4, scale: 0.90 },
-  { t: 0.768, off:  -4, n: 4, scale: 1.20 },   // just below the high point
-  { t: 0.905, off:  16, n: 3, scale: 0.75 },   // above the Blue Lake
+  { t: 0.58,  off:  18, n: 3, scale: 1.35 },   // visible across South Crater
+  { t: 0.700, off:  -6, n: 5, scale: 1.15 },   // the Red Crater rim
+  { t: 0.742, off:   9, n: 4, scale: 0.95 },
+  { t: 0.768, off:  -4, n: 4, scale: 1.30 },   // just below the high point
+  { t: 0.905, off:  16, n: 3, scale: 0.80 },   // above the Blue Lake
 ];
 
 const PER_VENT = 26;

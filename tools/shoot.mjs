@@ -76,7 +76,10 @@ await run({ width: W, height: H, hash: HASH }, async ({ page, errs, gl }) => {
       const g = window.__game;
       g.goTo(t);
       if (yaw) g.walker.yaw += yaw;
-      if (pitch) g.walker.pitch += pitch;
+      if (pitch) {
+        g.walker.pitch += pitch;
+        if ('lookPitch' in g.walker) g.walker.lookPitch = pitch;
+      }
       // Let the camera height spring settle and any streaming/adaptive state
       // reach the value it would have if you had actually walked here.
       g.warp(2.0);
