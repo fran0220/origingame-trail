@@ -96,7 +96,10 @@ ${SHAPE_K}
  * of leaflets — so the fallthrough serves column 2's *envelope* only, and the
  * CPU twin below returns that envelope for it. */
 float wProfile(int id, float t, float k){
-  if(id == 0) return pow(sin(PI * pow(t, 0.50 + 0.22 * k)), 0.56 + 0.24 * k) * (0.86 + 0.18 * k);
+  /* Rangiora / five-finger: widest past halfway, blunt tip, no heart-shaped
+   * tropical base. The old a=0.50 curve put the waist at the petiole and
+   * read as philodendron from across the frame. */
+  if(id == 0) return pow(sin(PI * pow(t, 0.92 + 0.18 * k)), 0.78 + 0.22 * k) * (0.78 + 0.16 * k);
   if(id == 1) return pow(sin(PI * pow(t, 0.68 + 0.26 * k)), 1.02 + 0.36 * k) * (0.39 + 0.14 * k);
   /* Column 3 used to fall through to column 0's curve and baked as a visible
    * duplicate of it — a quarter of the atlas spent on a leaf already in it.
@@ -132,7 +135,7 @@ export function leafSpan(cell, vary, t) {
   // set where `ext` is computed in the fragment shader rather than in wProfile.
   if (cell === 2) return S(PI * P(t, 0.62 + 0.18 * k));
   let w;
-  if (cell === 0) w = P(S(PI * P(t, 0.50 + 0.22 * k)), 0.56 + 0.24 * k) * (0.86 + 0.18 * k);
+  if (cell === 0) w = P(S(PI * P(t, 0.92 + 0.18 * k)), 0.78 + 0.22 * k) * (0.78 + 0.16 * k);
   else if (cell === 1) w = P(S(PI * P(t, 0.68 + 0.26 * k)), 1.02 + 0.36 * k) * (0.39 + 0.14 * k);
   else w = P(S(PI * P(t, 1.30 + 0.45 * k)), 0.62 + 0.26 * k) * (0.72 + 0.22 * k);
   // The cell's x runs to 1.08 half-widths, so that is what a span of 1 means.

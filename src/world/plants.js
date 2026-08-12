@@ -2120,7 +2120,7 @@ export function tree(rng, scale = 1) {
         const ll = (0.55 + rng() * 0.95) * scale;
         addLeaf(leaf, m, {
           len: ll, wid: ll * (0.34 + rng() * 0.26),
-          cell: rng() < 0.5 ? CELL.OVATE : CELL.SMALL,
+          cell: rng() < 0.55 ? CELL.LANCE : CELL.SMALL,
           // The crown is where the new growth is; the chewed rows belong down
           // in the understory where the insects live.
           vary: freshLeaf(rng),

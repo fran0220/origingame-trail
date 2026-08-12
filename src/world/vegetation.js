@@ -1153,7 +1153,7 @@ export class Vegetation {
       if (c.stone) return 0;
       if (!bank(c, 2.0, 62)) return 0;
       if (c.slope > 0.75) return 0;
-      return 0.42 * edgeLight(c.dist) * wallFoot(c, 0.35) * rooting(c, 0.92, 0.72);
+      return 0.62 * edgeLight(c.dist) * wallFoot(c, 0.35) * rooting(c, 0.92, 0.72);
     }, (c) => {
       // Palms come up in cohorts under a parent, so a clump centre is where
       // the tall ones are and the rim is all suckers.
@@ -1175,7 +1175,7 @@ export class Vegetation {
       if (c.stone) return 0;
       if (!bank(c, 1.6, 58)) return 0;
       if (c.slope > 0.80) return 0;
-      return 0.50 * edgeLight(c.dist) * (0.50 + 0.80 * c.hollow + 0.55 * c.wet)
+      return 0.78 * edgeLight(c.dist) * (0.50 + 0.80 * c.hollow + 0.55 * c.wet)
            * wallFoot(c, 0.30) * rooting(c, 0.90, 0.55);
     }, (c) => {
       const s = 0.70 + c.rng() * 0.60 + c.dens * 0.35;
