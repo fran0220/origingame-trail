@@ -562,9 +562,16 @@ export class LakeWater {
     mc.near = 4;
     mc.far = 40000;
     mc.updateProjectionMatrix();
-    mc.position.set(camera.position.x, 2 * LAKE_Y - camera.position.y, camera.position.z);
-    const e = camera.rotation.clone();
-    mc.rotation.set(-e.x, e.y, -e.z, camera.rotation.order);
+    /* Reflect through y = LAKE_Y. Position flips; look-at also flips so the
+     * camera still faces the same world azimuth and sees the range, not the
+     * terrace behind the car. */
+    const eye = camera.position;
+    mc.position.set(eye.x, 2 * LAKE_Y - eye.y, eye.z);
+    const fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    const target = new THREE.Vector3(eye.x + fwd.x, 2 * LAKE_Y - (eye.y + fwd.y), eye.z + fwd.z);
+    mc.up.set(0, -1, 0);
+    mc.lookAt(target);
     mc.updateMatrixWorld();
 
     if (!this._mirrorLayers) {
