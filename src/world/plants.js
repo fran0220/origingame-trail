@@ -1112,7 +1112,7 @@ export function broadleaf(rng, scale = 1, lod = 0, vi = 0) {
    * across. So the strap is deleted, the aroid stays at one in five because
    * rangiora and kawakawa do give a broad-leaved note and losing it entirely
    * would flatten the understorey to one texture, and the rest is compound. */
-  const form = [FORM.COMPOUND, FORM.ROSETTE, FORM.COMPOUND, FORM.CANE,
+  const form = [FORM.COMPOUND, FORM.COMPOUND, FORM.ROSETTE, FORM.CANE,
                 FORM.COMPOUND][vi % 5];
   const leaf = new Builder(), wood = new Builder();
   const m = new THREE.Matrix4(), e = new THREE.Euler(), q = new THREE.Quaternion();
@@ -1138,7 +1138,7 @@ export function broadleaf(rng, scale = 1, lod = 0, vi = 0) {
        * building every leaf at the same length is what makes a clump look
        * stamped. */
       const ageF = Math.pow(rng(), 0.8);
-      const len = (0.30 + ageF * 0.78) * scale;
+      const len = (0.22 + ageF * 0.42) * scale;
       const dir = _v().set(0, Math.cos(pitch * 0.55), -Math.sin(pitch * 0.55))
         .applyAxisAngle(UPV, yaw);
       const tip = addStalk(wood, ORIG, dir, len * (0.40 + rng() * 0.50),
@@ -1151,7 +1151,7 @@ export function broadleaf(rng, scale = 1, lod = 0, vi = 0) {
       m.setPosition(tip.x, tip.y, tip.z);
       addLeaf(leaf, m, {
         len, wid: len * (0.40 + rng() * 0.32),
-        cell: rng() < 0.75 ? CELL.OVATE : CELL.LANCE,
+        cell: rng() < 0.45 ? CELL.OVATE : CELL.LANCE,
         // Old blades at the bottom of the stool are the chewed ones.
         vary: ageF > 0.72 ? oldLeaf(rng) : anyLeaf(rng),
         bend: 0.75 + rng() * 1.35,
@@ -1599,7 +1599,7 @@ export function treeFern(rng, scale = 1, lod = 0, vi = 0) {
     const age = i / (n - 1);
     const yaw = i * 2.39996 + (rng() - 0.5) * 0.22;
     const pitch = -0.30 + age * 1.55 + (rng() - 0.5) * 0.20;
-    const len = (mamaku ? 1.8 + rng() * 1.0 : 1.25 + rng() * 0.85) * scale;
+    const len = (mamaku ? 2.4 + rng() * 1.2 : 1.85 + rng() * 1.05) * scale;
     e.set(-pitch, yaw, (rng() - 0.5) * 0.22, 'YXZ');
     m.makeRotationFromEuler(e);
     m.setPosition(crown.x, crown.y - 0.03 * scale, crown.z);
