@@ -35,7 +35,7 @@ const RANGES = [
   },
   {
     name: 'Aoraki-complete-massif', seed: 0xa04a, x0: -6500, x1: 5100, z0: -6920, z1: -12100,
-    nx: 720, nz: 280, base: -62, height: 3300, haze: .13, snowLine: .28, ridgeStrength: 0, gullyStrength: .072,
+    nx: 880, nz: 320, base: -62, height: 3300, haze: .13, snowLine: .24, ridgeStrength: 0, gullyStrength: .078,
     /* One continuous uplifted block. Each entry changes the height and bearing
      * of the same drainage divide; it is not a radial cone and it is not a
      * thin link between summit nodes. Wide overlapping shoulders carry Aoraki
@@ -52,8 +52,8 @@ const RANGES = [
        * comment claiming otherwise. Narrow the principal summit and lower its
        * neighbours enough that the lake view reads one peak, two shoulders and
        * saddles rather than a single rectangular ice mass. */
-      [ -180, 3920,  480, 420, 1.62, -260],
-      [  380, 2140,  580, 720, 1.38, -160],
+      [ -80, 4180,  220, 190, 2.15, -280],
+      [  520, 1760,  380, 520, 1.55, -170],
       [ 1260, 1860,  860,1020, 1.30,   80],
       [ 2360, 1900, 1220,1320, 1.30,  170],
       [ 3650, 1370, 1280,1440, 1.38,   40],
@@ -65,7 +65,7 @@ const RANGES = [
     massifSpurs: [
       [-3330,-9580,-4500,-7280,1810,420,520,980],
       [-1910,-9490,-2660,-7040,2160,340,520,920],
-      [ -120,-9370,  870,-7010,2500,390,560,980],
+      [  -80,-9480,  420,-7180,2680,260,380,720],
       [ 1510,-9660, 2860,-7310,1850,340,610,1050],
     ],
     /* Headwalls open into broad U-shaped troughs on the lake-facing side.
@@ -118,10 +118,13 @@ function continuousMassif(spec, noise, x, z) {
      * from collapsing to the range floor between authored high points — the
      * exact failure that made the first replacement look like four separate
      * Gothic spires. */
-    const broad = asymmetricPeak(x, cx, left * 1.82, right * 1.82, power * .62);
-    const apex = asymmetricPeak(x, cx, left * .76, right * .76, power * 1.18);
-    const influence = broad * .82 + apex * .18;
-    crest = smoothMax(crest, height * influence, spec.height * .05);
+    /* Aoraki is a pyramid, not a dome. The old 82/18 mix let the wide
+     * shoulder own the silhouette and fused three summits into one white
+     * loaf. Keep the shoulder for saddles, give the apex the skyline. */
+    const broad = asymmetricPeak(x, cx, left * 1.55, right * 1.55, power * .70);
+    const apex = asymmetricPeak(x, cx, left * .52, right * .48, power * 1.55);
+    const influence = broad * .42 + apex * .58;
+    crest = smoothMax(crest, height * influence, spec.height * .028);
     bearing += zOffset * broad;
     bearingWeight += broad;
   }

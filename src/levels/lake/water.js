@@ -108,9 +108,11 @@ function waterMaterial() {
     uTime: { value: 0 },
     uNear: { value: 1 },
     uWaves: { value: 1 },
+    tMirror: { value: null },
+    uHasMirror: { value: 0 },
   };
   material.userData.uniforms = U;
-  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v12';
+  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v13';
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, U);
     material.userData.shader = shader;
@@ -162,6 +164,8 @@ function waterMaterial() {
       varying float vFetch, vBed;
       varying vec3 vW, vN;
       uniform float uTime, uNear, uWaves;
+      uniform sampler2D tMirror;
+      uniform float uHasMirror;
       vec3 gLakeNormal = vec3(0.0,1.0,0.0);
       float gLakeDistance = 0.0;
       float gLakeGlint = 0.0;
@@ -248,11 +252,14 @@ function waterMaterial() {
         float ndv=max(dot(gLakeNormal,V),0.0);
         float fresnel=.02037+(1.0-.02037)*pow(1.0-ndv,5.0);
         vec3 clearSky = mix(vec3(.62,.74,.80),vec3(.10,.30,.52),smoothstep(0.0,.82,R.y));
-        /* When the reflection looks north, tint toward snow so the massif
-         * can read in the glass without a second render of the range. */
-        float northLook = smoothstep(-.15,.55,-R.z);
-        vec3 snowReflect = mix(vec3(.55,.66,.74), vec3(.88,.92,.94), clamp(R.y,0.0,1.0));
-        clearSky = mix(clearSky, snowReflect, northLook * .55);
+        /* Planar mirror of the actual massif, warped by the surface normal so
+         * it is a reflection and not a decal. The old north-tint invented snow
+         * wherever the view faced -Z; this samples a photograph of the range. */
+        vec2 mUv = gl_FragCoord.xy / vec2(textureSize(tMirror, 0));
+        mUv += gLakeNormal.xz * 0.035;
+        vec3 mirrored = texture2D(tMirror, clamp(mUv, 0.002, 0.998)).rgb;
+        float useMirror = uHasMirror * smoothstep(.04, .22, fresnel) * (1.0 - gLakeFoam);
+        clearSky = mix(clearSky, mirrored, useMirror);
         float longWave = clamp(.5+(vN.x*.72+vN.z*.28)*18.0,0.0,1.0);
         /* The shared environment probe already contains the sky and distant
          * massif. At this scale it is the correct representation: directional
@@ -497,12 +504,24 @@ export function drawLakeWater(ctx,map) {
 export class LakeWater {
   constructor(terrain, tier='high', renderer=null, scene=null) {
     this.time=0;
+    this.renderer=renderer;
+    this.scene=scene;
+    this._mirrorReady=false;
     this.root=new THREE.Group();
     this.root.name='lake-pukaki-unified-water-and-shore';
     this.surfaceMaterial=waterMaterial();
     this.surface=new THREE.Mesh(lakeGeometry(terrain),this.surfaceMaterial);
     this.surface.name='adaptive-density-whole-lake';
     this.surface.renderOrder=1;
+    if (renderer) {
+      const size = tier === 'low' ? 384 : 640;
+      this.mirrorTarget = new THREE.WebGLRenderTarget(size, size, {
+        type: THREE.HalfFloatType,
+        depthBuffer: true,
+      });
+      this.mirrorCam = new THREE.PerspectiveCamera(55, 16 / 9, 2, 40000);
+      this.surfaceMaterial.userData.uniforms.tMirror.value = this.mirrorTarget.texture;
+    }
 
     /* The wet ribbon and the foam ribbon that used to live here are gone. Both
      * were strips six metres and two metres wide laid along shoreX(z) with
@@ -527,6 +546,50 @@ export class LakeWater {
   update(dt,camera,sun,host) {
     this.time+=dt;
     this.surfaceMaterial.userData.uniforms.uTime.value=this.time;
+    this._mirrorTick = (this._mirrorTick || 0) + 1;
+    if ((this._mirrorTick & 1) === 1) this._captureMirror(camera);
+  }
+
+  /* Flip the live camera under the lake and photograph only the Alps and
+   * the sky. One extra pass, 640², no flora. That is a reflection of the
+   * actual massif rather than a north-facing paint job. */
+  _captureMirror(camera) {
+    if (!this.renderer || !this.scene || !camera || !this.mirrorTarget) return;
+    const U = this.surfaceMaterial.userData.uniforms;
+    const mc = this.mirrorCam;
+    mc.fov = camera.fov;
+    mc.aspect = camera.aspect;
+    mc.near = 4;
+    mc.far = 40000;
+    mc.updateProjectionMatrix();
+    mc.position.set(camera.position.x, 2 * LAKE_Y - camera.position.y, camera.position.z);
+    const e = camera.rotation.clone();
+    mc.rotation.set(-e.x, e.y, -e.z, camera.rotation.order);
+    mc.updateMatrixWorld();
+
+    if (!this._mirrorLayers) {
+      this._mirrorLayers = this.scene.children.filter((o) => {
+        const n = o.name || '';
+        return n !== 'sky' && n !== 'lake-distance-southern-alps';
+      });
+    }
+    const hidden = [];
+    for (const o of this._mirrorLayers) {
+      if (!o.visible) continue;
+      hidden.push(o);
+      o.visible = false;
+    }
+    this.root.visible = false;
+    const prevAuto = this.renderer.shadowMap.autoUpdate;
+    this.renderer.shadowMap.autoUpdate = false;
+    this.renderer.setRenderTarget(this.mirrorTarget);
+    this.renderer.render(this.scene, mc);
+    this.renderer.setRenderTarget(null);
+    this.renderer.shadowMap.autoUpdate = prevAuto;
+    this.root.visible = true;
+    for (const o of hidden) o.visible = true;
+    U.uHasMirror.value = 1;
+    this._mirrorReady = true;
   }
 
   setDebug(mode='none') {
@@ -553,5 +616,6 @@ export class LakeWater {
     this.surface.geometry.dispose();
     this.stoneGeometry.dispose();
     this.materials.forEach(m=>m.dispose());
+    this.mirrorTarget?.dispose();
   }
 }
