@@ -38,7 +38,7 @@ export const CONDITIONS = [
      * cross-light that gives every hummock and spur a readable side. */
     sun: { elevation: 34, azimuth: 26 },
     hemi: { sky: 0x83b4db, ground: 0x526d38, intensity: 0.64 },
-    fog: { color: 0xb7cddd, density: 0.00135 },
+    fog: { color: 0xb7cddd, density: 0.00028 },
     air: { clouds: 0.72, cloudScale: 1.35 },
     environmentIntensity: 0.86,
     exposureScale: 1.00,
@@ -53,7 +53,7 @@ export const CONDITIONS = [
      * ever appears at its best hour is a postcard. */
     sun: { elevation: 68, azimuth: 8 },
     hemi: { sky: 0x9ec6e8, ground: 0x5f7a41, intensity: 0.72 },
-    fog: { color: 0xc6dbe8, density: 0.00105 },
+    fog: { color: 0xc6dbe8, density: 0.00022 },
     air: { clouds: 0.42, cloudScale: 1.15 },
     environmentIntensity: 0.95,
     exposureScale: 0.88,
@@ -68,7 +68,7 @@ export const CONDITIONS = [
      * grass does, because it is higher and still in the light. */
     sun: { elevation: 9, azimuth: 292 },
     hemi: { sky: 0x7d9fc4, ground: 0x6b5230, intensity: 0.58 },
-    fog: { color: 0xe0b98f, density: 0.00190 },
+    fog: { color: 0xe0b98f, density: 0.00055 },
     air: { clouds: 0.62, cloudScale: 1.45 },
     environmentIntensity: 0.78,
     exposureScale: 1.22,
@@ -84,7 +84,7 @@ export const CONDITIONS = [
      * down toward grey. */
     sun: { elevation: 27, azimuth: 315 },
     hemi: { sky: 0x9aa6ad, ground: 0x6a6a55, intensity: 0.86 },
-    fog: { color: 0xc8c6bd, density: 0.00320 },
+    fog: { color: 0xc8c6bd, density: 0.00090 },
     air: { clouds: 0.96, cloudScale: 1.70 },
     environmentIntensity: 0.62,
     exposureScale: 1.10,

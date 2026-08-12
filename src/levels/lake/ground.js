@@ -166,7 +166,7 @@ export function makeBasinMaterial(renderer) {
       /* A bank cannot use a top-down UV: at 60 degrees the scan stretches
        * into a vertical smear, which is the retaining-wall look every shore
        * frame showed. Cheap half-triplanar, same as Tongariro. */
-      float wall = sstep(0.38, 0.72, 1.0 - abs(vWNrm.y));
+      float wall = sstep(0.22, 0.55, 1.0 - abs(vWNrm.y));
       vec2 tuvW = abs(vWNrm.x) > abs(vWNrm.z)
                 ? vec2(vWPos.z, vWPos.y) * 0.85
                 : vec2(vWPos.x, vWPos.y) * 0.85;
