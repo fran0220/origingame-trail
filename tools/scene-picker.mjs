@@ -24,12 +24,12 @@ const wire=p=>{p.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));p.on(
 try {
   const picker=await context.newPage(); wire(picker); await picker.goto(base);
   const buttons=picker.locator('#levelPicker button');
-  if(await buttons.count()!==2) throw new Error('bare picker does not have exactly two buttons');
-  for(let i=0;i<2;i++){await buttons.nth(i).focus();if(!await buttons.nth(i).evaluate(e=>e===document.activeElement))throw new Error('picker button not focusable');}
+  if(await buttons.count()!==3) throw new Error('bare picker does not have exactly three buttons');
+  for(let i=0;i<3;i++){await buttons.nth(i).focus();if(!await buttons.nth(i).evaluate(e=>e===document.activeElement))throw new Error('picker button not focusable');}
   await buttons.filter({hasText:'Lake Tekapo'}).click();
   await picker.waitForFunction(()=>!!window.__game,null,{timeout:300_000});
   if(!picker.url().includes('level=lake')||await picker.evaluate(()=>window.__game.levelModule.meta.id)!=='lake')throw new Error('Lake selection mismatch');
-  for(const id of ['jungle','lake']){const p=await context.newPage();wire(p);await p.goto(`${base}#manual&level=${id}`);await p.waitForFunction(()=>!!window.__game,null,{timeout:300_000});if(await p.locator('#levelPicker').count())throw new Error(`${id} deep link did not bypass picker`);await p.close();}
+  for(const id of ['jungle','lake','tongariro']){const p=await context.newPage();wire(p);await p.goto(`${base}#manual&level=${id}`);await p.waitForFunction(()=>!!window.__game,null,{timeout:300_000});if(await p.locator('#levelPicker').count())throw new Error(`${id} deep link did not bypass picker`);await p.close();}
   const record=await picker.evaluate(()=>{const s=window.__game.session.state,id=window.__game.session.content.SUBJECTS[0].id;s.addPhoto(id,.777,null);return id;});
   await picker.evaluate(()=>window.__game.hud.setPaused(true));
   await Promise.all([picker.waitForURL(u=>!u.hash,{timeout:60_000}),picker.locator('#pauseLevels').click()]);
@@ -39,5 +39,5 @@ try {
   const actual=saved||await picker.evaluate(()=>Object.values(localStorage).map(v=>{try{return JSON.parse(v)}catch{return null}}).find(v=>v?.v===2));
   if(actual?.levels?.lake?.photos?.[record]!==.777)throw new Error('Lake photo was not flushed before picker navigation');
   if(errors.length)throw new Error(errors.join('\n'));
-  console.log(`ok — 2 focusable buttons; Lake select/deep links; flushed ${record} before reload`);
+  console.log(`ok — 3 focusable buttons; Lake select/deep links; flushed ${record} before reload`);
 } finally {await browser.close();server.close();}
