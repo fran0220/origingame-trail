@@ -111,7 +111,7 @@ export class Lakes {
        * shape, because it is derived from the same number that shaped it. */
       const y = terrain.height(cx, cz) + spec.depth * 0.62;
 
-      const SEG = 30, RINGS = 5;
+      const SEG = 36, RINGS = 6;
       const pos = [], col = [], idx = [];
       const base = new THREE.Color(spec.tint);
       /* The pale rim is a NARROW band, not half the pool. At 0.55 toward near-white
@@ -128,7 +128,13 @@ export class Lakes {
           /* Not a circle: a crater pool is the shape of the hollow it is in. */
           const wob = 1 + n.n(Math.cos(a) * 2.4 + spec.t * 40, Math.sin(a) * 2.4) * 0.22;
           const r = spec.r * u * wob;
-          pos.push(cx + Math.cos(a) * r, y, cz + Math.sin(a) * r);
+          const wx = cx + Math.cos(a) * r, wz = cz + Math.sin(a) * r;
+          /* Sit the disc just under the carved basin so the heightfield, not
+           * a hard polygon edge, is the waterline. A sheet on a constant y
+           * cut a ruled line through every shore. */
+          const gy = terrain.height(wx, wz);
+          const wy = j === RINGS ? Math.min(y - 0.04, gy - 0.08) : y;
+          pos.push(wx, wy, wz);
           /* Deep in the middle, pale at the rim where the bed comes up — the
            * gradient IS the depth, and it is what makes a flat disc read as
            * water with a bottom rather than as coloured glass. */

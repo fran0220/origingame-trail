@@ -230,7 +230,14 @@ export class Terrain extends Heightfield {
     out[0] = ash;
     out[1] = clamp(red * (1 - black), 0, 1);
     out[2] = clamp(black, 0, 1);
-    out[3] = 0;
+    let wet = 0;
+    for (const b of this.basins) {
+      const d = Math.hypot(x - b.x, z - b.z);
+      if (d < b.r * 1.55) {
+        wet = Math.max(wet, 1 - smoothstep(b.r * 0.92, b.r * 1.55, d));
+      }
+    }
+    out[3] = wet;
   }
 
   /* THE FIVE METHODS THE ENGINE REQUIRES OF ANY TERRAIN are height, normal,
@@ -242,7 +249,18 @@ export class Terrain extends Heightfield {
    * Lakes — that is most of why it is dangerous — and the ground is scoria and
    * ash, which does not hold water for the same reason a gravel drive does
    * not. Returning zero is the truth here, not a placeholder. */
-  wetAt() { return 0; }
+  wetAt(x, z) {
+    /* Mineral mud around each pool, and nowhere else. The mountain above
+     * the valley does not hold water; the crater lakes do, in a narrow band
+     * the shader can darken so the waterline is a wet shore, not a ruled cut. */
+    for (const b of this.basins) {
+      const d = Math.hypot(x - b.x, z - b.z);
+      if (d < b.r * 1.55) {
+        return clamp(1 - smoothstep(b.r * 0.92, b.r * 1.55, d), 0, 1);
+      }
+    }
+    return 0;
+  }
 
   /** Local slope, 0 flat to 1 vertical, from the finished field. */
   slopeAt(x, z) {
@@ -386,6 +404,10 @@ export function makeTerrainMaterial(renderer) {
                     + vec3(0.360, 0.132, 0.062) * gW.y
                     + vec3(0.092, 0.084, 0.080) * gW.z;
        surfCol = mix(surfCol, meanCol, gFade);
+       /* Wet mineral mud at each pool. Darker and slightly greener, so the
+        * waterline is a shore rather than a polygon cut. */
+       float wet = clamp(vSplat.w, 0.0, 1.0);
+       surfCol = mix(surfCol, surfCol * vec3(0.42, 0.50, 0.46), wet);
        diffuseColor.rgb *= surfCol;`
     );
 
