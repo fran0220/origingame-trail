@@ -2321,7 +2321,7 @@ export function litterMat(rng, scale = 1, lod = 0) {
       roll: (rng() < 0.72 ? -1 : 1) * (kind === 2 ? 0.08 + rng() * 0.16 : 0.18 + rng() * 0.32),
       sag: (rng() - 0.5) * 0.9, phase: rng() * 6.283,
       asym: (rng() - 0.5) * 0.4,
-      twist: (rng() - 0.5) * (kind === 1 ? 3.0 : 1.5), flex0: 0.0,
+      twist: (rng() - 0.5) * (kind === 1 ? 0.8 : 0.4), flex0: 0.0,
       occ: 0.42 + 0.58 * clamp01(y / 0.10) * (1 - 0.35 * wet),
       // Nothing on a forest floor is at one stage of decay, and the family a
       // piece belongs to says most of where it is in the sequence.

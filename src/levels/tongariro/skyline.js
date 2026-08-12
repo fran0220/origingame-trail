@@ -30,7 +30,7 @@ import { BOUNDS } from './route.js';
  * the west across South Crater, and Ruapehu is far to the south beyond it. */
 const CONES = [
   {
-    name: 'ngauruhoe', x: -2100, z: -1500, base: -28, height: 1248, radius: 1500,
+    name: 'ngauruhoe', x: -2480, z: -1680, base: -28, height: 1248, radius: 1680,
     /* 2291 m, and only 2500 years old — which is why it has no gullies worth
      * the name and a near-perfect profile. The steepness is real: the upper
      * cone is at 33 degrees, the angle loose scoria stands at and no steeper. */
@@ -38,7 +38,7 @@ const CONES = [
     segments: 160,
   },
   {
-    name: 'tongariro-massif', x: 1900, z: -3100, base: -28, height: 808, radius: 2100,
+    name: 'tongariro-massif', x: 2280, z: -3280, base: -28, height: 808, radius: 2280,
     /* The old massif is a shield of overlapping craters, not a cone: lower,
      * broader, and cut about by everything that has erupted out of it for
      * 275,000 years. */
@@ -225,6 +225,22 @@ function coneGeometry(spec, rng) {
       idx.push(a0, b0, a1, a1, b0, b1);
     }
   }
+  /* Close the hollow foot. A radial cone has no underside, so a grazing
+   * camera looking under the eastern apron sees sky through the mountain
+   * — the black diagonal on every South Crater frame. A disc at the last
+   * ring, wound to face down, fills that hole with the same rock. */
+  const last = RINGS * W;
+  const hub = pos.length / 3;
+  let ax = 0, az = 0;
+  for (let s = 0; s <= S; s++) {
+    ax += pos[(last + s) * 3];
+    az += pos[(last + s) * 3 + 2];
+  }
+  ax /= (S + 1); az /= (S + 1);
+  pos.push(ax, spec.base - 4, az);
+  col.push(rock.r * 0.55, rock.g * 0.55, rock.b * 0.55);
+  for (let s = 0; s < S; s++) idx.push(hub, last + s + 1, last + s);
+
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
@@ -343,11 +359,14 @@ export class Skyline {
     const mat = new THREE.MeshStandardMaterial({
       name: 'skyline', vertexColors: true,
       roughness: 0.96, metalness: 0.0, envMapIntensity: 0.42,
+      /* Double-sided: a hollow cone seen from South Crater otherwise
+       * shows its interior as a black diagonal. */
+      side: THREE.DoubleSide,
       /* Never a shadow caster or receiver: these are kilometres away, the
        * cascades do not reach them, and asking would only cost a pass. */
       flatShading: false,
     });
-    mat.customProgramCacheKey = () => 'tongariro-skyline-v3';
+    mat.customProgramCacheKey = () => 'tongariro-skyline-v4';
     mat.onBeforeCompile = (sh) => {
       mat.userData.shader = sh;
       sh.fragmentShader = sh.fragmentShader.replace(

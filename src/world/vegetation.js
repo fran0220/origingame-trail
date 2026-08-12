@@ -1422,7 +1422,7 @@ export class Vegetation {
       if (c.stone) return 1.4;
       /* Keep the worn tread itself almost bare. Cards that survive the sink
        * still read as floating paper when they sit on packed clay. */
-      if (c.dist < 0.85) return 0.12 * held;
+      if (c.dist < 1.35) return 0;
       return 1.15 * (0.10 + 0.90 * trodden) * (0.06 + held * (0.50 + caught))
            * wallFoot(c, 0.7);
     }, (c) => {
