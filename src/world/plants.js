@@ -1611,7 +1611,7 @@ export function treeFern(rng, scale = 1, lod = 0, vi = 0) {
        * age and only a little with anything else. */
       bend: 0.85 + age * 0.85 + (rng() - 0.5) * 0.30,
       twist: (rng() - 0.5) * 0.35,
-      sag: (rng() - 0.5) * 0.4, phase: rng() * 6.283, id: rng(),
+      sag: (rng() - 0.5) * 0.4, phase: rng() * 6.283, id: 0.12 + rng() * 0.18,
       pinnae: Math.round(8 + len * 2.4), nv: D(lod, 6, 4),
       pnv: D(lod, 3, 2), pnu: D(lod, 2, 1),
       flex0: 0.05, rng,

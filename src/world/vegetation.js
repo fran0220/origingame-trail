@@ -289,12 +289,15 @@ const ABAXIAL = /* glsl */ `
 if( !gl_FrontFacing ){
   float lid = vSurf.y;
   float alum = dot( diffuseColor.rgb, vec3( 0.34, 0.50, 0.16 ) );
+  /* Silver fern first: the white abaxial bloom is the national silhouette.
+   * A ponga frond seen from below must go silver, not another green. */
+  vec3 silver = vec3( 0.72, 0.74, 0.68 );
   vec3 glaucous = vec3( 0.112, 0.142, 0.118 );
   vec3 paleGreen = vec3( 0.144, 0.166, 0.086 );
   vec3 rufous = vec3( 0.132, 0.090, 0.056 );
-  vec3 ab = lid < 0.44 ? mix( glaucous, paleGreen, lid / 0.44 )
-          : lid < 0.78 ? paleGreen
-                       : mix( paleGreen, rufous, ( lid - 0.78 ) / 0.22 );
+  vec3 ab = lid < 0.38 ? mix( silver, glaucous, lid / 0.38 )
+          : lid < 0.72 ? mix( glaucous, paleGreen, ( lid - 0.38 ) / 0.34 )
+                       : mix( paleGreen, rufous, ( lid - 0.72 ) / 0.28 );
   // Scaled by the blade's own luminance so a leaf that is pale on top stays
   // pale underneath: this is a different surface of the same organ, not a
   // different plant painted on the back.
@@ -1195,11 +1198,11 @@ export class Vegetation {
       const P = new THREE.Vector3(), T = new THREE.Vector3();
       const path = this.trail, ground = this.terrain;
       const q = {};
-      for (let i = 0; i < 42; i++) {
-        const t = 0.04 + i * 0.018;
+      for (let i = 0; i < 64; i++) {
+        const t = 0.02 + i * 0.014;
         path.pointAt(t, P); path.tangentAt(t, T);
         const side = (i % 2 === 0) ? 1 : -1;
-        const off = (2.4 + (i % 5) * 0.55) * side;
+        const off = (2.1 + (i % 5) * 0.48) * side;
         const x = P.x + T.z * off, z = P.z - T.x * off;
         const y = ground.height(x, z);
         ground.sampleField(x, z, q);
@@ -1209,7 +1212,7 @@ export class Vegetation {
         extraTf.push({
           v,
           m: M().compose(_p.set(x, y - 0.06, z),
-                         new THREE.Quaternion(), bulk(makeRng(seed + 400 + i), 1.18, 0.10)),
+                         new THREE.Quaternion(), bulk(makeRng(seed + 400 + i), 1.42, 0.12)),
         });
         if (i % 3 === 0) {
           extraNk.push({
