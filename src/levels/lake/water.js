@@ -210,8 +210,8 @@ function waterMaterial() {
          * chlorophyll teal. The postcard read is a milky turquoise body
          * going powder-blue at depth, with a pink-white scatter in the
          * first few metres. */
-        vec3 deep = vec3(.055,.285,.470);
-        vec3 flour = vec3(.34,.64,.68);
+        vec3 deep = vec3(.08,.32,.50);
+        vec3 flour = vec3(.42,.70,.72);
         /* The bed seen through the shallows is wet shingle, and it is dark: the
          * dry map bakes to a linear mean near 0.20 and the terrain shader drops
          * wet ground to 0.58 of its dry value. An earlier 0.19..0.23 here was
@@ -226,7 +226,7 @@ function waterMaterial() {
         vec3 color = mix(bed,body,extinction);
         /* A faint rose scatter in the first two metres of flour — the
          * postcard "milk" that teal chlorophyll water never has. */
-        color = mix(color, vec3(.52,.68,.70), (1.0-smoothstep(1.2,8.0,vBed))*extinction*.30);
+        color = mix(color, vec3(.62,.74,.74), (1.0-smoothstep(0.8,7.0,vBed))*extinction*.38);
         /* Wind lanes are the lake's missing middle scale: broad darker ribbons
          * where capillary ripples roughen the surface, separated by calmer sky-
          * reflecting water. They carry more photographic information than a

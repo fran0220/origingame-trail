@@ -810,8 +810,13 @@ class Game {
      * through a different door: not an empty temp scene this time, but a real
      * scene whose forest is switched off. Because `setSun` rebakes and the sun
      * advances with the walk, it got worse the further the player went. */
-    /* Do not move gameplay culls to the probe. On the lake that hid the
-     * start sward and left 50 M mid-stage triangles in the first corner. */
+    /* The lake must not pull gameplay culls to the midpoint probe — that
+     * photographed 52 M mid-stage triangles from the first corner. The
+     * jungle must: its understory is the environment map, and baking an
+     * empty mid-trail into PMREM blacks the walk. */
+    if (this.levelModule?.locomotion !== 'drive') {
+      this.level?.cullAround(p.x, p.z);
+    }
 
     /* And aim the shadow cascade there too, with one update requested. `bake`
      * holds shadows still across the six faces, which is right — one depth

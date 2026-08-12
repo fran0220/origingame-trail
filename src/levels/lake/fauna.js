@@ -325,7 +325,7 @@ export class LakeFauna {
         t: (c + def.t) / COLONIES,
         /* Later colonies are a touch smaller, so the first one a player meets
          * is still the set piece. */
-        count: Math.max(1, Math.round(def.count * (c === 0 ? 0.55 : 0.32))),
+        count: Math.max(1, Math.round(def.count * (c === 0 ? 0.38 : 0.22))),
       }))
     ));
 
