@@ -137,7 +137,7 @@ export class RuinPlan {
      * clear of the tread, and far enough that the aerial perspective does the
      * work of separating it from the wall of leaves behind. */
     this.terraces = [
-      { x: -15.0, z: -341.0, rx: 10.5, rz: 9.0, rot: 0.36, top: TERRACE_TOP },
+      { x: -8.4, z: -328.0, rx: 11.5, rz: 9.6, rot: 0.22, top: TERRACE_TOP },
     ];
 
     /* Rubble berms. Centuries of a wall shedding its upper courses leaves a
@@ -158,7 +158,7 @@ export class RuinPlan {
      * stream's channel where the causeway crossed it. Neither is large; both
      * are the difference between a building standing on the forest floor and
      * one standing on its own ground. */
-    this.mound = { x: -11, z: -340, r: 38, amp: 0.85 };
+    this.mound = { x: -7, z: -328, r: 42, amp: 0.95 };
     this.pad = { x: 5.6, z: -313.2, r: 4.6, amp: 0.95 };
 
     this.bb = { x0: -58, x1: 44, z0: -296, z1: -388 };
@@ -257,6 +257,10 @@ export class RuinPlan {
     }
     const gd = Math.hypot(x - this.pad.x, z - this.pad.z);
     k = Math.max(k, smoothstep(this.pad.r, this.pad.r * 0.4, gd) * 0.75);
+    /* Keep a sight-line corridor from the approach so the battery is a
+     * landmark, not masonry behind a hedge. */
+    const approach = Math.hypot(x + 1.0, z + 250.0);
+    k = Math.max(k, smoothstep(28, 4, approach) * 0.98);
     return k;
   }
 
@@ -1033,7 +1037,7 @@ export class Ruins {
      * whose top clears the understory at thirty metres, so it is the one that
      * has to be closest to the approach — a cella hidden behind its own
      * platform is a building nobody is ever told about. */
-    const cx = -11.8, cz = -339.5, cw = 4.0, cd = 3.3, crot = P.rot;
+    const cx = -7.2, cz = -326.0, cw = 4.4, cd = 3.5, crot = P.rot;
     const cc = Math.cos(crot), cs = Math.sin(crot);
     const corner = (sx, sz) => [
       cx + (sx * cw) * cc - (sz * cd) * cs,
@@ -1083,12 +1087,12 @@ export class Ruins {
     /* Two piers in front of the doorway, one of which came down eastward and
      * lies across the terrace pointing at the viewer. A line of drums running
      * away from the eye is worth more than the pier standing was. */
-    pier(B, ctx, { x: -6.9, z: -337.2, drums: 6, rng, baseY: P.top - 0.18 });
+    pier(B, ctx, { x: -3.4, z: -323.6, drums: 6, rng, baseY: P.top - 0.18 });
     pier(B, ctx, {
-      x: -7.6, z: -342.6, drums: 6, rng, fallen: true, dir: 1.9,
+      x: -4.1, z: -329.0, drums: 6, rng, fallen: true, dir: 1.9,
       baseY: P.top - 0.12,
     });
-    rubble(B, ctx, { x: -6.9, z: -337.2, r: 2.2, n: 10, rng, size: 0.8, sink: 0.35 });
+    rubble(B, ctx, { x: -3.4, z: -323.6, r: 2.2, n: 10, rng, size: 0.8, sink: 0.35 });
 
     /* ---- the revetment wings, and the gap between them -------------------
      * Two walls flanking the head of the pool with seventeen metres of
@@ -1161,6 +1165,7 @@ export class Ruins {
      * place a single square-cut block reads as evidence rather than as a rock.
      */
     this._outliers(B, ctx, makeRng(seed + 77));
+    this._batteryHouse(B, ctx, makeRng(seed + 91));
 
     /* Vine anchors: the top of anything still standing high enough for a
      * liana to have found it. Handed to the vegetation system rather than
@@ -1168,6 +1173,42 @@ export class Ruins {
      * material and the same wind as the growth on the trees. */
     const anchors = [...encW, ...cellaTops];
     for (const a of anchors) if (rng() < 0.55) this.vineAnchors.push({ ...a, s: 0.7 + rng() * 0.7 });
+  }
+
+  /* A stamp-battery house on the approach, close enough to the tread that
+   * the default walk cannot miss it. Talisman / Woodstock country is timber
+   * and corrugated iron over a stone pad, not a temple cella. */
+  _batteryHouse(B, ctx, rng) {
+    const T = this.terrain;
+    const P = new THREE.Vector3(), Tan = new THREE.Vector3();
+    this.trail.pointAt(0.70, P);
+    this.trail.tangentAt(0.70, Tan);
+    /* On the tread, fifteen metres ahead of the 0.62–0.68 walk. Beside the
+     * camera it is already behind the FOV; ahead it is a wall you walk to. */
+    const x = P.x + Tan.z * 1.6;
+    const z = P.z - Tan.x * 1.6;
+    const y = T.height(x, z);
+    wall(B, ctx, {
+      a: [x - 3.4, z - 2.2], b: [x + 3.4, z - 2.2],
+      height: () => 3.4, thick: 0.72, len: 0.95, rng,
+      settle: 0.18, loosen: 0.45,
+    });
+    wall(B, ctx, {
+      a: [x - 3.4, z + 2.4], b: [x + 1.1, z + 2.4],
+      height: (u) => 2.6 - 1.1 * u, thick: 0.70, len: 0.92, rng,
+      settle: 0.20, loosen: 0.7,
+    });
+    wall(B, ctx, {
+      a: [x - 3.4, z - 2.2], b: [x - 3.4, z + 2.4],
+      height: () => 3.1, thick: 0.70, len: 0.90, rng, settle: 0.16,
+    });
+    /* Fallen corrugated sheets read as long thin slabs. */
+    slab(B, ctx, x + 0.4, y + 0.22, z + 0.6, 3.2, 0.08, 1.15, [0.08, 0.4, 0.18], rng);
+    slab(B, ctx, x + 1.6, y + 0.10, z - 0.8, 2.4, 0.07, 0.95, [0.18, 1.1, 0.06], rng);
+    /* A rusted stamper lying across the verge. */
+    slab(B, ctx, x + 3.1, T.height(x + 3.1, z + 0.4) + 0.18, z + 0.4,
+      2.8, 0.22, 0.28, [0.05, 1.35, 0.08], rng);
+    rubble(B, ctx, { x, z, r: 3.6, n: 16, rng, size: 0.85, sink: 0.35 });
   }
 
   _outliers(B, ctx, rng) {
