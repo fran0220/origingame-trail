@@ -1285,9 +1285,9 @@ export class Vegetation {
      * at chest height a few metres away, which is the whole point of it. */
     this._add('supplejack', this._scatter('supplejack', 5.0, (c) => {
       if (c.stone) return 0;
-      if (c.dist < 3.5 || c.dist > 40) return 0;
+      if (c.dist < 4.5 || c.dist > 28) return 0;
       if (c.slope > 0.75) return 0;
-      return 0.34 * (1 - 0.8 * smoothstep(0.80, 0.94, c.t))
+      return 0.18 * (1 - 0.8 * smoothstep(0.80, 0.94, c.t))
            * (0.6 + 0.5 * c.hollow) * rooting(c, 0.95, 0.4);
     }, (c) => {
       const s = 0.7 + c.rng() * 0.7;
@@ -1310,7 +1310,7 @@ export class Vegetation {
        * scene read as if seen by something knee-high. A broadleaf here is a
        * waist-height stool at most; anything taller is a shrub and belongs to
        * other species. */
-      const s = 0.42 + c.rng() * 0.42 + c.dens * 0.22;
+      const s = 0.32 + c.rng() * 0.28 + c.dens * 0.14;
       return {
         v: (c.rng() * SPECIES_LOD.broadleaf.v) | 0,
         m: M().compose(_p.set(c.x, c.y - 0.04, c.z),
@@ -1518,7 +1518,7 @@ export class Vegetation {
       return 0.34 * edgeLight(c.dist) * wallFoot(c, 0.4) * (c.stone ? 0.22 : 1)
            * rooting(c, 0.70, 0.35);
     }, (c) => {
-      const s = 0.5 + c.rng() * 0.7 + c.dens * 0.28;
+      const s = 0.38 + c.rng() * 0.42 + c.dens * 0.16;
       return {
         v: (c.rng() * SPECIES_LOD.sapling.v) | 0,
         m: M().compose(_p.set(c.x, c.y - 0.05, c.z),

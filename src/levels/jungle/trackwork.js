@@ -105,11 +105,14 @@ export class JungleTrackwork {
         trail.pointAt(m / L, P);
         trail.tangentAt(m / L, T);
         const yaw = Math.atan2(T.x, T.z);
-        const y = terrain.height(P.x, P.z) + DECK_H;
+        /* Sit ON the ground, not on a 20 cm stilt. The piles still carry the
+         * visual of a deck; lifting every plank by DECK_H left a floating
+         * ladder of boards that never touched the mud they were built for. */
+        const y = terrain.height(P.x, P.z) + 0.02;
         /* Per-plank tone: sawn timber weathers unevenly and a deck of one
          * colour is a painted stripe. */
         const v = 0.82 + rng() * 0.42;
-        box(P.x, y, P.z, HALF_W, 0.045, 0.125, yaw,
+        box(P.x, y, P.z, HALF_W, 0.055, 0.125, yaw,
             TIMBER.map((c) => c * v));
         planks++;
       }
@@ -124,7 +127,7 @@ export class JungleTrackwork {
           const px = P.x + nx * s * (HALF_W - 0.10);
           const pz = P.z + nz * s * (HALF_W - 0.10);
           const g = terrain.height(px, pz);
-          box(px, g - 0.12, pz, 0.055, DECK_H + 0.08, 0.055, yaw,
+          box(px, g - 0.18, pz, 0.055, 0.26, 0.055, yaw,
               TIMBER.map((c) => c * 0.82));
           piles++;
         }

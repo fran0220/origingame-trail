@@ -1112,7 +1112,7 @@ export function broadleaf(rng, scale = 1, lod = 0, vi = 0) {
    * across. So the strap is deleted, the aroid stays at one in five because
    * rangiora and kawakawa do give a broad-leaved note and losing it entirely
    * would flatten the understorey to one texture, and the rest is compound. */
-  const form = [FORM.COMPOUND, FORM.COMPOUND, FORM.ROSETTE, FORM.CANE,
+  const form = [FORM.COMPOUND, FORM.COMPOUND, FORM.ROSETTE, FORM.COMPOUND,
                 FORM.COMPOUND][vi % 5];
   const leaf = new Builder(), wood = new Builder();
   const m = new THREE.Matrix4(), e = new THREE.Euler(), q = new THREE.Quaternion();
@@ -1186,7 +1186,7 @@ export function broadleaf(rng, scale = 1, lod = 0, vi = 0) {
     const nCane = 1 + Math.floor(rng() * 3);
     for (let c = 0; c < nCane; c++) {
       const yaw = rng() * Math.PI * 2;
-      const h = (0.65 + rng() * 1.35) * scale;
+      const h = (0.38 + rng() * 0.55) * scale;
       const arch = 0.35 + rng() * 0.55;
       const cseg = D(lod, 7, 4);
       const cpts = [], crad = [];
@@ -1394,8 +1394,8 @@ export function palm(rng, scale = 1, lod = 0, vi = 0) {
              * and on a grey trunk in flat forest light those bands are most of
              * what makes it read as a palm rather than as a pole. Darkened in
              * the groove and left pale on the band between. */
-            occ: (a, s) => (0.34 + 0.66 * smooth01(s * 6))
-                         * (1 - 0.42 * Math.pow(Math.abs(Math.sin(s * h * 7.5)), 6)),
+            occ: (a, s) => (0.28 + 0.72 * smooth01(s * 6))
+                         * (1 - 0.62 * Math.pow(Math.abs(Math.sin(s * h * 11.0)), 8)),
             /* THE CROWNSHAFT IS GREEN, and the green channel is how it gets
              * there. This callback exists to paint moss on a wet trunk base,
              * and it is the only per-vertex tint a tube has — so it does both
@@ -1405,7 +1405,7 @@ export function palm(rng, scale = 1, lod = 0, vi = 0) {
              * is a grey bulge and reads as a swelling in a pole. */
             moss: (a, s) => Math.max(
               smooth01((0.18 - s) / 0.18) * 0.28 * Math.max(0, Math.sin(a * 2.0)),
-              smooth01((s - 0.76) / 0.14) * (1 - smooth01((s - 0.96) / 0.04)) * 0.95,
+              smooth01((s - 0.74) / 0.14) * (1 - smooth01((s - 0.96) / 0.04)) * 1.0,
             ),
           });
 
@@ -2466,7 +2466,7 @@ export function sapling(rng, scale = 1, lod = 0, vi = 0) {
    * ground that is not an understory, it is a bamboo grove, and it was the
    * single thing making the forest read as temperate. A real seedling bank is
    * knee-to-shoulder high and only the occasional individual has got away. */
-  const h = (1.1 + rng() * 2.6) * scale * (rng() < 0.12 ? 1.9 : 1.0);
+  const h = (0.55 + rng() * 1.15) * scale * (rng() < 0.08 ? 1.45 : 1.0);
   const lean = (rng() - 0.5) * 1.05;
   const seg = 5;
   const pts = [], radii = [];
@@ -2556,7 +2556,7 @@ export function sapling(rng, scale = 1, lod = 0, vi = 0) {
       }
       addLeaf(leaf, m, {
         len: ll, wid: ll * (0.40 + rng() * 0.26),
-        cell: rng() < 0.7 ? CELL.OVATE : CELL.LANCE,
+        cell: rng() < 0.35 ? CELL.OVATE : CELL.LANCE,
         // Lowest leaves are the oldest and the most eaten.
         vary: s < 0.6 ? oldLeaf(rng) : anyLeaf(rng),
         bend: 0.8 + rng() * 1.3, curl: 0.16 + rng() * 0.26,

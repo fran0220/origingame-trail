@@ -165,7 +165,7 @@ export class JungleTramway {
       const sink = rng() * 0.06;
       const tilt = (rng() - 0.5) * 0.09;
       const c = SLEEPER.map((v, j) => v + MOSS[j] * (rng() < 0.45 ? 0.5 + rng() * 0.5 : 0));
-      box(n.x, gy + 0.10 - sink, n.z, 0.90, 0.09, 0.075, n.yaw + Math.PI / 2 + tilt, c, 0.30);
+      box(n.x, gy - 0.02 - sink, n.z, 0.90, 0.09, 0.075, n.yaw + Math.PI / 2 + tilt, c, 0.30);
       sleepers++;
     }
 
@@ -188,8 +188,8 @@ export class JungleTramway {
           const len = Math.hypot(ex - sx, ez - sz);
           const segYaw = Math.atan2(ex - sx, ez - sz);
           /* Web and head. The head is the polished one. */
-          box(mx, gy + 0.19, mz, len * 0.5, 0.055, 0.018, segYaw + Math.PI / 2, RUST, 0.20);
-          box(mx, gy + 0.243, mz, len * 0.5, 0.022, 0.034, segYaw + Math.PI / 2, RAILHEAD, 0.07);
+          box(mx, gy + 0.07, mz, len * 0.5, 0.055, 0.018, segYaw + Math.PI / 2, RUST, 0.20);
+          box(mx, gy + 0.123, mz, len * 0.5, 0.022, 0.034, segYaw + Math.PI / 2, RAILHEAD, 0.07);
           railSpans++;
         }
         k = k1;

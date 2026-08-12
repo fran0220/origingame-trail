@@ -115,7 +115,7 @@ export class JungleVines {
     };
 
     /* ── hanging strands ────────────────────────────────────────────────── */
-    const nStrand = Math.round(L * 2.10 * DENS);
+    const nStrand = Math.round(L * 1.15 * DENS);
     for (let i = 0; i < nStrand; i++) {
       const s = site(2.2, 20);
       if (!s) continue;
