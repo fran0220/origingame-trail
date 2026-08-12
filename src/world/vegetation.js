@@ -1018,6 +1018,18 @@ export class Vegetation {
            * whole extra axis of variation for one multiply. */
           dens: Math.min(1, clump / 0.34),
         };
+        /* The stamp battery is a machine, not a hedge. Canopy scatter
+         * ignores hardGround, so a dedicated hole — and a corridor from
+         * up-trail — is the only way the walk sees rust instead of
+         * another wall of leaves. */
+        if (this.ruins?.plan?.battery) {
+          const b = this.ruins.plan.battery;
+          if (Math.hypot(px - b.x, pz - b.z) < b.r * 0.92) continue;
+          /* Approach is +Z of the battery (the walk travels -Z). */
+          const along = (pz - b.z);
+          const across = (px - b.x);
+          if (along > 0 && along < 28 && Math.abs(across) < 4.4) continue;
+        }
         /* Renormalised so the field redistributes density rather than
          * removing it: squaring a value whose mean is about a third drops the
          * mean of the product to a sixth, and the first version of this
@@ -1209,6 +1221,13 @@ export class Vegetation {
         ground.sampleField(x, z, q);
         if (q.dist < path.widthAt(t) + 0.8) continue;
         if (this.waterMask(x, z, y, q) > 0.08) continue;
+        /* The verge line is authored, not scattered, so hardGround never
+         * saw it. Leave a hole around the stamp battery or the machine
+         * sits inside a wall of ponga. */
+        if (this.ruins?.plan?.battery) {
+          const b = this.ruins.plan.battery;
+          if (Math.hypot(x - b.x, z - b.z) < b.r * 1.05) continue;
+        }
         const v = i % SPECIES_LOD.treeFern.v;
         const yaw = Math.atan2(P.x - x, P.z - z);
         extraTf.push({

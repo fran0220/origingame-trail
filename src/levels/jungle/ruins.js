@@ -75,6 +75,26 @@ import { POOL_Y } from './spillway.js';
  * revetment's steps should stop. If it moves there it has to move here. */
 const POOL = { x: 0, z: -356, r: 12.5 };
 
+/* Where the stamp battery stands. One function so the pad, the mortar
+ * box and the iron cannot drift onto three different spots. t=0.735 puts
+ * it in the default walk's forward third from 0.62–0.70; 2.4 m off the
+ * centre line keeps the tread clear. */
+function batterySite(trail, target = new THREE.Vector3(), tan = new THREE.Vector3()) {
+  /* t=0.675 is fifteen metres ahead of the 0.62 walk and still in
+   * front of the 0.70 camera. 1.7 m off the tread: on the verge, not
+   * a wall across the path, and inside a 58° frame from both stops. */
+  trail.pointAt(0.675, target);
+  trail.tangentAt(0.675, tan);
+  const nx = tan.z, nz = -tan.x;
+  const yaw = Math.atan2(tan.x, tan.z);
+  return {
+    x: target.x + nx * 1.7,
+    z: target.z + nz * 1.7,
+    yaw, nx, nz,
+    fx: Math.sin(yaw), fz: Math.cos(yaw),
+  };
+}
+
 /* Nominal course height — the mean a wall's courses are drawn around, not the
  * height of any particular one.
  *
@@ -160,8 +180,22 @@ export class RuinPlan {
      * one standing on its own ground. */
     this.mound = { x: -7, z: -328, r: 42, amp: 0.95 };
     this.pad = { x: 5.6, z: -313.2, r: 4.6, amp: 0.95 };
+    /* Stamp battery pad at trail t=0.70. Derived from the same point
+     * the machine is built on, so the plant-clearing and the geometry
+     * cannot drift apart. The old mask sat at (-1,-250) and was then
+     * clipped by this box, so it never cleared the hedge. */
+    const site = batterySite(trail);
+    this.battery = {
+      x: site.x, z: site.z,
+      r: 12.0, amp: 0.62,
+    };
 
-    this.bb = { x0: -58, x1: 44, z0: -296, z1: -388 };
+    this.bb = {
+      x0: Math.min(-58, this.battery.x - 16),
+      x1: Math.max(44, this.battery.x + 16),
+      z0: Math.max(-228, this.battery.z + 22),
+      z1: -388,
+    };
   }
 
   /**
@@ -207,6 +241,10 @@ export class RuinPlan {
     const gd = Math.hypot(x - this.pad.x, z - this.pad.z);
     add += smoothstep(this.pad.r, this.pad.r * 0.35, gd) * this.pad.amp
          * smoothstep(0.2, 1.6, q.dist);
+
+    const bd = Math.hypot(x - this.battery.x, z - this.battery.z);
+    add += smoothstep(this.battery.r, this.battery.r * 0.35, bd) * this.battery.amp
+         * smoothstep(0.35, 1.8, q.dist);
 
     let y = h + add * guard * poolGuard;
 
@@ -257,10 +295,15 @@ export class RuinPlan {
     }
     const gd = Math.hypot(x - this.pad.x, z - this.pad.z);
     k = Math.max(k, smoothstep(this.pad.r, this.pad.r * 0.4, gd) * 0.75);
-    /* Keep a sight-line corridor from the approach so the battery is a
-     * landmark, not masonry behind a hedge. */
-    const approach = Math.hypot(x + 1.0, z + 250.0);
-    k = Math.max(k, smoothstep(28, 4, approach) * 0.98);
+    /* Hard pad and a short sight-line so the battery reads as a works,
+     * not masonry behind a hedge. */
+    const bd = Math.hypot(x - this.battery.x, z - this.battery.z);
+    k = Math.max(k, smoothstep(this.battery.r * 1.25, this.battery.r * 0.28, bd) * 0.99);
+    /* Corridor from a few metres up-trail so the machine is seen, not
+     * walked into a hedge. Midpoint sits on the tread, not the pad. */
+    const approach = Math.hypot(x - this.battery.x,
+                               z - this.battery.z - 12.0);
+    k = Math.max(k, smoothstep(22, 4.0, approach) * 0.96);
     return k;
   }
 
@@ -827,6 +870,7 @@ export class Ruins {
     this.cells = [];
 
     this.material = makeStoneMaterial(renderer);
+    this.materials = [this.material];
 
     const B = new StoneBuilder();
     const ctx = { terrain, trail, plan };
@@ -835,6 +879,7 @@ export class Ruins {
     this._bakeSurfaceData(B);
     this._buildGrid(B);
     this._emit(B);
+    this._emitBatteryIron(seed + 91);
   }
 
   _registerColliders(B) {
@@ -1175,40 +1220,33 @@ export class Ruins {
     for (const a of anchors) if (rng() < 0.55) this.vineAnchors.push({ ...a, s: 0.7 + rng() * 0.7 });
   }
 
-  /* A stamp-battery house on the approach, close enough to the tread that
-   * the default walk cannot miss it. Talisman / Woodstock country is timber
-   * and corrugated iron over a stone pad, not a temple cella. */
+  /* A five-stamp battery on the approach. Karangahake's Talisman and
+   * Woodstock works were timber frames over a stone mortar box, with a
+   * camshaft lifting a row of iron stamps. Three stone walls without
+   * that machine read as any ruin; the row of stamps is the landmark. */
   _batteryHouse(B, ctx, rng) {
-    const T = this.terrain;
-    const P = new THREE.Vector3(), Tan = new THREE.Vector3();
-    this.trail.pointAt(0.70, P);
-    this.trail.tangentAt(0.70, Tan);
-    /* On the tread, fifteen metres ahead of the 0.62–0.68 walk. Beside the
-     * camera it is already behind the FOV; ahead it is a wall you walk to. */
-    const x = P.x + Tan.z * 1.6;
-    const z = P.z - Tan.x * 1.6;
-    const y = T.height(x, z);
+    const { x, z, nx, nz, fx, fz } = batterySite(this.trail);
+
+    /* Stone mortar box — the only masonry that belongs to a battery. */
     wall(B, ctx, {
-      a: [x - 3.4, z - 2.2], b: [x + 3.4, z - 2.2],
-      height: () => 3.4, thick: 0.72, len: 0.95, rng,
-      settle: 0.18, loosen: 0.45,
+      a: [x + fx * -3.4 + nx * -1.35, z + fz * -3.4 + nz * -1.35],
+      b: [x + fx *  3.4 + nx * -1.35, z + fz *  3.4 + nz * -1.35],
+      height: () => 1.55, thick: 0.74, len: 0.88, rng, settle: 0.12, loosen: 0.22,
     });
     wall(B, ctx, {
-      a: [x - 3.4, z + 2.4], b: [x + 1.1, z + 2.4],
-      height: (u) => 2.6 - 1.1 * u, thick: 0.70, len: 0.92, rng,
-      settle: 0.20, loosen: 0.7,
+      a: [x + fx * -3.4 + nx *  1.35, z + fz * -3.4 + nz *  1.35],
+      b: [x + fx *  3.4 + nx *  1.35, z + fz *  3.4 + nz *  1.35],
+      height: () => 1.38, thick: 0.70, len: 0.86, rng, settle: 0.12, loosen: 0.28,
     });
     wall(B, ctx, {
-      a: [x - 3.4, z - 2.2], b: [x - 3.4, z + 2.4],
-      height: () => 3.1, thick: 0.70, len: 0.90, rng, settle: 0.16,
+      a: [x + fx * -3.4 + nx * -1.35, z + fz * -3.4 + nz * -1.35],
+      b: [x + fx * -3.4 + nx *  1.35, z + fz * -3.4 + nz *  1.35],
+      height: () => 1.62, thick: 0.72, len: 0.84, rng, settle: 0.10, loosen: 0.18,
     });
-    /* Fallen corrugated sheets read as long thin slabs. */
-    slab(B, ctx, x + 0.4, y + 0.22, z + 0.6, 3.2, 0.08, 1.15, [0.08, 0.4, 0.18], rng);
-    slab(B, ctx, x + 1.6, y + 0.10, z - 0.8, 2.4, 0.07, 0.95, [0.18, 1.1, 0.06], rng);
-    /* A rusted stamper lying across the verge. */
-    slab(B, ctx, x + 3.1, T.height(x + 3.1, z + 0.4) + 0.18, z + 0.4,
-      2.8, 0.22, 0.28, [0.05, 1.35, 0.08], rng);
-    rubble(B, ctx, { x, z, r: 3.6, n: 16, rng, size: 0.85, sink: 0.35 });
+
+    /* Stamps, camshaft and flywheel are rusted iron, emitted separately.
+     * Stone here is only the mortar box and the collapsed pad. */
+    rubble(B, ctx, { x, z, r: 3.8, n: 14, rng, size: 0.72, sink: 0.42 });
   }
 
   _outliers(B, ctx, rng) {
@@ -1594,6 +1632,92 @@ export class Ruins {
     }
     this.triangles = tris;
     this.blockCount = B.blocks.length;
+  }
+
+  /* Rusted iron for the stamps, camshaft and flywheel. Stone cannot be
+   * the machine: a grey ashlar rod is a fence post. Oxidised steel is
+   * the only warm colour in this stretch of bush. */
+  _emitBatteryIron(seed) {
+    const rng = makeRng(seed);
+    const T = this.terrain;
+    const { x, z, yaw, nx, nz, fx, fz } = batterySite(this.trail);
+    const y = T.height(x, z);
+    const rust = [0.28, 0.12, 0.055];
+    const polish = [0.42, 0.36, 0.30];
+    const pos = [], col = [], idx = [];
+    const box = (cx, cy, cz, hw, hh, hd, ry, c, tone = 0.18) => {
+      const s = Math.sin(ry), co = Math.cos(ry);
+      const base = pos.length / 3;
+      for (let i = 0; i < 8; i++) {
+        const dx = (i & 1) ? hw : -hw, dy = (i & 2) ? hh : -hh, dz = (i & 4) ? hd : -hd;
+        pos.push(cx + dx * co - dz * s, cy + dy, cz + dx * s + dz * co);
+        const v = 1 - tone * 0.5 + rng() * tone;
+        col.push(c[0] * v, c[1] * v, c[2] * v);
+      }
+      const F = [[0,1,3,2],[4,6,7,5],[0,2,6,4],[1,5,7,3],[2,3,7,6],[0,4,5,1]];
+      F.forEach((f) => idx.push(base+f[0], base+f[1], base+f[2], base+f[0], base+f[2], base+f[3]));
+    };
+    const at = (along, out, up) => ({
+      x: x + fx * along + nx * out,
+      z: z + fz * along + nz * out,
+      y: y + up,
+    });
+    for (let i = 0; i < 5; i++) {
+      const along = -2.1 + i * 1.05;
+      if (i === 3) {
+        const q = at(along + 0.45, 1.75, 0.22);
+        box(q.x, T.height(q.x, q.z) + 0.20, q.z, 0.12, 0.12, 1.05, yaw + 1.05, rust, 0.22);
+        box(q.x + nx * 0.7, T.height(q.x + nx * 0.7, q.z + nz * 0.7) + 0.20,
+          q.z + nz * 0.7, 0.26, 0.18, 0.26, yaw, rust, 0.2);
+        continue;
+      }
+      const p = at(along, 0.04, 0);
+      const gy = T.height(p.x, p.z);
+      box(p.x, gy + 1.55, p.z, 0.075, 1.38, 0.075, yaw, rust, 0.16);
+      box(p.x, gy + 0.28, p.z, 0.24, 0.20, 0.24, yaw, rust, 0.14);
+      box(p.x, gy + 2.78, p.z, 0.12, 0.09, 0.12, yaw, polish, 0.1);
+    }
+    const timber = [0.16, 0.11, 0.07];
+    for (const [along, out] of [[-2.6, -1.15], [2.6, -1.15], [-2.6, 1.15], [2.6, 1.15]]) {
+      const p = at(along, out, 0);
+      const gy = T.height(p.x, p.z);
+      box(p.x, gy + 2.15, p.z, 0.13, 2.15, 0.13, yaw, timber, 0.14);
+    }
+    const beam = at(0, -1.15, 4.25);
+    box(beam.x, beam.y, beam.z, 2.85, 0.10, 0.12, yaw, timber, 0.12);
+    /* A-frame braces so the silhouette is a works, not four posts. */
+    for (const s of [-1, 1]) {
+      const p = at(s * 2.6, -1.15, 2.15);
+      box(p.x + nx * 0.55, p.y, p.z + nz * 0.55, 0.09, 1.55, 0.09, yaw + 0.55 * s, timber, 0.14);
+    }
+    const shaft = at(0.0, 0.02, 2.92);
+    box(shaft.x, shaft.y, shaft.z, 2.75, 0.07, 0.07, yaw, polish, 0.12);
+    const wheel = at(-3.05, 0.05, 1.95);
+    box(wheel.x, wheel.y, wheel.z, 0.09, 0.92, 0.92, yaw, rust, 0.2);
+    const chute = at(3.15, -0.18, 0.62);
+    box(chute.x, chute.y, chute.z, 1.25, 0.04, 0.40, yaw + 0.55, rust, 0.18);
+    const sheet = at(0.8, 2.15, 0.10);
+    box(sheet.x, T.height(sheet.x, sheet.z) + 0.07, sheet.z, 1.7, 0.03, 0.58, yaw + 0.38, rust, 0.24);
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    geo.computeBoundingSphere();
+    const mat = new THREE.MeshStandardMaterial({
+      name: 'battery-iron', color: 0xffffff, vertexColors: true,
+      roughness: 0.72, metalness: 0.38, envMapIntensity: 0.42,
+    });
+    this.materials.push(mat);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'ruins:stamp-battery';
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    this.root.add(mesh);
+    this.cells.push({ mesh, x, z });
+    this.triangles += idx.length / 3;
+    this.iron = { geometry: geo, material: mat, mesh };
   }
 
   /* Distance culling on top of the frustum test, for the same reason the

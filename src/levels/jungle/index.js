@@ -224,7 +224,7 @@ class JungleLevel {
   /** Every opaque material this level put in the scene, for the canopy patch. */
   materials() {
     return [this.terrainMat, this.veg.leafMat, this.veg.woodMat,
-            this.ruins.material, ...this.water.materials,
+            ...(this.ruins.materials || [this.ruins.material]), ...this.water.materials,
             ...this.deadwood.materials, ...this.vines.materials, ...this.birds.materials,
             ...this.fungi.materials, ...this.reclaim.materials, ...this.trackwork.materials, ...this.trailhead.materials, ...this.lookout.materials, ...this.windthrow.materials, ...this.slip.materials, ...this.tramway.materials];
   }
