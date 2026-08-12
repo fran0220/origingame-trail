@@ -77,15 +77,17 @@ function shrubGeo(rng, dark) {
   const blade = (x0, y0, z0, len, yaw, c) => {
     /* A stiff needle tuft, not a box. Boxes read as tables from any
      * distance; dracophyllum is a fountain of hard straps. */
-    const SEG = 3;
+    const SEG = 4;
     const dx = Math.cos(yaw), dz = Math.sin(yaw);
     let prev = null;
     for (let s = 0; s <= SEG; s++) {
       const u = s / SEG;
-      const bend = u * u * 0.35;
-      const x = x0 + dx * len * bend, z = z0 + dz * len * bend;
-      const y = y0 + len * u * (1 - 0.12 * bend);
-      const hw = 0.012 * (1 - u * 0.75);
+      const bend = u * u * (0.55 + (yaw * 0.07 % 0.25));
+      const twist = Math.sin(u * 3.1 + yaw) * 0.04;
+      const x = x0 + dx * len * bend + (-dz) * twist;
+      const z = z0 + dz * len * bend + dx * twist;
+      const y = y0 + len * u * (1 - 0.22 * bend);
+      const hw = 0.018 * (1 - u * 0.82) * (0.7 + Math.abs(Math.sin(yaw * 3.0 + u)) * 0.6);
       const n0 = pos.length / 3;
       pos.push(x - dz * hw, y, z + dx * hw, x + dz * hw, y, z - dx * hw);
       col.push(...c, ...c);
