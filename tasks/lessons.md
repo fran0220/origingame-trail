@@ -315,3 +315,20 @@
 - Industrial masonry is the only honest ruin in this country. Temple copy
   (`弃殿`, priests, limestone karst) is leftover from the first brief and
   has to be mined out of content, README and comments together.
+
+## A chase camera looking at the boot lid cannot review a mountain
+
+- Lake start frames kept reporting \"no Alps\" after the ranges were moved
+  closer and the fog thinned. The chase rig sits 2 m up and aims 3 m ahead
+  at the car. The moraine terrace is the whole near field. Looking up is a
+  different photograph. Review a driving level from a glance that can see
+  the subject, not only from the default tow-rope.
+- FogExp2 at 0.00135 leaves 5% of a 4 km peak. Weather tables silently
+  overwrite a mood fog. Change both or the next boot puts the milk back.
+
+## Boards that float are a seating number, not a material
+
+- Trackwork planks sat on `height + 0.20`. They looked like a ladder in the
+  air. Sit the deck on the mud and let the piles carry the idea of a deck.
+- A grey pole on a Karangahake track is often a DOC marker, not a missing
+  bark texture. Weather the stake before rebuilding the tree.
