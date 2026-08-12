@@ -445,7 +445,7 @@ function lupinGeometry(variant, rng) {
    * of frame and read as green speckle with a fleck of colour in it, because
    * the FLOWER is the thing that has to cover ground and it was a fifth of
    * each plant. */
-  const spikes = 2 + (variant % 3);
+  const spikes = 4 + (variant % 3);
   for (let s = 0; s < spikes; s++) {
     const flower = LUPIN_COLOURS[(rng() * LUPIN_COLOURS.length) | 0];
     /* Paler toward the tip: a raceme opens from the bottom, so the top of the
@@ -453,7 +453,7 @@ function lupinGeometry(variant, rng) {
     const tip = flower.map((v) => Math.min(1, v * 0.55 + 0.42));
     /* A lupin raceme is about four to six times as tall as it is wide. The
      * first cut was 1:10 and read as a row of little surfboards stood on end. */
-    const h = 0.46 + rng() * 0.40;
+    const h = 0.62 + rng() * 0.48;
     const lean = (rng() - 0.5) * 0.18;
     const yaw = rng() * 6.283;
     const ox = Math.cos(yaw) * s * 0.075, oz = Math.sin(yaw) * s * 0.075;
@@ -473,7 +473,7 @@ function lupinGeometry(variant, rng) {
      */
     for (let b = 0; b < 3; b++) {
       const a = yaw + b * 1.047;
-      const w0 = 0.058 + rng() * 0.026;
+      const w0 = 0.078 + rng() * 0.034;
       const base = h * 0.34;
       const dx = Math.cos(a), dz = Math.sin(a);
       const stem = [0.10, 0.13, 0.05];
@@ -506,7 +506,7 @@ function lupinGeometry(variant, rng) {
      * a lupin is recognised by. */
     for (let l = 0; l < 3; l++) {
       const a = yaw + l * 2.094 + 0.4;
-      const r = 0.085 + rng() * 0.045;
+      const r = 0.12 + rng() * 0.06;
       const lc = [0.115, 0.155, 0.075];
       const a0 = push(ox, 0.045, oz, lc);
       const a1 = push(ox + Math.cos(a - 0.42) * r, 0.02, oz + Math.sin(a - 0.42) * r, lc);
@@ -531,7 +531,7 @@ function buildLupinDrifts(owner, terrain, tier, dummy) {
   });
   const U = { uTurfTime: { value: 0 }, uTurfFade: { value: new THREE.Vector2(150, 260) } };
   mat.userData.uniforms = U;
-  mat.customProgramCacheKey = () => 'lake-lupin-v1';
+  mat.customProgramCacheKey = () => 'lake-lupin-v2';
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     mat.userData.shader = sh;
@@ -598,8 +598,8 @@ function buildLupinDrifts(owner, terrain, tier, dummy) {
      * walking distance one drift subtends less than a road marking. Ten to
      * forty metres across, three hundred plants and up, which is the size the
      * colonies on the Tekapo and Ahuriri flats actually are. */
-    const spread = 10 + rng() * 28;
-    const n = 300 + ((rng() * 350) | 0);
+    const spread = 16 + rng() * 36;
+    const n = 420 + ((rng() * 420) | 0);
     for (let i = 0; i < n; i++) {
       /* Clumped inside the drift too, because a lupin colony spreads from
        * seed fall and is densest where it started. */
@@ -612,7 +612,7 @@ function buildLupinDrifts(owner, terrain, tier, dummy) {
       if (y < LAKE_Y + 0.8) continue;
       const q = trail.nearest(x, z, {});
       if (q.dist < ROAD_SHOULDER + 1.2) continue;
-      lists[(rng() * 4) | 0].push({ x, y, z, s: .78 + rng() * .62, yaw: rng() * 6.283 });
+      lists[(rng() * 4) | 0].push({ x, y, z, s: .95 + rng() * .85, yaw: rng() * 6.283 });
       placed++;
     }
     if ((dft % CHUNK) === CHUNK - 1) flush(dft);
