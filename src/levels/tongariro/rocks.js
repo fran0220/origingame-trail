@@ -104,9 +104,9 @@ export class Rockfield {
      * Weathered andesite in alpine daylight is a mid grey-brown around 0.16 to
      * 0.24, because what you see is a dusty oxidised surface and not fresh
      * glass. The fresh stuff is under it and stays there. */
-    const BLACK = new THREE.Color(0.150, 0.140, 0.134);
-    const RED   = new THREE.Color(0.310, 0.150, 0.092);
-    const PALE  = new THREE.Color(0.268, 0.250, 0.230);
+    const BLACK = new THREE.Color(0.168, 0.148, 0.136);
+    const RED   = new THREE.Color(0.430, 0.155, 0.072);
+    const PALE  = new THREE.Color(0.292, 0.262, 0.232);
     const tmp = new THREE.Color();
 
     const KINDS = [

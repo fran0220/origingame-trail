@@ -24,15 +24,15 @@ export const CONDITIONS = [
      * needs direct light on it, and the whole palette argument for this level
      * depends on at least one condition delivering it. */
     sun: { elevation: 24, azimuth: 68 },
-    hemi: { sky: 0x9fb6cc, ground: 0x4a3a30, intensity: 1.35 },
+    hemi: { sky: 0x8eb4d4, ground: 0x5a4536, intensity: 0.72 },
     /* 0.00030, NOT 0.0016. At the old value a mountain 1.5 km away kept 9% of
      * itself and arrived as 91% haze — which is why Ngauruhoe rendered as a
      * white wedge for five builds and why I went looking for a snow-line bug
      * that was not there. On a clear day at 1800 m the air is the cleanest in
      * the country and you can see Taranaki 130 km off. */
     fog: { color: 0x9aa8b4, density: 0.00030 },
-    air: { turbidity: 2.6, haze: 0xa8b6c2 },
-    environmentIntensity: 1.15,
+    air: { turbidity: 2.4, haze: 0xa8b6c2, clouds: 0.58, cloudScale: 1.55 },
+    environmentIntensity: 0.88,
     exposureScale: 1.00,
   },
   {
@@ -42,11 +42,11 @@ export const CONDITIONS = [
      * away, the ash goes white, and the mountain loses its shape — which is
      * true and is why nobody photographs it at noon. */
     sun: { elevation: 66, azimuth: 12 },
-    hemi: { sky: 0xa8c0d8, ground: 0x554438, intensity: 1.50 },
+    hemi: { sky: 0x9cbcda, ground: 0x5c4a3a, intensity: 0.82 },
     fog: { color: 0xa6b2bc, density: 0.00042 },
-    air: { turbidity: 3.4, haze: 0xb0bcc6 },
-    environmentIntensity: 1.25,
-    exposureScale: 0.90,
+    air: { turbidity: 3.4, haze: 0xb0bcc6, clouds: 0.36, cloudScale: 1.25 },
+    environmentIntensity: 0.96,
+    exposureScale: 0.92,
   },
   {
     id: 'cloud',
@@ -55,11 +55,11 @@ export const CONDITIONS = [
      * sounds absurd written down and is roughly what it looks like when the
      * far side of South Crater disappears while you are standing in it. */
     sun: { elevation: 18, azimuth: 300 },
-    hemi: { sky: 0x8e98a0, ground: 0x40382f, intensity: 1.85 },
+    hemi: { sky: 0x8e98a0, ground: 0x40382f, intensity: 0.95 },
     fog: { color: 0x8c959c, density: 0.0075 },
-    air: { turbidity: 8.0, haze: 0x939ba2, sunScale: 2.4, sunMax: 1.8 },
-    environmentIntensity: 0.75,
-    exposureScale: 1.08,
+    air: { turbidity: 8.0, haze: 0x939ba2, sunScale: 2.4, sunMax: 1.8, clouds: 0.92, cloudScale: 1.80 },
+    environmentIntensity: 0.70,
+    exposureScale: 1.06,
   },
   {
     id: 'ash',
@@ -68,10 +68,10 @@ export const CONDITIONS = [
      * and the one condition where the steam is the most visible thing on the
      * mountain rather than a detail on it. */
     sun: { elevation: 31, azimuth: 108 },
-    hemi: { sky: 0xbcae8e, ground: 0x4e4030, intensity: 1.45 },
+    hemi: { sky: 0xbcae8e, ground: 0x4e4030, intensity: 0.78 },
     fog: { color: 0xa79878, density: 0.0022 },
-    air: { turbidity: 6.2, haze: 0xb3a482 },
-    environmentIntensity: 0.95,
+    air: { turbidity: 6.2, haze: 0xb3a482, clouds: 0.48, cloudScale: 1.40 },
+    environmentIntensity: 0.84,
     exposureScale: 0.98,
   },
 ];

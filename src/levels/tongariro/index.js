@@ -56,21 +56,39 @@ const BASE_MOOD = {
   camera: { fov: 62, near: 0.10, far: 22000 },
   sun: { elevation: 24, azimuth: 68 },
   fog: { color: 0x9aa8b4, density: 0.00030 },
-  hemi: { sky: 0x9fb6cc, ground: 0x4a3a30, intensity: 1.35 },
+  /* 0.72, NOT 1.35. A hemisphere at 1.35 is a second sun with no direction:
+   * every surface receives nearly the same fill, landform shadows disappear,
+   * and the mountain reads as a clay model under studio lights. The lake is
+   * 0.64 and the jungle 0.55; alpine daylight is hard, not flooded. */
+  hemi: { sky: 0x8eb4d4, ground: 0x5a4536, intensity: 0.72 },
   /* Lower than the jungle's 1.90 because nothing here is in shade. An alpine
-   * scene lit at a forest's stop is a white one. */
-  exposure: 1.15,
+   * scene lit at a forest's stop is a white one. 0.92 rather than 1.15 so
+   * oxidised scoria can sit in the upper mid-tones instead of washing to tan. */
+  exposure: 0.92,
+  environmentIntensity: 0.88,
   air: {
-    turbidity: 2.6,
+    turbidity: 2.4,
     ground: 0x6a5a4a,
     haze: 0xa8b6c2,
     /* Close to true clear-sky Rayleigh, unlike either other level: at 1800 m
      * there is a third less atmosphere above you and the sky genuinely is a
      * deeper blue than anyone paints it. */
     beta: [0.058, 0.135, 0.331],
-    sunScale: 1.6,
-    sunMax: 1.2,
+    sunScale: 2.4,
+    sunMax: 1.8,
+    /* Broken alpine cumulus. A featureless dome is half the frame from every
+     * ridge, and it is also the environment map, so weather here is lighting. */
+    clouds: 0.58,
+    cloudScale: 1.55,
   },
+  /* Nothing overhead. Without this the canopy fleck mask prints leaf shadows
+   * on bare scoria and the contact-AO ring latches to the heightfield grid —
+   * the moiré that covered every Tongariro gallery frame. */
+  openSky: true,
+  /* The jungle's 46 m is derived from FogExp2 at 0.038. Air this thin still
+   * shows a shadow at 200 m, and the subject of the ridge is a crater wall
+   * that far away. */
+  shadowReach: 210,
 };
 
 export const condition = pick(location.hash || location.search);
@@ -150,7 +168,20 @@ class TongariroLevel {
     this.ambience = new TongariroAmbience({ camera, walker, terrain: this.terrain });
     return this.ambience;
   }
-  attachAtmosphere() {}
+  attachAtmosphere(atmos) {
+    /* Thin bright alpine veil, never transplanted jungle mist. The default
+     * volume is authored for a 30 m humid understory; left alone it milks
+     * the whole saddle and flattens Ngauruhoe to a wedge. */
+    atmos.volumeMat.uniforms.uMistAmbient.value.set(0x9aa8b4);
+    atmos.volumeMat.uniforms.uMist.value.set(0.0009, 0.07, 0.09, 480);
+    atmos.volumeMat.uniforms.uBand.value.set(6, 5, 0.006, 0.05);
+    atmos.volumeMat.uniforms.uScatter.value.set(0.07, 0.36);
+    /* Same lesson as the lake: the tight screen-space contact ring quantises
+     * against an open heightfield and prints the terrain lattice over every
+     * slope. Landform already has normals and a long shadow cascade. */
+    atmos.aoStrength = 0.035;
+    atmos.contactStrength = 0;
+  }
   update(dt, host) {
     this.steam?.update(dt, host?.camera);
     this.ambience?.update(dt);

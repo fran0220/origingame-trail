@@ -69,7 +69,7 @@ export const PLATEAU_Y = -25;
  * geometry that cannot be shown to change a pixel is the irrigator again.
  */
 
-export const STEP = 1.7;
+export const STEP = 1.25;
 export const CHUNK = 40;
 export { BOUNDS };
 
@@ -77,7 +77,7 @@ export { DATUM };
 
 export class Terrain extends Heightfield {
   constructor(trail, seed = 20260810) {
-    super(trail, BOUNDS, { step: STEP, chunk: CHUNK, lod: [70, 150], skirt: 3.0 });
+    super(trail, BOUNDS, { step: STEP, chunk: CHUNK, lod: [95, 210], skirt: 4.0 });
     /* Pool centres in world space, resolved once so evalHeight is not doing
      * curve lookups for four basins at every one of half a million cells. */
     const P = new THREE.Vector3(), T = new THREE.Vector3();
@@ -201,7 +201,7 @@ export class Terrain extends Heightfield {
      * comes in from about 1600 m and owns everything above 1800 — which is
      * where it is on the mountain. */
     const realY = y / VERT + DATUM;
-    let red = smoothstep(1600, 1800, realY) * lerp(0.35, 1.0, smoothstep(0.10, 0.45, slope));
+    let red = smoothstep(1520, 1760, realY) * lerp(0.42, 1.0, smoothstep(0.06, 0.38, slope));
     /* RED CRATER IS RED, and this is where that belongs — not in a carved
      * hole. The crater side of the ridge already drops 118 m, so the landform
      * was always there; what was missing is the reason it has a name. The
@@ -210,11 +210,20 @@ export class Terrain extends Heightfield {
      * stage AND the side rather than to altitude, which cannot tell one flank
      * from the other. */
     const t2 = clamp(q.t, 0, 1);
-    if (t2 >= STAGES.redRidge[0] && t2 < STAGES.redRidge[1] && q.side >= 0) {
-      const inCrater = smoothstep(STAGES.redRidge[0], STAGES.redRidge[0] + 0.03, t2)
-                     * (1 - smoothstep(STAGES.redRidge[1] - 0.03, STAGES.redRidge[1], t2))
-                     * smoothstep(4, 40, q.dist);
-      red = clamp(red + inCrater * 0.85, 0, 1);
+    /* The ridge itself — both flanks and the tread — has to carry the colour.
+     * Gating on side >= 0 and dist > 4 left the walked crest grey and the
+     * outer face tan, so every ridge photograph of a level named for Red
+     * Crater showed beige. */
+    if (t2 >= STAGES.redRidge[0] - 0.02 && t2 < STAGES.redRidge[1] + 0.04) {
+      const along = smoothstep(STAGES.redRidge[0] - 0.02, STAGES.redRidge[0] + 0.04, t2)
+                  * (1 - smoothstep(STAGES.redRidge[1] - 0.04, STAGES.redRidge[1] + 0.04, t2));
+      const craterWall = q.side >= 0 ? smoothstep(2, 28, q.dist) : 0;
+      const crest = 1 - smoothstep(0, 18, q.dist);
+      const outerFlush = q.side < 0 ? smoothstep(2, 36, q.dist) * 0.55 : 0;
+      red = clamp(red + along * (0.55 * crest + 0.95 * craterWall + outerFlush), 0, 1);
+    }
+    if (t2 >= STAGES.scree[0] && t2 < STAGES.scree[1]) {
+      red = clamp(red + (1 - smoothstep(0, 70, q.dist)) * 0.35, 0, 1);
     }
     const black = smoothstep(0.44, 0.80, slope);
     const ash = clamp(1 - red - black, 0, 1);
@@ -294,7 +303,7 @@ export function makeTerrainMaterial(renderer) {
     tMacro: { value: macro.map },
   };
 
-  mat.customProgramCacheKey = () => 'tongariro-ground-v3';
+  mat.customProgramCacheKey = () => 'tongariro-ground-v4';
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     mat.userData.shader = sh;
@@ -320,7 +329,7 @@ export function makeTerrainMaterial(renderer) {
       varying vec4 vSplat;
       varying vec3 vWPos;
       varying vec3 vWNrm;
-      vec3 gW; vec2 gUv; vec2 gUvW; float gWall; vec3 gMacro;
+      vec3 gW; vec2 gUv; vec2 gUvW; float gWall; vec3 gMacro; float gFade;
 
       /* Weights once, into globals, because albedo, normal and roughness all
        * need the same three and computing them three times is three times the
@@ -343,9 +352,16 @@ export function makeTerrainMaterial(renderer) {
              ? vec2(vWPos.z * 0.34, vWPos.y * 0.34)
              : vec2(vWPos.x * 0.34, vWPos.y * 0.34);
         gWall = sstep(0.62, 0.90, 1.0 - abs(vWNrm.y));
-        gMacro = texture2D(tMacro, vWPos.xz * 0.017).rgb;
+        gMacro = texture2D(tMacro, vWPos.xz * 0.0085).rgb;
         vec3 w = vec3(vSplat.x, vSplat.y, vSplat.z);
         gW = w / max(1e-4, w.x + w.y + w.z);
+        /* Fade grain on the pixel's footprint, not on camera distance.
+         * Grazing alpine slopes put centimetres of ground in one pixel long
+         * before they are far away; leaving full vesicle frequency there is
+         * the comb that read as a grid over every Tongariro frame. */
+        float gpx = sqrt(max(fwidth(vWPos.x), 1e-5) * max(fwidth(vWPos.z), 1e-5));
+        gFade = max(sstep(0.022, 0.090, gpx),
+                    sstep(180.0, 520.0, distance(cameraPosition, vWPos)));
       }
       vec3 gFetch(sampler2D a, sampler2D b, sampler2D c){
         vec3 fa = mix(texture2D(a, gUv).rgb, texture2D(a, gUvW).rgb, gWall);
@@ -363,13 +379,20 @@ export function makeTerrainMaterial(renderer) {
         * at fifteen metres is the default outcome of splat blending however
         * good the individual surfaces are, because the eye finds the tile long
         * before it finds the grain. */
-       surfCol *= 0.80 + 0.40 * gMacro.r;
+       surfCol *= 0.78 + 0.44 * gMacro.r;
+       /* Mean of the three surfaces, so far pixels keep geology and lose
+        * the vesicle comb. Scoria stays iron-red rather than fading to grey. */
+       vec3 meanCol = vec3(0.210, 0.168, 0.142) * gW.x
+                    + vec3(0.360, 0.132, 0.062) * gW.y
+                    + vec3(0.092, 0.084, 0.080) * gW.z;
+       surfCol = mix(surfCol, meanCol, gFade);
        diffuseColor.rgb *= surfCol;`
     );
 
     sh.fragmentShader = sh.fragmentShader.replace(
       '#include <normal_fragment_maps>',
       `vec3 nTex = gFetch(tAshN, tScoN, tLavN) * 2.0 - 1.0;
+       nTex = mix(nTex, vec3(0.0, 0.0, 1.0), gFade * 0.94);
        vec3 nB = normalize(vec3(nTex.xy * 1.15, max(0.15, nTex.z)));
        vec3 nUp = abs(normal.y) > 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
        vec3 tg = normalize(cross(nUp, normal));

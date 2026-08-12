@@ -122,8 +122,8 @@ export class Alpine {
 /* Bigger. Red tussock is knee to waist high and a 0.62 m clump read as a
        * tuft of dry grass; the whole point of it is that it is the thing you
        * are wading through. */
-      red:   Array.from({ length: V }, () => tussockGeo(rng, 44, 0.92, 0.42)),
-      snow:  Array.from({ length: V }, () => tussockGeo(rng, 32, 1.05, 0.30)),
+      red:   Array.from({ length: V }, () => tussockGeo(rng, 56, 1.08, 0.58)),
+      snow:  Array.from({ length: V }, () => tussockGeo(rng, 40, 1.18, 0.42)),
       scrub: Array.from({ length: V }, () => shrubGeo(rng, true)),
       bog:   Array.from({ length: V }, () => shrubGeo(rng, false)),
     };
@@ -139,10 +139,10 @@ export class Alpine {
      * break the next time the vertical scale moves — which has already
      * happened once to the scoria colour. */
     const KINDS = [
-      { key: 'red',   n: 52000, lo: 1120, hi: 1460, wet: 0.0 },
-      { key: 'snow',  n: 26000, lo: 1240, hi: 1620, wet: 0.0 },
-      { key: 'scrub', n: 11000, lo: 1120, hi: 1520, wet: 0.0 },
-      { key: 'bog',   n:  3000, lo: 1120, hi: 1380, wet: 0.0 },
+      { key: 'red',   n: 72000, lo: 1120, hi: 1480, wet: 0.0 },
+      { key: 'snow',  n: 34000, lo: 1240, hi: 1640, wet: 0.0 },
+      { key: 'scrub', n: 14000, lo: 1120, hi: 1540, wet: 0.0 },
+      { key: 'bog',   n:  4000, lo: 1120, hi: 1400, wet: 0.0 },
     ];
 
     const B = terrain.bounds;

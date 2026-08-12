@@ -37,20 +37,45 @@ export class Lakes {
     const n = new Noise2D(0x3ea1);
     const P = new THREE.Vector3(), T = new THREE.Vector3();
 
-    const mat = new THREE.MeshStandardMaterial({
+    const mat = new THREE.MeshPhysicalMaterial({
       name: 'crater-lake',
       vertexColors: true,
-      /* Rough, not mirror. These are shallow, mineral-laden and often ruffled
-       * by the wind that never stops on the saddle; a glassy pool here would
-       * read as a sheet of plastic. The colour comes from what is dissolved in
-       * the water and from the pale bed under it, not from a reflection. */
-      roughness: 0.34,
+      /* Mineral water, not plastic. Rough enough that the saddle wind reads,
+       * clear enough that the bed and the dissolved colour still show. */
+      roughness: 0.18,
       metalness: 0.0,
-      envMapIntensity: 0.85,
+      ior: 1.333,
+      transmission: 0.0,
+      envMapIntensity: 1.05,
       transparent: true,
-      opacity: 0.94,
+      opacity: 0.92,
       depthWrite: true,
     });
+    mat.customProgramCacheKey = () => 'tongariro-lake-v2';
+    mat.onBeforeCompile = (sh) => {
+      mat.userData.shader = sh;
+      sh.vertexShader = `
+        varying vec3 vWLake;
+        varying vec3 vNormalW;
+      ` + sh.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+         vWLake = (modelMatrix * vec4(transformed, 1.0)).xyz;
+         vNormalW = normalize(mat3(modelMatrix) * objectNormal);`
+      );
+      sh.fragmentShader = `
+        varying vec3 vWLake;
+        varying vec3 vNormalW;
+      ` + sh.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+         vec3 V = normalize(cameraPosition - vWLake);
+         float ndv = max(dot(normalize(vNormalW), V), 0.0);
+         float fres = 0.020 + 0.88 * pow(1.0 - ndv, 5.0);
+         vec3 sky = mix(vec3(0.42, 0.58, 0.66), vec3(0.10, 0.28, 0.48), clamp(V.y, 0.0, 1.0));
+         diffuseColor.rgb = mix(diffuseColor.rgb, sky, fres * 0.38);`
+      );
+    };
     this.materials.push(mat);
 
     for (const spec of POOLS) {

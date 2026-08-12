@@ -55,7 +55,10 @@ const SETTLE = +flag('settle', 220);
  * says they came out wrong. */
 const PROBE = flag('probe', '');
 
-const HASH = 'manual&tier=high' + (LEVEL ? `&level=${LEVEL}` : '');
+const COND = flag('cond', '');
+const HASH = 'manual&tier=high'
+  + (LEVEL ? `&level=${LEVEL}` : '')
+  + (COND ? `&cond=${COND}` : '');
 
 await run({ width: W, height: H, hash: HASH }, async ({ page, errs, gl }) => {
   await page.evaluate(([el, az, fov, js]) => {

@@ -45,10 +45,10 @@ void surf(vec2 uv, out vec3 albedo, out float height, out float rough, out float
 
   height = 0.5 + fine * 0.10 + stones * 0.22 - mass * 0.06;
 
-  vec3 pale = vec3(0.276, 0.258, 0.240);
-  vec3 dark = vec3(0.170, 0.158, 0.150);
+  vec3 pale = vec3(0.302, 0.276, 0.248);
+  vec3 dark = vec3(0.188, 0.172, 0.156);
   albedo = mix(dark, pale, contrast(mass, 1.2));
-  albedo = mix(albedo, vec3(0.310, 0.288, 0.262), stones * 0.55);
+  albedo = mix(albedo, vec3(0.338, 0.304, 0.268), stones * 0.55);
   /* Ash is the matte end of everything here: no glass in it at all. */
   rough = 0.97 - stones * 0.06;
   ao = 1.0 - stones * 0.10;
@@ -87,9 +87,9 @@ void surf(vec2 uv, out vec3 albedo, out float height, out float rough, out float
 
   /* Iron red where it oxidised, purple-black in the shadow of every vesicle,
    * and a rust bloom on the broad masses so the field is not one hue. */
-  vec3 rust = vec3(0.402, 0.150, 0.070);
-  vec3 deep = vec3(0.176, 0.070, 0.052);
-  vec3 bloom = vec3(0.470, 0.212, 0.104);
+  vec3 rust = vec3(0.520, 0.148, 0.052);
+  vec3 deep = vec3(0.210, 0.062, 0.038);
+  vec3 bloom = vec3(0.610, 0.230, 0.078);
   albedo = mix(deep, rust, contrast(grit, 1.3));
   albedo = mix(albedo, bloom, contrast(mass, 1.6) * 0.45);
   albedo *= 1.0 - bubble * 0.55;

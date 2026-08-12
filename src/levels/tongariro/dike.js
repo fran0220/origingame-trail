@@ -24,8 +24,8 @@ function random(seed) {
   return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
 }
 
-const DARK = [0.098, 0.086, 0.082];
-const RUST = [0.230, 0.108, 0.062];
+const DARK = [0.118, 0.096, 0.086];
+const RUST = [0.380, 0.132, 0.058];
 
 export class Dike {
   constructor(terrain, trail, tier = 'high') {

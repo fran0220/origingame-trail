@@ -35,7 +35,7 @@ const CONES = [
      * the name and a near-perfect profile. The steepness is real: the upper
      * cone is at 33 degrees, the angle loose scoria stands at and no steeper. */
     profile: 1.28, gully: 0.85, snowLine: 0.14, rock: 0x3a2a22, snow: 0xd8dee4,
-    segments: 128,
+    segments: 192,
   },
   {
     name: 'tongariro-massif', x: 1900, z: -3100, base: 20, height: 760, radius: 2100,
@@ -43,14 +43,14 @@ const CONES = [
      * broader, and cut about by everything that has erupted out of it for
      * 275,000 years. */
     profile: 0.72, gully: 1.05, snowLine: 0.07, rock: 0x453529, snow: 0xd2d8de,
-    segments: 72,
+    segments: 112,
   },
   {
     name: 'ruapehu', x: -4200, z: -6400, base: 10, height: 1760, radius: 3400,
     /* 2797 m and permanently snowed: the only one of the three with ice on it
      * all year, and at this distance that white cap is most of what it is. */
     profile: 0.94, gully: 0.72, snowLine: 0.40, rock: 0x3e3630, snow: 0xe2e8ee,
-    segments: 88,
+    segments: 128,
   },
 ];
 
@@ -84,7 +84,7 @@ const RING = { radius: 9000, height: 120, segments: 128, colour: 0x6b6257, inner
 
 function coneGeometry(spec, rng) {
   const { segments: S, radius: R, height: H, profile: P, gully: G } = spec;
-  const RINGS = 46;
+  const RINGS = 64;
   const pos = [], col = [], idx = [];
   const rock = new THREE.Color(spec.rock);
   const snow = new THREE.Color(spec.snow);
@@ -318,10 +318,25 @@ export class Skyline {
 
     const mat = new THREE.MeshStandardMaterial({
       name: 'skyline', vertexColors: true,
-      roughness: 0.94, metalness: 0.0, envMapIntensity: 0.55,
+      roughness: 0.96, metalness: 0.0, envMapIntensity: 0.42,
       /* Never a shadow caster or receiver: these are kilometres away, the
        * cascades do not reach them, and asking would only cost a pass. */
+      flatShading: false,
     });
+    mat.customProgramCacheKey = () => 'tongariro-skyline-v2';
+    mat.onBeforeCompile = (sh) => {
+      mat.userData.shader = sh;
+      sh.fragmentShader = sh.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+         /* Aerial perspective on the cones themselves. They sit outside the
+          * FogExp2 useful range at this density, so without a local haze they
+          * arrive as hard paper cut-outs against the sky. */
+         float dist = length(vViewPosition);
+         float haze = clamp(1.0 - exp(-dist * 0.000085), 0.0, 0.62);
+         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.68, 0.74), haze);`
+      );
+    };
     this.materials.push(mat);
 
     CONES.forEach((spec, i) => {
