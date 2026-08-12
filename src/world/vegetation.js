@@ -1193,17 +1193,17 @@ export class Vegetation {
     {
       const extraTf = [], extraNk = [];
       const P = new THREE.Vector3(), T = new THREE.Vector3();
-      const L = trail.length;
+      const path = this.trail, ground = this.terrain;
       const q = {};
       for (let i = 0; i < 42; i++) {
         const t = 0.04 + i * 0.018;
-        trail.pointAt(t, P); trail.tangentAt(t, T);
+        path.pointAt(t, P); path.tangentAt(t, T);
         const side = (i % 2 === 0) ? 1 : -1;
         const off = (2.4 + (i % 5) * 0.55) * side;
         const x = P.x + T.z * off, z = P.z - T.x * off;
-        const y = terrain.height(x, z);
-        terrain.sampleField(x, z, q);
-        if (q.dist < trail.widthAt(t) + 0.8) continue;
+        const y = ground.height(x, z);
+        ground.sampleField(x, z, q);
+        if (q.dist < path.widthAt(t) + 0.8) continue;
         if (this.waterMask(x, z, y, q) > 0.08) continue;
         const v = i % SPECIES_LOD.treeFern.v;
         extraTf.push({
