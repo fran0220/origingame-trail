@@ -154,10 +154,10 @@ export class Alpine {
      * break the next time the vertical scale moves — which has already
      * happened once to the scoria colour. */
     const KINDS = [
-      { key: 'red',   n: 72000, lo: 1120, hi: 1480, wet: 0.0 },
-      { key: 'snow',  n: 34000, lo: 1240, hi: 1640, wet: 0.0 },
-      { key: 'scrub', n: 14000, lo: 1120, hi: 1540, wet: 0.0 },
-      { key: 'bog',   n:  4000, lo: 1120, hi: 1400, wet: 0.0 },
+      { key: 'red',   n: 48000, lo: 1120, hi: 1480, wet: 0.0 },
+      { key: 'snow',  n: 28000, lo: 1240, hi: 1640, wet: 0.0 },
+      { key: 'scrub', n: 11000, lo: 1120, hi: 1540, wet: 0.0 },
+      { key: 'bog',   n:  3200, lo: 1120, hi: 1400, wet: 0.0 },
     ];
 
     const B = terrain.bounds;
@@ -191,6 +191,14 @@ export class Alpine {
          * between, and an even lawn is the tell. */
         const patch = clamp(Math.pow(nz.n(x * 0.014, z * 0.014) * 0.5 + 0.58, 1.6) * 1.4, 0, 1);
         if (rng() > patch) continue;
+        /* Valley floor needs bare lava between stands or the tussock is
+         * a golf course. Higher and steeper ground can stay denser. */
+        if (q.t < 0.22) {
+          const stand = nz.n(x * 0.007, z * 0.007) * 0.5 + 0.5;
+          if (stand < 0.56) continue;
+          /* Stay off the lava tongues the ground splat just drew. */
+          if (slope < 0.08 && stand < 0.72) continue;
+        }
         lists[(rng() * V) | 0].push({ x, y, z, s: 0.72 + rng() * 0.75, yaw: rng() * 6.283 });
       }
 

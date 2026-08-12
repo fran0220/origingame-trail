@@ -571,11 +571,11 @@ export class LakeWater {
   _maybeCaptureMirror(camera) {
     if (!this.renderer || !this.scene || !camera || !this.mirrorTarget) return;
     camera.getWorldDirection(this._mirrorFwd);
-    const moved = this._mirrorEye.distanceToSquared(camera.position) > 0.36;
+    const moved = this._mirrorEye.distanceToSquared(camera.position) > 2.25;
     const turned = this._lastFwd.lengthSq() > 0
-      && this._mirrorFwd.dot(this._lastFwd) < 0.9994;
+      && this._mirrorFwd.dot(this._lastFwd) < 0.997;
     this._mirrorTick += 1;
-    if (this._mirrorReady && !moved && !turned && this._mirrorTick % 8 !== 1) return;
+    if (this._mirrorReady && !moved && !turned && this._mirrorTick % 12 !== 1) return;
     this._lastFwd.copy(this._mirrorFwd);
     this._mirrorEye.copy(camera.position);
     this._captureMirror(camera);

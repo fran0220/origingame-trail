@@ -115,6 +115,9 @@ export class Rockfield {
       { kind: 'bomb',    n: 2600, r: [0.16, 0.62], wantSlope: [0.00, 0.55] },
       { kind: 'rubble',  n: 7000, r: [0.09, 0.30], wantSlope: [0.05, 0.42] },
       { kind: 'erratic', n: 34,   r: [1.9,  4.2],  wantSlope: [0.00, 0.30] },
+      /* Valley floor slabs. Without these the Mangatepopo tussock reads
+       * as a lawn: nothing at the scale of a person sits in the grass. */
+      { kind: 'block',   n: 280, r: [1.1, 3.4],  wantSlope: [0.00, 0.28], valley: true },
     ];
 
     const B = terrain.bounds;
@@ -139,6 +142,7 @@ export class Rockfield {
         const slope = terrain.slopeAt(x, z);
         const [s0, s1] = spec.wantSlope;
         if (slope < s0 || slope > s1) continue;
+        if (spec.valley && !(q.t < STAGES.staircase[0])) continue;
         /* Keep the tread clear. A boulder in the middle of a poled route is
          * not what the route is for, and the walker cannot climb it. */
         if (q.dist < trail.widthAt(clamp(q.t, 0, 1)) + 1.8) continue;

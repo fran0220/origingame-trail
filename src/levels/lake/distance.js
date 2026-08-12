@@ -420,7 +420,7 @@ function mountainMaterial(spec, layer) {
     uLayer: { value: layer },
   };
   mat.userData.uniforms = U;
-  mat.customProgramCacheKey = () => 'lake-mountain-terrain-v4';
+  mat.customProgramCacheKey = () => 'lake-mountain-terrain-v5';
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     mat.userData.shader = sh;
@@ -516,12 +516,17 @@ function mountainMaterial(spec, layer) {
         * changing the geometric ridges underneath. */
        float snowFlow=mf(vec2((vMPos.x+vMPos.z*.27)*.0037,vMPos.y*.00072)+fine*1.7);
        float snowCross=mf(vec2((vMPos.x-vMPos.z*.41)*.0022,vMPos.y*.00115)-coarse*1.3);
-       float snowBreak = smoothstep(.36, .62, snowFlow*.62+snowCross*.38+vCavity*.28);
-       float outcrop = smoothstep(.30, .67, 1.0-vMNrm.y + fracture*.42);
-       float snowCover = smoothstep(.22,.52,vSnow);
-       float windScour=smoothstep(-.35,.48,dot(normalize(vMNrm.xz+vec2(.001)),normalize(vec2(.84,.54))));
-       float snowMask = clamp(snowCover * mix(.55,1.0,snowBreak)
-         * (1.0-outcrop*.48) * mix(.62,1.0,windScour) * uSnow, 0.0, 1.0);
+       float snowBreak = smoothstep(.38, .68, snowFlow*.60+snowCross*.40+vCavity*.30);
+       float outcrop = smoothstep(.26, .62, 1.0-vMNrm.y + fracture*.46);
+       float snowCover = smoothstep(.26,.58,vSnow);
+       float windScour=smoothstep(-.22,.54,dot(normalize(vMNrm.xz+vec2(.001)),normalize(vec2(.84,.54))));
+       float rib = smoothstep(.58,.92,fractureNoise);
+       /* Aoraki keeps a white summit. The mid ranges can show more rock;
+        * stripping the far massif the same way left a grey pyramid. */
+       float highHold = mix(.42, .78, smoothstep(1.35, 1.95, uLayer));
+       float snowMask = clamp(snowCover * mix(highHold, 1.0, snowBreak)
+         * (1.0-outcrop*mix(.42,.68,1.0-smoothstep(1.4,1.9,uLayer)))
+         * mix(.52,1.0,windScour) * (1.0-rib*.22) * uSnow, 0.0, 1.0);
        vec3 snowColor = mix(vec3(.78,.86,.92), vec3(.98,.99,.97), .62 + fine*.32);
        surf = mix(surf, snowColor, snowMask);
        vec3 ice = mix(vec3(.55,.70,.78), vec3(.90,.94,.95), fine);

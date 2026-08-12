@@ -1,5 +1,42 @@
 # Lessons
 
+## A reflection sampled by the wrong size is a decal
+
+- `gl_FragCoord / textureSize(tMirror)` is only correct when the target is
+  the same size as the drawing buffer. A 1600×900 frame over a 384² target
+  puts every lake pixel past 1; `clamp` then paints one texel across the
+  whole surface. That can still *look* like a mountain if the edge texel
+  happens to be snow.
+- Pass `renderer.getDrawingBufferSize()` and build the target at the camera
+  aspect. Recapture on camera motion, not on a fixed cadence that still
+  pays the pass when the car is parked.
+
+## A landmark behind the shoulder is scenery
+
+- Karangahake's stamp battery sat 4.6 m off a bend at t=0.70. Default
+  cameras at 0.62–0.70 never framed it. Measuring the bounding box from
+  the live scene, then placing the machine 1.7 m off t=0.675, is what
+  put rust in the walk.
+- `hardGround` does not apply to authored verge plants or to canopy
+  scatter. A dedicated hole *and* an up-trail corridor are required or
+  the machine sits inside a wall of ponga.
+
+## Do not strip the summit to expose the mid-range
+
+- One snow-break term on every layer turned Aoraki into grey rock. Hold
+  more snow on the far massif (`uLayer`) and let the foothills show
+  ribs. A white pyramid with dark shoulders is the postcard; a grey
+  pyramid is a different mountain.
+
+## Ten thousand rocks will not un-lawn a valley
+
+- 1800 extra blocks/km² on Mangatepopo dropped Tongariro to 25 fps and
+  still left a green mid-ground. The lawn is the ash splat plus tussock
+  density. Paint lava tongues in `evalChannels` and thin the red tussock
+  stand; keep only a handful of person-scale slabs.
+
+
+
 ## Visual acceptance is not render correctness
 
 - Do not call a scene visually complete because black frames, moiré, culling bugs, or unreachable content are fixed. Those checks certify rendering and gameplay correctness only.

@@ -232,7 +232,16 @@ export class Terrain extends Heightfield {
     if (t2 >= STAGES.scree[0] && t2 < STAGES.scree[1]) {
       red = clamp(red + (1 - smoothstep(0, 70, q.dist)) * 0.35, 0, 1);
     }
-    const black = smoothstep(0.44, 0.80, slope);
+    let black = smoothstep(0.44, 0.80, slope);
+    /* Mangatepopo is old lava under tussock, not a meadow. Long dark
+     * tongues break the lawn without another ten thousand rocks. */
+    if (t2 < STAGES.staircase[0]) {
+      const tongue = this.n2.n(x * 0.0048, z * 0.0019);
+      const ribbon = this.n3.n(x * 0.018 + 11, z * 0.006);
+      black = clamp(black
+        + smoothstep(0.08, 0.38, tongue) * 0.82
+        + smoothstep(0.42, 0.72, ribbon) * 0.55, 0, 1);
+    }
     const ash = clamp(1 - red - black, 0, 1);
     out[0] = ash;
     out[1] = clamp(red * (1 - black), 0, 1);
