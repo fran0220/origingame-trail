@@ -252,10 +252,10 @@ function stageOffset(name, side, a) {
  * from the top — which is where a walker coming off Red Crater actually first
  * sees them, and it is the view worth having. */
 export const POOLS = [
-  { t: 0.878, off: -34, r: 25, depth: 7.0, tint: 0x1f8f74, name: 'emerald-1' },
-  { t: 0.895, off: -29, r: 20, depth: 5.5, tint: 0x2f9b62, name: 'emerald-2' },
-  { t: 0.908, off: -37, r: 28, depth: 8.0, tint: 0x18836f, name: 'emerald-3' },
-  { t: 0.955, off: -52, r: 42, depth: 11.0, tint: 0x2a6ea8, name: 'blue-lake' },
+  { t: 0.868, off: -16, r: 34, depth: 8.5, tint: 0x14c48a, name: 'emerald-1' },
+  { t: 0.886, off: -14, r: 28, depth: 7.0, tint: 0x22d06a, name: 'emerald-2' },
+  { t: 0.902, off: -18, r: 38, depth: 9.5, tint: 0x10b896, name: 'emerald-3' },
+  { t: 0.948, off: -26, r: 54, depth: 13.0, tint: 0x2a86d4, name: 'blue-lake' },
 ];
 
 /* z1 at -3000, not -2600. The route's last control point is at z = -2507 and

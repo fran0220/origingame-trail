@@ -29,11 +29,12 @@ import { STAGES } from './route.js';
 /* Where the ground is venting. Two clusters, because that is how a fumarole
  * field works — they follow a fracture, they do not scatter. */
 const VENTS = [
-  { t: 0.58,  off:  18, n: 3, scale: 1.35 },   // visible across South Crater
-  { t: 0.700, off:  -6, n: 5, scale: 1.15 },   // the Red Crater rim
-  { t: 0.742, off:   9, n: 4, scale: 0.95 },
-  { t: 0.768, off:  -4, n: 4, scale: 1.30 },   // just below the high point
-  { t: 0.905, off:  16, n: 3, scale: 0.80 },   // above the Blue Lake
+  { t: 0.54,  off:  22, n: 4, scale: 1.85 },   // South Crater floor, readable from the walk
+  { t: 0.58,  off:  18, n: 4, scale: 1.70 },
+  { t: 0.700, off:  -6, n: 6, scale: 1.55 },   // the Red Crater rim
+  { t: 0.742, off:   9, n: 5, scale: 1.25 },
+  { t: 0.768, off:  -4, n: 5, scale: 1.70 },   // just below the high point
+  { t: 0.905, off:  16, n: 4, scale: 1.10 },   // above the Blue Lake
 ];
 
 const PER_VENT = 26;
@@ -168,7 +169,7 @@ export class Fumaroles {
        * that cannot be seen before you arrive is not a landmark, and on the
        * mountain the Red Crater steam is visible from the far side of South
        * Crater. 26 m is still modest for a fumarole. */
-      const rise = (1 - Math.exp(-u * 2.6)) * 26.0 * pf.site.scale;
+      const rise = (1 - Math.exp(-u * 2.6)) * 38.0 * pf.site.scale;
       /* THE LEAN. Vertical for the first metre or so, then the wind has it.
        * This is the whole difference between steam and a smoke machine. */
       const bend = smoothstep(0.06, 0.85, u);
@@ -193,7 +194,7 @@ export class Fumaroles {
        * what keeps the base narrow — and the coefficient goes back up. */
       const size = (0.75 + u * u * 5.0) * pf.site.scale;
       /* Fade in fast, out slow. */
-      const a = smoothstep(0, 0.10, u) * (1 - smoothstep(0.42, 1.0, u)) * 0.40;
+      const a = smoothstep(0, 0.10, u) * (1 - smoothstep(0.42, 1.0, u)) * 0.58;
 
       const v = i * 4;
       const sxr = rx * size, syr = ry * size, szr = rz * size;
