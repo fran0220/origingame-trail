@@ -598,8 +598,8 @@ function buildLupinDrifts(owner, terrain, tier, dummy) {
      * walking distance one drift subtends less than a road marking. Ten to
      * forty metres across, three hundred plants and up, which is the size the
      * colonies on the Tekapo and Ahuriri flats actually are. */
-    const spread = 16 + rng() * 36;
-    const n = 420 + ((rng() * 420) | 0);
+    const spread = 14 + rng() * 30;
+    const n = 280 + ((rng() * 260) | 0);
     for (let i = 0; i < n; i++) {
       /* Clumped inside the drift too, because a lupin colony spreads from
        * seed fall and is densest where it started. */
@@ -612,7 +612,7 @@ function buildLupinDrifts(owner, terrain, tier, dummy) {
       if (y < LAKE_Y + 0.8) continue;
       const q = trail.nearest(x, z, {});
       if (q.dist < ROAD_SHOULDER + 1.2) continue;
-      lists[(rng() * 4) | 0].push({ x, y, z, s: .95 + rng() * .85, yaw: rng() * 6.283 });
+      lists[(rng() * 4) | 0].push({ x, y, z, s: 1.05 + rng() * .70, yaw: rng() * 6.283 });
       placed++;
     }
     if ((dft % CHUNK) === CHUNK - 1) flush(dft);

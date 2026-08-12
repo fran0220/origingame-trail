@@ -269,3 +269,35 @@
   choose the most cinematic level and call it the game. Inventory the shipped
   levels first and cover each one, or explicitly ask whether a single-level
   teaser is acceptable before spending time recording it.
+
+## An open alpine scene is a different lighting problem from a forest
+
+- Tongariro shipped with the jungle's hemisphere (1.35), contact AO (0.62) and
+  46 m shadow aim. The result was a clay model under studio lights, a grid
+  printed on every slope, and a travelling ring of darkness. Lake already knew
+  this (`openSky`, `shadowReach`, `contactStrength = 0`) and the third level
+  did not inherit it.
+- A hemisphere at forest intensity is a second sun with no direction. Alpine
+  daylight is hard; fill has to sit near 0.7 or landform disappears.
+- Screen-space contact AO latches to an open heightfield and becomes moiré.
+  Disable the tight ring on any level whose subject is bare ground at a
+  shallow angle. The cascade and the normals already carry the landform.
+- `_configureShadow` and `_aimShadow` must share the same reach. Sizing a
+  cascade to 210 m and aiming it from 46 m spends the far half on empty air.
+
+## Colour keyed off the path is invisible from the path
+
+- Red Crater was red only for `side >= 0 && dist > 4`, so every photograph
+  taken from the poled route showed beige. A level named for a colour has to
+  carry that colour on the crest the player actually walks.
+- The drop had the same fault in profile: a 7→190 m ramp is a hill from eye
+  height. Spend the first 30 m of fall steeply enough that a walker can see
+  into the crater without leaving the poles.
+
+## Do not spend triangles the frame cannot keep
+
+- Tightening Tongariro's heightfield from 1.7 m to 1.25 m and holding LOD out
+  to 210 m put 82 M triangles on screen and 34 fps. The pictures did not get
+  sharper; the grain fade and the lighting did. Put the budget back (1.45 m,
+  LOD 80/175) and keep the shader work. Geometry that exists only to fight
+  aliasing the shader already fades is the grass-card mistake again.
