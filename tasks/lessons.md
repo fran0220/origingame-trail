@@ -326,6 +326,31 @@
 - FogExp2 at 0.00135 leaves 5% of a 4 km peak. Weather tables silently
   overwrite a mood fog. Change both or the next boot puts the milk back.
 
+## A hollow cone reads as a black crack
+
+- Ngauruhoe was a radial heightfield with an open foot. From South Crater the
+  camera looked under the eastern apron and saw sky through the mountain.
+  Extra inner rings and double-sided materials did not close that hole; they
+  only spent fill rate. A disc at the last ring, plus moving the cone west
+  so the foot sits behind the plateau, is the actual join.
+- Double-sided kilometre-scale cones dropped Tongariro from 59 fps to 45
+  with no visible change. Close the mesh; do not shade the interior.
+
+## A terrace surveyed from a 15 m bench is a cliff
+
+- Lake start sat 50 m above the water because fans and till stacked on a
+  15 m bench and the road profile was *measured from that stack*. Flattening
+  the face after the survey is too late. Cap the land before `_buildPathProfile`
+  samples it, or the car inherits the wall.
+- A 2 m chase camera looking at the boot lid cannot review Aoraki. The
+  dedicated showcase has to look north-west after `warp()`, not before it.
+
+## Path litter is a density rule, not a sink
+
+- Sinking a card 12 cm still leaves a silhouette if the card is standing.
+  Flatten curl/roll/twist *and* stop placing litter inside the packed
+  tread. Cards on clay read as paper no matter how deep they sit.
+
 ## Boards that float are a seating number, not a material
 
 - Trackwork planks sat on `height + 0.20`. They looked like a ladder in the

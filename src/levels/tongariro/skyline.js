@@ -359,14 +359,14 @@ export class Skyline {
     const mat = new THREE.MeshStandardMaterial({
       name: 'skyline', vertexColors: true,
       roughness: 0.96, metalness: 0.0, envMapIntensity: 0.42,
-      /* Double-sided: a hollow cone seen from South Crater otherwise
-       * shows its interior as a black diagonal. */
-      side: THREE.DoubleSide,
+      /* Closed feet plus a buried last ring make the outside the only
+       * face a crater camera can see. Double-sided doubled the fill
+       * rate on three kilometre-scale cones for no visible gain. */
       /* Never a shadow caster or receiver: these are kilometres away, the
        * cascades do not reach them, and asking would only cost a pass. */
       flatShading: false,
     });
-    mat.customProgramCacheKey = () => 'tongariro-skyline-v4';
+    mat.customProgramCacheKey = () => 'tongariro-skyline-v5';
     mat.onBeforeCompile = (sh) => {
       mat.userData.shader = sh;
       sh.fragmentShader = sh.fragmentShader.replace(
