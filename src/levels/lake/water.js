@@ -110,9 +110,10 @@ function waterMaterial() {
     uWaves: { value: 1 },
     tMirror: { value: null },
     uHasMirror: { value: 0 },
+    uViewport: { value: new THREE.Vector2(1, 1) },
   };
   material.userData.uniforms = U;
-  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v13';
+  material.customProgramCacheKey = () => 'lake-pukaki-unified-water-v14';
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, U);
     material.userData.shader = shader;
@@ -166,6 +167,7 @@ function waterMaterial() {
       uniform float uTime, uNear, uWaves;
       uniform sampler2D tMirror;
       uniform float uHasMirror;
+      uniform vec2 uViewport;
       vec3 gLakeNormal = vec3(0.0,1.0,0.0);
       float gLakeDistance = 0.0;
       float gLakeGlint = 0.0;
@@ -252,11 +254,12 @@ function waterMaterial() {
         float ndv=max(dot(gLakeNormal,V),0.0);
         float fresnel=.02037+(1.0-.02037)*pow(1.0-ndv,5.0);
         vec3 clearSky = mix(vec3(.62,.74,.80),vec3(.10,.30,.52),smoothstep(0.0,.82,R.y));
-        /* Planar mirror of the actual massif, warped by the surface normal so
-         * it is a reflection and not a decal. The old north-tint invented snow
-         * wherever the view faced -Z; this samples a photograph of the range. */
-        vec2 mUv = gl_FragCoord.xy / vec2(textureSize(tMirror, 0));
-        mUv += gLakeNormal.xz * 0.035;
+        /* Screen-space sample of a same-aspect photograph of the range.
+         * Dividing gl_FragCoord by the mirror's own size was the previous
+         * bug: a 1600×900 frame over a 384² target put every lake pixel
+         * past 1 and the clamp pinned the whole surface to one texel. */
+        vec2 mUv = gl_FragCoord.xy / max(uViewport, vec2(1.0));
+        mUv += gLakeNormal.xz * 0.028;
         vec3 mirrored = texture2D(tMirror, clamp(mUv, 0.002, 0.998)).rgb;
         float useMirror = uHasMirror * smoothstep(.04, .22, fresnel) * (1.0 - gLakeFoam);
         clearSky = mix(clearSky, mirrored, useMirror);
@@ -507,6 +510,11 @@ export class LakeWater {
     this.renderer=renderer;
     this.scene=scene;
     this._mirrorReady=false;
+    this._mirrorTick=0;
+    this._mirrorEye=new THREE.Vector3(1e9,1e9,1e9);
+    this._mirrorFwd=new THREE.Vector3();
+    this._mirrorLook=new THREE.Vector3();
+    this._lastFwd=new THREE.Vector3();
     this.root=new THREE.Group();
     this.root.name='lake-pukaki-unified-water-and-shore';
     this.surfaceMaterial=waterMaterial();
@@ -514,12 +522,18 @@ export class LakeWater {
     this.surface.name='adaptive-density-whole-lake';
     this.surface.renderOrder=1;
     if (renderer) {
-      const size = tier === 'low' ? 256 : 384;
-      this.mirrorTarget = new THREE.WebGLRenderTarget(size, size, {
+      /* Same aspect as the game camera. A square target stretches Aoraki
+       * and, with the old textureSize UV, also clamped most of the lake
+       * onto one texel. 512×288 is enough for a kilometre-scale silhouette. */
+      const wide = tier === 'low' ? 384 : 512;
+      const high = Math.round(wide * 9 / 16);
+      this.mirrorTarget = new THREE.WebGLRenderTarget(wide, high, {
         type: THREE.HalfFloatType,
         depthBuffer: true,
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
       });
-      this.mirrorCam = new THREE.PerspectiveCamera(55, 16 / 9, 2, 40000);
+      this.mirrorCam = new THREE.PerspectiveCamera(55, wide / high, 2, 40000);
       this.surfaceMaterial.userData.uniforms.tMirror.value = this.mirrorTarget.texture;
     }
 
@@ -545,14 +559,28 @@ export class LakeWater {
 
   update(dt,camera,sun,host) {
     this.time+=dt;
-    this.surfaceMaterial.userData.uniforms.uTime.value=this.time;
-    this._mirrorTick = (this._mirrorTick || 0) + 1;
-    if (this._mirrorTick % 3 === 1) this._captureMirror(camera);
+    const U=this.surfaceMaterial.userData.uniforms;
+    U.uTime.value=this.time;
+    if (this.renderer) this.renderer.getDrawingBufferSize(U.uViewport.value);
+    this._maybeCaptureMirror(camera);
   }
 
   /* Flip the live camera under the lake and photograph only the Alps and
-   * the sky. One extra pass, 640², no flora. That is a reflection of the
-   * actual massif rather than a north-facing paint job. */
+   * the sky. Recapture when the eye has moved or turned enough that the
+   * last photograph is no longer the same picture. */
+  _maybeCaptureMirror(camera) {
+    if (!this.renderer || !this.scene || !camera || !this.mirrorTarget) return;
+    camera.getWorldDirection(this._mirrorFwd);
+    const moved = this._mirrorEye.distanceToSquared(camera.position) > 0.36;
+    const turned = this._lastFwd.lengthSq() > 0
+      && this._mirrorFwd.dot(this._lastFwd) < 0.9994;
+    this._mirrorTick += 1;
+    if (this._mirrorReady && !moved && !turned && this._mirrorTick % 8 !== 1) return;
+    this._lastFwd.copy(this._mirrorFwd);
+    this._mirrorEye.copy(camera.position);
+    this._captureMirror(camera);
+  }
+
   _captureMirror(camera) {
     if (!this.renderer || !this.scene || !camera || !this.mirrorTarget) return;
     const U = this.surfaceMaterial.userData.uniforms;
@@ -567,31 +595,37 @@ export class LakeWater {
      * terrace behind the car. */
     const eye = camera.position;
     mc.position.set(eye.x, 2 * LAKE_Y - eye.y, eye.z);
-    const fwd = new THREE.Vector3();
-    camera.getWorldDirection(fwd);
-    const target = new THREE.Vector3(eye.x + fwd.x, 2 * LAKE_Y - (eye.y + fwd.y), eye.z + fwd.z);
+    camera.getWorldDirection(this._mirrorFwd);
+    this._mirrorLook.set(
+      eye.x + this._mirrorFwd.x,
+      2 * LAKE_Y - (eye.y + this._mirrorFwd.y),
+      eye.z + this._mirrorFwd.z,
+    );
     mc.up.set(0, -1, 0);
-    mc.lookAt(target);
+    mc.lookAt(this._mirrorLook);
     mc.updateMatrixWorld();
 
-    if (!this._mirrorLayers) {
-      this._mirrorLayers = this.scene.children.filter((o) => {
+    if (!this._mirrorKeep) {
+      this._mirrorKeep = this.scene.children.filter((o) => {
         const n = o.name || '';
-        return n !== 'sky' && n !== 'lake-distance-southern-alps';
+        return n === 'sky' || n === 'lake-distance-southern-alps';
       });
     }
     const hidden = [];
-    for (const o of this._mirrorLayers) {
+    for (const o of this.scene.children) {
       if (!o.visible) continue;
+      if (this._mirrorKeep.includes(o)) continue;
       hidden.push(o);
       o.visible = false;
     }
     this.root.visible = false;
     const prevAuto = this.renderer.shadowMap.autoUpdate;
+    const prevTarget = this.renderer.getRenderTarget();
     this.renderer.shadowMap.autoUpdate = false;
     this.renderer.setRenderTarget(this.mirrorTarget);
+    this.renderer.clear();
     this.renderer.render(this.scene, mc);
-    this.renderer.setRenderTarget(null);
+    this.renderer.setRenderTarget(prevTarget);
     this.renderer.shadowMap.autoUpdate = prevAuto;
     this.root.visible = true;
     for (const o of hidden) o.visible = true;
