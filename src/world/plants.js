@@ -2292,10 +2292,10 @@ export function litterMat(rng, scale = 1, lod = 0) {
      */
     const fam = rng();
     const kind = fam < 0.26 ? 0 : fam < 0.42 ? 1 : fam < 0.80 ? 2 : 3;
-    const stand = kind === 1 ? 0.55 + rng() * 0.75 : kind === 3 ? 0.20 + rng() * 0.45 : 0;
-    e.set(-pitch - stand, rng() * 6.283, (rng() - 0.5) * 0.55, 'YXZ');
+    const stand = kind === 1 ? 0.12 + rng() * 0.22 : kind === 3 ? 0.06 + rng() * 0.14 : 0;
+    e.set(-pitch - stand, rng() * 6.283, (rng() - 0.5) * 0.28, 'YXZ');
     m.makeRotationFromEuler(e);
-    const y = 0.006 + rng() * 0.11;
+    const y = 0.002 + rng() * 0.035;
     m.setPosition(x, y, z);
     const big = kind === 0 || kind === 3;
     const ll = (big ? 0.13 + rng() * 0.16 : 0.045 + rng() * 0.09) * scale;

@@ -1209,7 +1209,7 @@ export class Vegetation {
         extraTf.push({
           v,
           m: M().compose(_p.set(x, y - 0.06, z),
-                         new THREE.Quaternion(), bulk(makeRng(seed + 400 + i), 0.92, 0.08)),
+                         new THREE.Quaternion(), bulk(makeRng(seed + 400 + i), 1.18, 0.10)),
         });
         if (i % 3 === 0) {
           extraNk.push({
@@ -1420,7 +1420,10 @@ export class Vegetation {
        * — and that drift of leaves lying across the stone is most of what
        * makes the ruin look abandoned rather than swept. */
       if (c.stone) return 1.4;
-      return 1.5 * (0.16 + 0.84 * trodden) * (0.10 + held * (0.55 + caught))
+      /* Keep the worn tread itself almost bare. Cards that survive the sink
+       * still read as floating paper when they sit on packed clay. */
+      if (c.dist < 0.85) return 0.12 * held;
+      return 1.15 * (0.10 + 0.90 * trodden) * (0.06 + held * (0.50 + caught))
            * wallFoot(c, 0.7);
     }, (c) => {
       /* Scale, over a range four times wider than before and heavily skewed.
@@ -1451,7 +1454,7 @@ export class Vegetation {
        * their margins with only a curled edge showing. Sinking a whole patch
        * rather than a single leaf is deliberate: burial is regional, the same
        * way rot is, and the wet hollows swallow their drifts fastest. */
-      const sink = (0.055 + c.rng() * 0.11 * (0.55 + c.wet)) * Math.min(1.8, s);
+      const sink = (0.12 + c.rng() * 0.18 * (0.65 + c.wet)) * Math.min(2.2, s);
       return {
         v: (c.rng() * SPECIES_LOD.litterMat.v) | 0,
         // Conformed all the way. Litter has no opinion about which way is up;

@@ -496,7 +496,7 @@ export function makeTerrainMaterial(renderer) {
       /* World periods, chosen from the real size of the features each map
        * contains: ~2 m of trail surface, ~1.1 m of leaf litter (so the blades
        * land around 9 cm), ~3.6 m of bedding plane. */
-      const float S_DIRT = 0.50;
+      const float S_DIRT = 0.78;
       const float S_LIT  = 0.90;
       const float S_ROCK = 0.28;
 
