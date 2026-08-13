@@ -1,5 +1,12 @@
 # Lessons
 
+## An extruded cosine is a ski jump, not a range
+
+- A north–south wall with a convex or even a mild concave cross-section
+  reads as a ramp from the water. The crest needs peaks *and* cols, the
+  lake face needs a knife drop plus tributary ribs and cirque bowls, and
+  `rangeFloor` must stay off the side walls or it fills every saddle.
+
 ## A snowline is an altitude, not a per-peak hat
 
 - `snowLine * spec.height` paints every summit from 60% of *its* mesh.

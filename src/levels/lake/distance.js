@@ -115,28 +115,32 @@ const RANGES = [
     nx: 220, nz: 300, base: -36, height: 2140, haze: .14, snowLine: 0.62, ridgeStrength: 0, gullyStrength: .052,
     axis: 'z', lakeToward: 1,
     crestPeaks: [
-      /* zOffset is crest X. Lake is at x≈-100; the divide sits at
-       * about -2100 so the snowy ridge is the skyline, not a far
-       * apron. */
-      [  620, 1180,  780,  860, 1.28,  380],
-      [ -820, 1540,  920,  980, 1.18,  280],
-      [-1980, 1860, 1040, 1100, 1.12,  180],
-      [-3180, 2080, 1120, 1180, 1.10,  240],
-      [-4380, 2260, 1180, 1260, 1.08,  420],
-      [-5680, 2440, 1260, 1380, 1.06,  620],
-      [-6980, 2620, 1340, 1480, 1.04,  860],
+      /* Unequal summits so the wall has peaks and cols, not a ramp.
+       * zOffset is crest X. Lake ≈ -100; the divide sits near -2000. */
+      [  620,  980,  420,  480, 1.55,  420],
+      [ -820, 1680,  380,  440, 1.72,  220],
+      [-1680, 1120,  520,  560, 1.38,  360],
+      [-2680, 2140,  360,  400, 1.85,  140],
+      [-3480, 1280,  480,  520, 1.42,  380],
+      [-4580, 2360,  340,  380, 1.90,  180],
+      [-5480, 1460,  460,  500, 1.40,  440],
+      [-6580, 2520,  320,  360, 1.95,  260],
     ],
     massifSpurs: [
-      [ -820,-2680, -620,-1480, 980, 420, 380, 720],
-      [-3180,-2740,-2480,-1620,1240, 480, 420, 780],
-      [-5680,-1760,-4120, -820,1480, 520, 460, 860],
+      [ -820, -2200, -420, -980, 980, 280, 180, 360],
+      [-2680, -2100, -980, -720, 1240, 320, 200, 400],
+      [-4580, -2140,-1680, -620, 1380, 340, 220, 420],
     ],
     cirques: [
-      [-1980,-2480,420,360,180], [-4380,-2140,480,400,210],
+      [ -820, -1680, 280, 220, 420],
+      [-2680, -1620, 300, 240, 480],
+      [-4580, -1720, 320, 260, 520],
+      [-6580, -1540, 280, 220, 400],
     ],
     valleys: [
-      [ -820,-2680, -420,-1180,280,620],
-      [-3180,-2740,-1980,-1320,320,680],
+      [ -820, -1680,  -180, -620, 180, 360],
+      [-2680, -1620,  -280, -480, 200, 400],
+      [-4580, -1720,  -620, -520, 220, 420],
     ],
     peaks: [], links: [], glaciers: [],
   },
@@ -146,20 +150,27 @@ const RANGES = [
     nx: 180, nz: 260, base: -18, height: 1680, haze: .16, snowLine: 0.72, ridgeStrength: 0, gullyStrength: .044,
     axis: 'z', lakeToward: -1,
     crestPeaks: [
-      /* Crest X ≈ -2480 + 3480 = +1000, behind the terrace. */
-      [  480,  980,  720,  780, 1.30, 3480],
-      [ -620, 1240,  820,  880, 1.20, 3580],
-      [-1780, 1420,  900,  960, 1.14, 3680],
-      [-2980, 1560,  960, 1020, 1.12, 3540],
-      [-4280, 1680, 1020, 1100, 1.10, 3380],
-      [-5820, 1780, 1100, 1220, 1.08, 3220],
+      [  480,  820,  380,  420, 1.55, 3420],
+      [ -720, 1380,  340,  380, 1.72, 3580],
+      [-1620,  960,  460,  500, 1.38, 3480],
+      [-2580, 1620,  320,  360, 1.85, 3620],
+      [-3480, 1080,  420,  460, 1.42, 3520],
+      [-4620, 1760,  300,  340, 1.90, 3380],
+      [-5720, 1240,  400,  440, 1.40, 3280],
     ],
     massifSpurs: [
-      [ -620, 1120,  280,  420, 720, 340, 360, 640],
-      [-2980, 1280, -820,  680, 880, 380, 400, 720],
+      [ -720, 3580,  180, 1120, 720, 280, 220, 420],
+      [-2580, 3620, -420, 1280, 880, 320, 240, 480],
     ],
-    cirques: [[-1780,1180,360,300,140]],
-    valleys: [[-1780,1180, -280, 420, 260, 540]],
+    cirques: [
+      [ -720, 1180, 300, 240, 220],
+      [-2580, 1420, 340, 260, 260],
+      [-4620, 1080, 320, 240, 200],
+    ],
+    valleys: [
+      [ -720, 1180,  280,  420, 220, 460],
+      [-2580, 1420, -180,  680, 240, 500],
+    ],
     peaks: [], links: [], glaciers: [],
   },
 ];
@@ -196,10 +207,10 @@ function continuousMassif(spec, noise, x, z) {
     /* Aoraki is a pyramid, not a dome. The old 82/18 mix let the wide
      * shoulder own the silhouette and fused three summits into one white
      * loaf. Keep the shoulder for saddles, give the apex the skyline. */
-    const broad = asymmetricPeak(along, cx, left * 1.55, right * 1.55, power * .70);
-    const apex = asymmetricPeak(along, cx, left * .52, right * .48, power * 1.55);
-    const influence = broad * .42 + apex * .58;
-    crest = smoothMax(crest, height * influence, spec.height * .028);
+    const broad = asymmetricPeak(along, cx, left * (alongZ ? 1.15 : 1.55), right * (alongZ ? 1.15 : 1.55), power * .70);
+    const apex = asymmetricPeak(along, cx, left * .48, right * .44, power * (alongZ ? 1.85 : 1.55));
+    const influence = alongZ ? broad * .22 + apex * .78 : broad * .42 + apex * .58;
+    crest = smoothMax(crest, height * influence, spec.height * (alongZ ? .016 : .028));
     bearing += zOffset * broad;
     bearingWeight += broad;
   }
@@ -219,16 +230,34 @@ function continuousMassif(spec, noise, x, z) {
   const toward = spec.lakeToward ?? 1;
   const lakeSide = (across - crestLine) * toward > 0;
   const depth = alongZ
-    ? (lakeSide ? 980 : 1240)
+    ? (lakeSide ? 720 : 860)
     : (lakeSide ? 2460 : 1830);
-  const cross = Math.pow(Math.max(0, 1 - Math.abs(across - crestLine) / depth), lakeSide ? .72 : .88);
+  /* Knife crest, then a steep drop into the lake. A wide convex or
+   * even a mild concave power still reads as a ramp from the water. */
+  const u = clamp(Math.abs(across - crestLine) / depth, 0, 1);
+  const cross = alongZ
+    ? (lakeSide
+      ? (u < .12 ? 1.0 - u * 1.4 : Math.pow(Math.max(0, 1.0 - (u - .12) / .88), 2.6) * .83)
+      : Math.pow(1 - u, 1.35))
+    : Math.pow(1 - u, lakeSide ? .72 : .88);
   const span = alongZ
     ? Math.max(Math.abs(spec.z0), Math.abs(spec.z1))
     : spec.x1;
-  const rangeFloor = spec.height * .27
+  const rangeFloor = spec.height * (alongZ ? 0 : .27)
     * Math.pow(smoothstep(1, .48, Math.abs(along / (span * .92))), .78);
-  crest = smoothMax(crest, rangeFloor, spec.height * .045);
+  if (!alongZ) crest = smoothMax(crest, rangeFloor, spec.height * .045);
   let mass = crest * cross;
+  if (alongZ && lakeSide) {
+    /* Tributary ribs falling toward the lake. Without them the face is
+     * a ruled surface even after the crest has peaks. */
+    const rib = Math.abs(Math.sin(along * 0.0024 + 1.1))
+      * Math.pow(clamp(1 - Math.abs(u - .38) / .42, 0, 1), 1.4);
+    mass += spec.height * .11 * rib * (1 - u);
+    const bowl = Math.pow(Math.max(0, Math.sin(along * 0.00155 + 0.4)), 2.2)
+      * Math.pow(clamp(1 - Math.abs(u - .52) / .28, 0, 1), 1.2);
+    mass -= spec.height * .16 * bowl;
+    mass = Math.max(0, mass);
+  }
 
   /* Secondary divides are broad convex shoulders. Glacier troughs carved
    * below own the negative space between them; no procedural fan of narrow
