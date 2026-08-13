@@ -10,6 +10,14 @@ import * as THREE from 'three';
 import { Noise2D, clamp, smoothstep } from '../../world/noise.js';
 
 const HAZE = new THREE.Color(0xb7cddd);
+/* The Mackenzie lakes sit in a glacial trough. The Southern Alps do not
+ * stand as one northern card — they wrap the basin: Ben Ohau / Sealy on
+ * the west, Aoraki at the head, Two Thumb / Sibbald on the east. The
+ * road is the open eastern terrace; everything else is mountain.
+ *
+ * Peak tables stay in local mesh metres. BACKDROP_Z still slides the
+ * whole group up-valley so the playable basin never drives inside a
+ * foothill. */
 const RANGES = [
   {
     name: 'alps-foothills', seed: 0x4391, x0: -3000, x1: 2100, z0: -1150, z1: -3600,
@@ -89,6 +97,40 @@ const RANGES = [
       [  620,-9290, 1520,-7280,420], [ 2240,-9500,3700,-7750,350],
       [ -330,-10100,  90,-11720,290],
     ],
+  },
+  {
+    /* Ben Ohau / Sealy wall. Runs the far western shore so the lake is
+     * a trough, not a sheet with one mountain at the end. Feet sit in
+     * the water; the ridge walks north into Aoraki. */
+    name: 'alps-ben-ohau-west', seed: 0x6c2e, x0: -5600, x1: -720, z0: 980, z1: -7600,
+    nx: 248, nz: 280, base: -36, height: 1980, haze: .15, snowLine: 0.62, ridgeStrength: .16, gullyStrength: .060,
+    peaks: [
+      [-2280,  420,  780,  980, 1550, 1.22, 0.6],
+      [-2780, -620, 1180, 1180, 1780, 1.12, 2.4],
+      [-3160,-1780, 1460, 1280, 1920, 1.08, 4.1],
+      [-2720,-2920, 1580, 1220, 1760, 1.06, 1.3],
+      [-2240,-4020, 1480, 1180, 1880, 1.08, 5.0],
+      [-1760,-5280, 1680, 1260, 2100, 1.04, 2.8],
+      [-1180,-6680, 1860, 1400, 2360, 1.02, 1.1],
+    ],
+    links: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6]],
+    glaciers: [],
+  },
+  {
+    /* Two Thumb / Sibbald. Lower, drier, behind the eastern terrace.
+     * Closes the basin on the road side without sitting on the seal. */
+    name: 'alps-two-thumb-east', seed: 0x91d4, x0: 320, x1: 3920, z0: 860, z1: -7600,
+    nx: 196, nz: 248, base: -14, height: 1680, haze: .16, snowLine: 0.72, ridgeStrength: .14, gullyStrength: .048,
+    peaks: [
+      [ 680,  320,  820,  860, 1480, 1.20, 1.2],
+      [1120, -540, 1120,  980, 1680, 1.12, 3.3],
+      [1540,-1620, 1320, 1080, 1860, 1.08, 0.7],
+      [1360,-2740, 1460, 1140, 1980, 1.06, 4.6],
+      [ 980,-4280, 1580, 1220, 2140, 1.04, 2.1],
+      [ 520,-6120, 1760, 1380, 2360, 1.02, 3.8],
+    ],
+    links: [[0,1],[1,2],[2,3],[3,4],[4,5]],
+    glaciers: [],
   },
 ];
 
@@ -612,7 +654,12 @@ export class LakeDistance {
     }
   }
 
-  setTier(tier) { this.meshes[0].visible = tier !== 'low'; }
+  setTier(tier) {
+    /* Foothills and the eastern closer are the first things a low tier
+     * can drop. The west wall and Aoraki stay: they are the basin. */
+    this.meshes[0].visible = tier !== 'low';
+    if (this.meshes[4]) this.meshes[4].visible = tier !== 'low';
+  }
 
   stats() {
     return {

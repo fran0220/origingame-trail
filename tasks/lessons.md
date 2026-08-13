@@ -1,5 +1,16 @@
 # Lessons
 
+## A Mackenzie lake is a trough, not a stage with one backdrop
+
+- Pukaki / Tekapo sit inside the Southern Alps. A single northern massif
+  reads as a painted cyclorama even when Aoraki is a good pyramid. The
+  west wall (Ben Ohau / Sealy) has to walk the far shore into the head,
+  and a lower east wall has to close behind the terrace.
+- Keep Aoraki as the high point of a continuous divide, not a lone
+  cone. Side ranges join it; they do not compete with it.
+
+
+
 ## A reflection sampled by the wrong size is a decal
 
 - `gl_FragCoord / textureSize(tMirror)` is only correct when the target is
