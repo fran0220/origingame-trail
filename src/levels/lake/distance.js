@@ -10,6 +10,15 @@ import * as THREE from 'three';
 import { Noise2D, clamp, smoothstep } from '../../world/noise.js';
 
 const HAZE = new THREE.Color(0xb7cddd);
+/* One climatic snowline for the whole Mackenzie head. Per-range
+ * `snowLine * spec.height` made every peak its own white hat: a 800 m
+ * foothill and a 1800 m west-wall summit both painted from 60% of
+ * *their* mesh, so saddles dropped out of snow and the divide broke.
+ * World Y is already metres of relief; ~1450 m is a dry-summer alpine
+ * line that still leaves Aoraki white and lets the west wall carry a
+ * continuous band. */
+const SNOW_Y0 = 720;
+const SNOW_Y1 = 1180;
 /* The Mackenzie lakes sit in a glacial trough. The Southern Alps do not
  * stand as one northern card — they wrap the basin: Ben Ohau / Sealy on
  * the west, Aoraki at the head, Two Thumb / Sibbald on the east. The
@@ -99,38 +108,59 @@ const RANGES = [
     ],
   },
   {
-    /* Ben Ohau / Sealy wall. Runs the far western shore so the lake is
-     * a trough, not a sheet with one mountain at the end. Feet sit in
-     * the water; the ridge walks north into Aoraki. */
-    name: 'alps-ben-ohau-west', seed: 0x6c2e, x0: -5600, x1: -720, z0: 980, z1: -7600,
-    nx: 248, nz: 280, base: -36, height: 1980, haze: .15, snowLine: 0.62, ridgeStrength: .16, gullyStrength: .060,
-    peaks: [
-      [-2280,  420,  780,  980, 1550, 1.22, 0.6],
-      [-2780, -620, 1180, 1180, 1780, 1.12, 2.4],
-      [-3160,-1780, 1460, 1280, 1920, 1.08, 4.1],
-      [-2720,-2920, 1580, 1220, 1760, 1.06, 1.3],
-      [-2240,-4020, 1480, 1180, 1880, 1.08, 5.0],
-      [-1760,-5280, 1680, 1260, 2100, 1.04, 2.8],
-      [-1180,-6680, 1860, 1400, 2360, 1.02, 1.1],
+    /* Ben Ohau / Sealy as one north–south divide, not a row of cones.
+     * crestPeaks here are along Z: the wall walks the western shore
+     * into Aoraki. */
+    name: 'alps-ben-ohau-west', seed: 0x6c2e, x0: -4200, x1: -480, z0: 1100, z1: -7800,
+    nx: 220, nz: 300, base: -36, height: 2140, haze: .14, snowLine: 0.62, ridgeStrength: 0, gullyStrength: .052,
+    axis: 'z', lakeToward: 1,
+    crestPeaks: [
+      /* zOffset is crest X. Lake is at x≈-100; the divide sits at
+       * about -2100 so the snowy ridge is the skyline, not a far
+       * apron. */
+      [  620, 1180,  780,  860, 1.28,  380],
+      [ -820, 1540,  920,  980, 1.18,  280],
+      [-1980, 1860, 1040, 1100, 1.12,  180],
+      [-3180, 2080, 1120, 1180, 1.10,  240],
+      [-4380, 2260, 1180, 1260, 1.08,  420],
+      [-5680, 2440, 1260, 1380, 1.06,  620],
+      [-6980, 2620, 1340, 1480, 1.04,  860],
     ],
-    links: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6]],
-    glaciers: [],
+    massifSpurs: [
+      [ -820,-2680, -620,-1480, 980, 420, 380, 720],
+      [-3180,-2740,-2480,-1620,1240, 480, 420, 780],
+      [-5680,-1760,-4120, -820,1480, 520, 460, 860],
+    ],
+    cirques: [
+      [-1980,-2480,420,360,180], [-4380,-2140,480,400,210],
+    ],
+    valleys: [
+      [ -820,-2680, -420,-1180,280,620],
+      [-3180,-2740,-1980,-1320,320,680],
+    ],
+    peaks: [], links: [], glaciers: [],
   },
   {
-    /* Two Thumb / Sibbald. Lower, drier, behind the eastern terrace.
-     * Closes the basin on the road side without sitting on the seal. */
-    name: 'alps-two-thumb-east', seed: 0x91d4, x0: 320, x1: 3920, z0: 860, z1: -7600,
-    nx: 196, nz: 248, base: -14, height: 1680, haze: .16, snowLine: 0.72, ridgeStrength: .14, gullyStrength: .048,
-    peaks: [
-      [ 680,  320,  820,  860, 1480, 1.20, 1.2],
-      [1120, -540, 1120,  980, 1680, 1.12, 3.3],
-      [1540,-1620, 1320, 1080, 1860, 1.08, 0.7],
-      [1360,-2740, 1460, 1140, 1980, 1.06, 4.6],
-      [ 980,-4280, 1580, 1220, 2140, 1.04, 2.1],
-      [ 520,-6120, 1760, 1380, 2360, 1.02, 3.8],
+    /* Two Thumb / Sibbald, same construction, lower and drier. */
+    name: 'alps-two-thumb-east', seed: 0x91d4, x0: 240, x1: 3200, z0: 980, z1: -7600,
+    nx: 180, nz: 260, base: -18, height: 1680, haze: .16, snowLine: 0.72, ridgeStrength: 0, gullyStrength: .044,
+    axis: 'z', lakeToward: -1,
+    crestPeaks: [
+      /* Crest X ≈ -2480 + 3480 = +1000, behind the terrace. */
+      [  480,  980,  720,  780, 1.30, 3480],
+      [ -620, 1240,  820,  880, 1.20, 3580],
+      [-1780, 1420,  900,  960, 1.14, 3680],
+      [-2980, 1560,  960, 1020, 1.12, 3540],
+      [-4280, 1680, 1020, 1100, 1.10, 3380],
+      [-5820, 1780, 1100, 1220, 1.08, 3220],
     ],
-    links: [[0,1],[1,2],[2,3],[3,4],[4,5]],
-    glaciers: [],
+    massifSpurs: [
+      [ -620, 1120,  280,  420, 720, 340, 360, 640],
+      [-2980, 1280, -820,  680, 880, 380, 400, 720],
+    ],
+    cirques: [[-1780,1180,360,300,140]],
+    valleys: [[-1780,1180, -280, 420, 260, 540]],
+    peaks: [], links: [], glaciers: [],
   },
 ];
 
@@ -153,6 +183,9 @@ function asymmetricPeak(x, center, leftWidth, rightWidth, power) {
 }
 
 function continuousMassif(spec, noise, x, z) {
+  const alongZ = spec.axis === 'z';
+  const along = alongZ ? z : x;
+  const across = alongZ ? x : z;
   let crest = 0, bearing = 0, bearingWeight = 0;
   for (const [cx,height,left,right,power,zOffset] of spec.crestPeaks) {
     /* A summit rises from a shoulder that is considerably wider than the
@@ -163,8 +196,8 @@ function continuousMassif(spec, noise, x, z) {
     /* Aoraki is a pyramid, not a dome. The old 82/18 mix let the wide
      * shoulder own the silhouette and fused three summits into one white
      * loaf. Keep the shoulder for saddles, give the apex the skyline. */
-    const broad = asymmetricPeak(x, cx, left * 1.55, right * 1.55, power * .70);
-    const apex = asymmetricPeak(x, cx, left * .52, right * .48, power * 1.55);
+    const broad = asymmetricPeak(along, cx, left * 1.55, right * 1.55, power * .70);
+    const apex = asymmetricPeak(along, cx, left * .52, right * .48, power * 1.55);
     const influence = broad * .42 + apex * .58;
     crest = smoothMax(crest, height * influence, spec.height * .028);
     bearing += zOffset * broad;
@@ -174,19 +207,26 @@ function continuousMassif(spec, noise, x, z) {
    * one restrained amplitude. It breaks the candle-smooth apex left by the
    * continuous uplift without reinstating the repeated teeth of the discarded
    * ridge graph. */
-  crest *= 1 + noise.ridged(x*.0031+17.4,3.7,3,.52)*.026
-    + noise.fbm(x*.0067-9.2,8.1,2,.48)*.012;
+  crest *= 1 + noise.ridged(along*.0031+17.4,3.7,3,.52)*.026
+    + noise.fbm(along*.0067-9.2,8.1,2,.48)*.012;
 
   /* The divide bends in plan by hundreds of metres, but only at a wavelength
    * broad enough to be tectonic. High-frequency centreline noise was the
    * source of the former comb silhouette and has no place here. */
-  const crestZ = -9580 + bearing / Math.max(.2, bearingWeight)
-    + noise.fbm(x * .00022 + 9.1, 2.7, 3, .52) * 115;
-  const front = z > crestZ;
-  const depth = front ? 2460 : 1830;
-  const cross = Math.pow(Math.max(0, 1 - Math.abs(z - crestZ) / depth), front ? .72 : .88);
+  const crestCentre = alongZ ? -2480 : -9580;
+  const crestLine = crestCentre + bearing / Math.max(.2, bearingWeight)
+    + noise.fbm(along * .00022 + 9.1, 2.7, 3, .52) * 115;
+  const toward = spec.lakeToward ?? 1;
+  const lakeSide = (across - crestLine) * toward > 0;
+  const depth = alongZ
+    ? (lakeSide ? 980 : 1240)
+    : (lakeSide ? 2460 : 1830);
+  const cross = Math.pow(Math.max(0, 1 - Math.abs(across - crestLine) / depth), lakeSide ? .72 : .88);
+  const span = alongZ
+    ? Math.max(Math.abs(spec.z0), Math.abs(spec.z1))
+    : spec.x1;
   const rangeFloor = spec.height * .27
-    * Math.pow(smoothstep(1, .48, Math.abs(x / (spec.x1 * .92))), .78);
+    * Math.pow(smoothstep(1, .48, Math.abs(along / (span * .92))), .78);
   crest = smoothMax(crest, rangeFloor, spec.height * .045);
   let mass = crest * cross;
 
@@ -416,10 +456,12 @@ function mountainGeometry(spec) {
         + final[j*w+Math.max(0,i-1)] + final[j*w+Math.min(spec.nx,i+1)]) * .25 - y) / (spec.height * .012), -1, 1);
       const exposure = nx * .22 - nz * .18;
       const breakup = (noise.fbm(x * .0031, z * .0031, 4, .56) * .62
-        + noise.ridged(x * .0074, z * .0068, 3, .53) * .38) * spec.height * .085;
-      const snowHeight = altitude + breakup + Math.max(0, concavity) * spec.height * .09 + exposure * spec.height * .045;
-      const accumulation = .18 + .82 * smoothstep(.10, .64, ny);
-      snow[at] = clamp(smoothstep(spec.height * spec.snowLine, spec.height * (spec.snowLine + .17), snowHeight) * accumulation, 0, 1);
+        + noise.ridged(x * .0074, z * .0068, 3, .53) * .38) * 95;
+      /* Climatic band in world metres, then local shelter. A south-facing
+       * gully sits a couple of hundred metres below the open rib. */
+      const snowHeight = y + breakup + Math.max(0, concavity) * 140 + exposure * 70;
+      const accumulation = .28 + .72 * smoothstep(.08, .58, ny);
+      snow[at] = clamp(smoothstep(SNOW_Y0, SNOW_Y1, snowHeight) * accumulation, 0, 1);
       talus[at] = clamp(smoothstep(.18, .68, 1 - ny) * (1 - smoothstep(spec.height * .64, spec.height * .88, altitude)) * (.62 + .38 * noise.ridged(x*.006,z*.006,3,.5)), 0, 1);
       glacier[at] = glacierAt(spec, x, z, altitude, ny);
       cavity[at] = smoothstep(.03, .62, concavity);
@@ -460,9 +502,11 @@ function mountainMaterial(spec, layer) {
     uSnow: { value: 1 }, uErosion: { value: 1 }, uHazeEnabled: { value: 1 },
     uHaze: { value: spec.haze }, uHazeColor: { value: HAZE.clone() },
     uLayer: { value: layer },
+    uSnowY0: { value: SNOW_Y0 },
+    uSnowY1: { value: SNOW_Y1 },
   };
   mat.userData.uniforms = U;
-  mat.customProgramCacheKey = () => 'lake-mountain-terrain-v5';
+  mat.customProgramCacheKey = () => 'lake-mountain-terrain-v8';
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     mat.userData.shader = sh;
@@ -486,7 +530,7 @@ function mountainMaterial(spec, layer) {
        vSnow = aSnow; vTalus = aTalus; vGlacier = aGlacier; vCavity = aCavity;`
     );
     sh.fragmentShader = `
-      uniform float uSnow, uHazeEnabled, uHaze, uLayer;
+      uniform float uSnow, uHazeEnabled, uHaze, uLayer, uSnowY0, uSnowY1;
       uniform vec3 uHazeColor;
       varying vec3 vMPos, vMNrm;
       varying float vSnow, vTalus, vGlacier, vCavity;
@@ -512,7 +556,7 @@ function mountainMaterial(spec, layer) {
        /* Green foreland and cold alpine face are two parts of one depth stack.
         * The first two ranges are rounded, rain-fed foothills; exposed greywacke
         * takes over only with altitude, slope and distance toward Aoraki. */
-       vec3 alpineRock = mix(vec3(.13,.14,.16), vec3(.48,.48,.46), coarse);
+       vec3 alpineRock = mix(vec3(.16,.16,.17), vec3(.42,.41,.39), coarse);
        /* Lower ranges. Greywacke under a thin dry skin of tussock and lichen,
         * so the warm cast is the grass, not the stone. The previous pair was
         * green-dominant on both ends, which put a fertilised-pasture hue on
@@ -525,9 +569,12 @@ function mountainMaterial(spec, layer) {
        vec3 scree = mix(vec3(.20,.21,.20), vec3(.50,.46,.38), coarse);
        vec3 surf = mix(rock, scree, vTalus * .62);
        surf *= 1.0 - vCavity * .27;
-       float meadowLayer=1.0-smoothstep(.18,1.72,uLayer);
+       /* Only the near foothills carry tussock. Side walls and Aoraki
+        * are greywacke — painting them olive made Ben Ohau a row of
+        * clay cones. */
+       float meadowLayer=1.0-smoothstep(.18,.92,uLayer);
        float meadowSlope=smoothstep(.18,.70,vMNrm.y);
-       float meadowHeight=1.0-smoothstep(380.0,1080.0,vMPos.y);
+       float meadowHeight=1.0-smoothstep(280.0,720.0,vMPos.y);
        float meadowMask=clamp(meadowLayer*meadowSlope*mix(.58,1.0,meadowHeight),0.0,1.0);
        /* The foreland cover, and it has to be the same biome as the ground the
         * player is standing on or the level has a colour horizon in it.
@@ -558,17 +605,17 @@ function mountainMaterial(spec, layer) {
         * changing the geometric ridges underneath. */
        float snowFlow=mf(vec2((vMPos.x+vMPos.z*.27)*.0037,vMPos.y*.00072)+fine*1.7);
        float snowCross=mf(vec2((vMPos.x-vMPos.z*.41)*.0022,vMPos.y*.00115)-coarse*1.3);
-       float snowBreak = smoothstep(.38, .68, snowFlow*.60+snowCross*.40+vCavity*.30);
-       float outcrop = smoothstep(.26, .62, 1.0-vMNrm.y + fracture*.46);
-       float snowCover = smoothstep(.26,.58,vSnow);
-       float windScour=smoothstep(-.22,.54,dot(normalize(vMNrm.xz+vec2(.001)),normalize(vec2(.84,.54))));
-       float rib = smoothstep(.58,.92,fractureNoise);
-       /* Aoraki keeps a white summit. The mid ranges can show more rock;
-        * stripping the far massif the same way left a grey pyramid. */
-       float highHold = mix(.42, .78, smoothstep(1.35, 1.95, uLayer));
-       float snowMask = clamp(snowCover * mix(highHold, 1.0, snowBreak)
-         * (1.0-outcrop*mix(.42,.68,1.0-smoothstep(1.4,1.9,uLayer)))
-         * mix(.52,1.0,windScour) * (1.0-rib*.22) * uSnow, 0.0, 1.0);
+       float snowBreak = smoothstep(.22, .58, snowFlow*.55+snowCross*.45+vCavity*.40);
+       float outcrop = smoothstep(.42, .82, 1.0-vMNrm.y + fracture*.28);
+       /* Climatic line from world height, so a west-wall saddle and an
+        * Aoraki shoulder at the same Y share one band. The baked field
+        * only adds local shelter. */
+       float climatic = smoothstep(uSnowY0, uSnowY1, vMPos.y + vCavity*90.0);
+       float snowCover = max(climatic, smoothstep(.10,.42,vSnow));
+       float windScour=smoothstep(.02,.62,dot(normalize(vMNrm.xz+vec2(.001)),normalize(vec2(.84,.54))));
+       float rib = smoothstep(.74,.98,fractureNoise);
+       float snowMask = clamp(snowCover * mix(.86,1.0,snowBreak)
+         * (1.0-outcrop*.28) * mix(.82,1.0,windScour) * (1.0-rib*.08) * uSnow, 0.0, 1.0);
        vec3 snowColor = mix(vec3(.78,.86,.92), vec3(.98,.99,.97), .62 + fine*.32);
        surf = mix(surf, snowColor, snowMask);
        vec3 ice = mix(vec3(.55,.70,.78), vec3(.90,.94,.95), fine);

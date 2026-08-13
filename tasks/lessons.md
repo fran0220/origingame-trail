@@ -1,5 +1,15 @@
 # Lessons
 
+## A snowline is an altitude, not a per-peak hat
+
+- `snowLine * spec.height` paints every summit from 60% of *its* mesh.
+  A 800 m foothill and a 1800 m west-wall peak both get a white cap;
+  the saddle between them drops out. Use one world-Y band
+  (`SNOW_Y0`/`SNOW_Y1`) and let shelter only fray the edge.
+- A north–south wall authored as radial cones is a row of clay hats.
+  Put the divide on Z, keep the crest a few kilometres off the shore,
+  and drop the olive meadow term on anything past the foothills.
+
 ## A Mackenzie lake is a trough, not a stage with one backdrop
 
 - Pukaki / Tekapo sit inside the Southern Alps. A single northern massif
